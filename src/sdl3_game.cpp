@@ -145,6 +145,8 @@ i32 main()
 #endif
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
+  i32 width = 640;
+  i32 height = 480;
   auto* window = SDL_CreateWindow("game", 640, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
   if (window == nullptr)
   {
@@ -183,6 +185,8 @@ i32 main()
     SDL_Log("Error loading glad\n");
     return 1;
   }
+
+  glViewport(0, 0, width, height);
 
 #ifdef GAME_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
@@ -239,6 +243,10 @@ i32 main()
           {
             running = false;
           } break;
+          case SDL_EVENT_WINDOW_RESIZED:
+          {
+            glViewport(0, 0, e.window.data1, e.window.data2);
+          } break;
         }
       }
     }
@@ -267,6 +275,11 @@ i32 main()
           SDL_Log("Error putting audio stream data: %s\n", SDL_GetError());
           return 1;
         }
+      }
+
+      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
+      {
+        game::update(state);
       }
     }
 

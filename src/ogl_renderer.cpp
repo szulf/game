@@ -60,7 +60,8 @@ Result<Mesh> Mesh::from_obj(mem::Arena& perm_arena, mem::Arena& temp_arena, cons
   {
     switch (line[0])
     {
-      case 'v': {
+      case 'v':
+      {
         auto parts = line.split(temp_arena, ' ');
 
         auto v1 = parts[1].parse<f32>();
@@ -80,9 +81,9 @@ Result<Mesh> Mesh::from_obj(mem::Arena& perm_arena, mem::Arena& temp_arena, cons
         }
 
         vertices.push({{v1.val, v2.val, v3.val}});
-        break;
-      }
-      case 'f': {
+      } break;
+      case 'f':
+      {
         auto parts = line.split(temp_arena, ' ');
         auto i1 = parts[1].parse<u32>();
         if (i1.has_error)
@@ -103,8 +104,7 @@ Result<Mesh> Mesh::from_obj(mem::Arena& perm_arena, mem::Arena& temp_arena, cons
         indices.push(i1.val - 1);
         indices.push(i2.val - 1);
         indices.push(i3.val - 1);
-        break;
-      }
+      } break;
     }
   }
 
@@ -123,9 +123,9 @@ void Model::draw(Shader shader)
   }
 }
 
-void Model::rotateY(f32 deg)
+void Model::rotate(f32 deg, const math::Vec3& axis)
 {
-  model.rotate(math::radians(deg), {0.0f, 1.0f, 0.0f});
+  model.rotate(math::radians(deg), axis);
 }
 
 Result<u32> setup_shader(mem::Arena& arena, const char* filepath,
@@ -142,15 +142,15 @@ Result<u32> setup_shader(mem::Arena& arena, const char* filepath,
   u32 shader;
   switch (shader_type)
   {
-    case ShaderType::Vertex: {
+    case ShaderType::Vertex:
+    {
       shader = glCreateShader(GL_VERTEX_SHADER);
-      break;
-    }
+    } break;
 
-    case ShaderType::Fragment: {
+    case ShaderType::Fragment:
+    {
       shader = glCreateShader(GL_FRAGMENT_SHADER);
-      break;
-    }
+    } break;
   }
 
   glShaderSource(shader, 1, &shader_src, nullptr);
@@ -164,15 +164,17 @@ Result<u32> setup_shader(mem::Arena& arena, const char* filepath,
     glGetShaderInfoLog(shader, 1024, &log_length, message);
     switch (shader_type)
     {
-      case ShaderType::Vertex: {
+      case ShaderType::Vertex:
+      {
         fprintf(stderr, "Error compiling vertex shader:\n%s\n", message);
         return {Error::ShaderCompilation};
-      }
+      } break;
 
-      case ShaderType::Fragment: {
+      case ShaderType::Fragment:
+      {
         fprintf(stderr, "Error compiling fragment shader:\n%s\n", message);
         return {Error::ShaderCompilation};
-      }
+      } break;
     }
   }
 

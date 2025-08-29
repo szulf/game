@@ -174,30 +174,30 @@ void write_val(String& buf, Error val)
 {
   switch (val)
   {
-    case Error::OutOfMemory: {
+    case Error::OutOfMemory:
+    {
       write(buf, "OutOfMemory", 11);
-      break;
-    }
-    case Error::InvalidParameter: {
+    } break;
+    case Error::InvalidParameter:
+    {
       write(buf, "InvalidParameter", 16);
-      break;
-    }
-    case Error::FileReadingError: {
+    } break;
+    case Error::FileReadingError:
+    {
       write(buf, "FileReadingError", 16);
-      break;
-    }
-    case Error::ShaderCompilation: {
+    } break;
+    case Error::ShaderCompilation:
+    {
       write(buf, "ShaderCompilation", 17);
-      break;
-    }
-    case Error::ShaderLinking: {
+    } break;
+    case Error::ShaderLinking:
+    {
       write(buf, "ShaderLinking", 13);
-      break;
-    }
-    case Error::NotFound: {
+    } break;
+    case Error::NotFound:
+    {
       write(buf, "NotFound", 8);
-      break;
-    }
+    } break;
   }
 }
 
@@ -264,17 +264,23 @@ void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state)
 {
   setup_shaders(temp_arena);
 
-  Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cube.obj").val};
+  // Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/sphere.obj").val};
+  // Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cube.obj").val};
+  Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cone.obj").val};
   state.model = Model{Array<Mesh>{perm_arena, meshes, 1}};
 
   temp_arena.free_all();
+}
+
+void update(State& state)
+{
+  state.model.rotate(static_cast<f32>(platform::get_ms()), {1.0f, 1.0f, 0.0f});
 }
 
 void render(State& state)
 {
   Renderer::clear_screen();
 
-  state.model.rotateY(static_cast<f32>(platform::get_ms()));
   state.model.draw(Shader::DefaultShader);
 }
 

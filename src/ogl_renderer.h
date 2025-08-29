@@ -38,7 +38,7 @@ struct Model
   // TODO(szulf): probably switch to some sort of a queue later on
   void draw(Shader shader);
 
-  void rotateY(f32 deg);
+  void rotate(f32 deg, const math::Vec3& axis);
 };
 
 static Result<u32> setup_shader(mem::Arena& arena, const char* filepath,

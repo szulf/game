@@ -3,7 +3,7 @@
 mkdir -p build
 
 clang++ \
-    -std=c++11 -g3 -O0 \
+    -std=c++17 -g3 -O0 \
     -Wall -Wextra -Wconversion -Werror \
     -march=native -fno-rtti -fno-exceptions \
     src/sdl3_game.cpp -o build/game \

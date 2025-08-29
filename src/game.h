@@ -35,32 +35,43 @@ using f64 = double;
 #define MEGABYTES(n) (KILOBYTES(n) * 1024)
 #define GIGBAYTES(n) (MEGABYTES(n) * 1024)
 
+// TODO(szulf): implement variadic arguments
+#define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+
 #ifdef GAME_DEBUG
 #  include <stdlib.h>
-// TODO(szulf): log a message in assert
-#  define ASSERT(expr, msg) do \
+#  define ASSERT(expr, msg, ...) do \
 { \
   if (!(expr)) \
   { \
-    exit(1); \
+    LOG(msg, ##__VA_ARGS__); \
+    asm ("int3"); \
   } \
 } while (0)
 #else
 #  define ASSERT(expr, msg)
 #endif
 
+template <typename... Args>
+static void log_(const char* file, i64 line, const char* func, const char* fmt, const Args&... args);
+
 #include "math.cpp"
 #include "result.cpp"
 #include "memory.cpp"
 #include "array.cpp"
+#include "string.cpp"
+
+template <typename... Args>
+static void format(String& buf, const char* fmt, const Args&... args);
 
 namespace platform
 {
   static Result<void*> read_entire_file(mem::Arena& arena, const char* path,
-                                            usize* bytes_read = nullptr);
+                                        usize* bytes_read = nullptr);
+  // TODO(szulf): cannot be static because compiler complains idk why
+  void print(const char* msg);
   static u64 get_ms();
 }
-
 
 #include "vec3.cpp"
 #include "mat4.cpp"
@@ -84,7 +95,7 @@ struct State
   Model model;
 };
 
-static void setup(mem::Arena& arena, State& state);
+static void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state);
 
 static void render(State& state);
 

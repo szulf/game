@@ -38,7 +38,7 @@ Result<void*> Arena::alloc(usize size, ptrsize alignment)
   void* next_addr = static_cast<u8*>(curr_addr) + padding;
   offset += size;
 
-  set(static_cast<u8*>(next_addr), static_cast<u8>(0), size);
+  set(next_addr, 0, size);
 
   return {next_addr};
 }
@@ -63,22 +63,40 @@ void Arena::stop_temp()
   temp_active = false;
 }
 
-template <typename T>
-void set(T* dest, const T& val, usize amount)
+void set(void* dest, u8 val, usize bytes)
 {
-  for (usize i = 0; i < amount; ++i)
+  for (usize i = 0; i < bytes; ++i)
   {
-    dest[i] = val;
+    static_cast<u8*>(dest)[i] = val;
   }
 }
 
-template <typename T>
-void copy(T* dest, T* src, usize amount)
+void copy(void* dest, const void* src, usize bytes)
 {
-  for (usize i = 0; i < amount; ++i)
+  auto d = static_cast<u8*>(dest);
+  auto s = static_cast<const u8*>(src);
+
+  for (usize i = 0; i < bytes; ++i)
   {
-    dest[i] = src[i];
+    d[i] = s[i];
   }
+}
+
+// TODO(szulf): idk about this implementation
+bool cmp(const void* val1, const void* val2, usize bytes)
+{
+  auto v1 = static_cast<const u8*>(val1);
+  auto v2 = static_cast<const u8*>(val2);
+
+  for (usize i = 0; i < bytes; ++i)
+  {
+    if (v1[i] != v2[i])
+    {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }

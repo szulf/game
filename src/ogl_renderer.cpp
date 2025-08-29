@@ -29,8 +29,6 @@ Mesh::Mesh(const Array<Vertex>& v, const Array<u32>& i) : vertices{v}, indices{i
 
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(f32), reinterpret_cast<void*>(0));
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void Mesh::draw() const
@@ -40,49 +38,77 @@ void Mesh::draw() const
   glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.len), GL_UNSIGNED_INT, 0);
 }
 
-Mesh Mesh::from_obj(mem::Arena& arena, const char* path)
+Result<Mesh> Mesh::from_obj(mem::Arena& perm_arena, mem::Arena& temp_arena, const char* path)
 {
-  // TODO(szulf): for now hardcoded, implement later
-  (void) path;
+  auto file_res = platform::read_entire_file(temp_arena, path);
+  if (file_res.has_error)
+  {
+    ASSERT(false, "couldnt read mesh file");
+    return {Error::FileReadingError};
+  }
 
-  game::Vertex vertices[] = {
-    {-0.5f, -0.5f, -0.5f},
-    { 0.5f, -0.5f, -0.5f},
-    { 0.5f,  0.5f, -0.5f},
-    {-0.5f,  0.5f, -0.5f},
-    {-0.5f, -0.5f,  0.5f},
-    { 0.5f, -0.5f,  0.5f},
-    { 0.5f,  0.5f,  0.5f},
-    {-0.5f,  0.5f,  0.5f},
-  };
+  String file{temp_arena, static_cast<char*>(file_res.val)};
+  auto lines = file.split(temp_arena, '\n');
 
-  u32 indices[] = {
-    0, 1, 2,
-    2, 3, 0,
-    4, 5, 6,
-    6, 7, 4,
-    4, 0, 3,
-    3, 7, 4,
-    1, 5, 6,
-    6, 2, 1,
-    4, 5, 1,
-    1, 0, 4,
-    3, 2, 6,
-    6, 7, 3,
-  };
+  auto vert_count = file.count('v');
+  auto idx_count  = file.count('f') * 3;
 
-  return {
+  Array<Vertex> vertices{perm_arena, vert_count};
+  Array<u32> indices{perm_arena, idx_count};
+
+  for (const auto& line : lines)
+  {
+    switch (line[0])
     {
-      arena,
-      vertices,
-      8,
-    },
-    {
-      arena,
-      indices,
-      36,
-    },
-  };
+      case 'v': {
+        auto parts = line.split(temp_arena, ' ');
+
+        auto v1 = parts[1].parse<f32>();
+        if (v1.has_error)
+        {
+          return {v1.err};
+        }
+        auto v2 = parts[2].parse<f32>();
+        if (v2.has_error)
+        {
+          return {v2.err};
+        }
+        auto v3 = parts[3].parse<f32>();
+        if (v3.has_error)
+        {
+          return {v3.err};
+        }
+
+        vertices.push({{v1.val, v2.val, v3.val}});
+        break;
+      }
+      case 'f': {
+        auto parts = line.split(temp_arena, ' ');
+        auto i1 = parts[1].parse<u32>();
+        if (i1.has_error)
+        {
+          return {i1.err};
+        }
+        auto i2 = parts[2].parse<u32>();
+        if (i2.has_error)
+        {
+          return {i2.err};
+        }
+        auto i3 = parts[3].parse<u32>();
+        if (i3.has_error)
+        {
+          return {i3.err};
+        }
+
+        indices.push(i1.val - 1);
+        indices.push(i2.val - 1);
+        indices.push(i3.val - 1);
+        break;
+      }
+    }
+  }
+
+  return {{vertices, indices}};
 }
 
 void Model::draw(Shader shader)
@@ -108,6 +134,7 @@ Result<u32> setup_shader(mem::Arena& arena, const char* filepath,
   auto shader_src_result = platform::read_entire_file(arena, filepath);
   if (shader_src_result.has_error)
   {
+    ASSERT(false, "cannot read shader file");
     return {shader_src_result.err};
   }
   const char* shader_src = static_cast<char*>(shader_src_result.val);
@@ -179,8 +206,6 @@ Result<u32> link_shaders(u32 vertex_shader, u32 fragment_shader)
 Result<void> setup_shaders(mem::Arena& arena)
 {
   {
-    arena.start_temp();
-
     auto v_shader_res = setup_shader(arena, "src/shader.vert", ShaderType::Vertex);
     if (v_shader_res.has_error)
     {
@@ -192,8 +217,6 @@ Result<void> setup_shaders(mem::Arena& arena)
     {
       return {f_shader_res.err};
     }
-
-    arena.stop_temp();
 
     auto shader_res = link_shaders(v_shader_res.val, f_shader_res.val);
     if (shader_res.has_error)

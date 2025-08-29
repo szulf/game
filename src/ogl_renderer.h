@@ -6,9 +6,7 @@ namespace game
 
 struct Vertex
 {
-  f32 x;
-  f32 y;
-  f32 z;
+  math::Vec3 pos;
 };
 
 struct Mesh
@@ -26,7 +24,7 @@ struct Mesh
   // TODO(szulf): probably switch to some sort of a queue later on
   void draw() const;
 
-  static Mesh from_obj(mem::Arena& arena, const char* path);
+  static Result<Mesh> from_obj(mem::Arena& perm_arena, mem::Arena& temp_arena, const char* path);
 };
 
 struct Model

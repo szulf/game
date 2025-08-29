@@ -4,10 +4,11 @@
 enum class Error : u8
 {
   OutOfMemory,
-  InvalidPtr,
+  InvalidParameter,
   FileReadingError,
   ShaderCompilation,
   ShaderLinking,
+  NotFound,
 };
 
 template <typename T>

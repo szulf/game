@@ -23,7 +23,7 @@ Result<void*> read_entire_file(mem::Arena& arena, const char* path, usize* bytes
     return {Error::FileReadingError};
   }
 
-  mem::copy(static_cast<u8*>(res.val), static_cast<u8*>(file), read + 1);
+  mem::copy(res.val, file, read + 1);
   SDL_free(file);
   if (bytes_read)
   {
@@ -31,6 +31,11 @@ Result<void*> read_entire_file(mem::Arena& arena, const char* path, usize* bytes
   }
 
   return {res.val};
+}
+
+void print(const char* msg)
+{
+  SDL_Log("%s\n", msg);
 }
 
 [[maybe_unused]] u64 get_ms()
@@ -67,7 +72,15 @@ f32 mod(f32 x, f32 y)
 
 }
 
+// TODO(szulf): hate it here
+void write_val(String& buf, f32 val)
+{
+  auto written = SDL_snprintf(buf.data + buf.len, buf.cap - buf.len, "%f", val);
+  buf.len += static_cast<usize>(written);
+}
+
 #ifdef GAME_DEBUG
+// TODO(szulf): change this to use the LOG macro
 static void APIENTRY debug_callback(
     GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar* message, const void* user)
@@ -177,13 +190,17 @@ i32 main()
   glDebugMessageCallback(debug_callback, nullptr);
 #endif
 
-  mem::Arena arena{};
-  arena.buffer_size = MEGABYTES(100);
-  arena.buffer = SDL_malloc(arena.buffer_size);
+  mem::Arena perm_arena{};
+  perm_arena.buffer_size = MEGABYTES(100);
+  perm_arena.buffer = SDL_malloc(perm_arena.buffer_size);
+
+  mem::Arena temp_arena{};
+  temp_arena.buffer_size = MEGABYTES(100);
+  temp_arena.buffer = SDL_malloc(temp_arena.buffer_size);
 
   game::State state{};
 
-  game::setup(arena, state);
+  game::setup(perm_arena, temp_arena, state);
 
   SDL_Event e;
   bool running = true;

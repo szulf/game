@@ -22,11 +22,11 @@ struct Arena
   void stop_temp();
 };
 
-template <typename T>
-void set(T* dest, const T& val, usize amount);
+void set(void* dest, u8 val, usize bytes);
 
-template <typename T>
-void copy(T* dest, T* src, usize amount);
+void copy(void* dest, const void* src, usize bytes);
+
+bool cmp(const void* val1, const void* val2, usize bytes);
 
 }
 

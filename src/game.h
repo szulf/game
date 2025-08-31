@@ -35,7 +35,6 @@ using f64 = double;
 #define MEGABYTES(n) (KILOBYTES(n) * 1024)
 #define GIGBAYTES(n) (MEGABYTES(n) * 1024)
 
-// TODO(szulf): implement variadic arguments
 #define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 #ifdef GAME_DEBUG
@@ -101,7 +100,8 @@ struct SoundBuffer
 
 struct State
 {
-  Scene scene;
+  usize current_scene_idx;
+  Array<Scene> scenes;
 };
 
 static void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state);

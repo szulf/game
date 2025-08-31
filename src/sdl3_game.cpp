@@ -8,7 +8,8 @@
 // TODO(szulf): set better starting dimensions
 platform::WindowDimensions dimensions = {640, 480};
 
-namespace platform {
+namespace platform
+{
 
 Result<void*> read_entire_file(mem::Arena& arena, const char* path, usize* bytes_read)
 {

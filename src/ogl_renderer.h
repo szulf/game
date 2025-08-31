@@ -55,6 +55,7 @@ struct Scene
   Mat4 proj;
 
   Scene() {}
+  Scene(const Array<Drawable>& d, const Mat4& v, const Mat4& p) : drawables{d}, view{v}, proj{p} {}
 
   // TODO(szulf): probably switch to some sort of a queue later on
   void draw() const;

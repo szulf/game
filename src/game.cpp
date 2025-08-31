@@ -302,34 +302,56 @@ void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state)
 {
   setup_shaders(temp_arena);
 
-  Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/sphere.obj").val};
-  // Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cube.obj").val};
-  // Mesh meshes[]{Mesh::from_obj(perm_arena, temp_arena, "assets/cone.obj").val};
-  Model model{{perm_arena, meshes, 1}};
-  Drawable drawables[]{{model, Shader::DefaultShader}};
+  Mesh sphere_meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/sphere.obj").val};
+  Model sphere_model{{perm_arena, sphere_meshes, 1}};
+  Drawable sphere_drawables[]{{sphere_model, Shader::DefaultShader}};
 
-  state.scene.drawables = {perm_arena, drawables, 1};
-  state.scene.view = Mat4{};
-  state.scene.proj = Mat4{};
+  Mesh cube_meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cube.obj").val};
+  Model cube_model{{perm_arena, cube_meshes, 1}};
+  Drawable cube_drawables[]{{cube_model, Shader::DefaultShader}};
+
+  Mesh cone_meshes[]{Mesh::from_obj(perm_arena, temp_arena, "assets/cone.obj").val};
+  Model cone_model{{perm_arena, cone_meshes, 1}};
+  Drawable cone_drawables[]{{cone_model, Shader::DefaultShader}};
+
+  Scene scenes[]{{{perm_arena, sphere_drawables, 1}, Mat4{}, Mat4{}}, {{perm_arena, cube_drawables, 1}, Mat4{}, Mat4{}}, {{perm_arena, cone_drawables, 1}, Mat4{}, Mat4{}}};
+
+  state.current_scene_idx = 0;
+  state.scenes = {perm_arena, scenes, 3};
 
   temp_arena.free_all();
 }
 
 void update(State& state)
 {
-  state.scene.view.translate({0.0f, 0.0f, -3.0f});
+  static f32 degree = 0.0f;
+
+  auto& scene = state.scenes[state.current_scene_idx];
+
+  scene.view.translate({0.0f, 0.0f, -3.0f});
 
   auto dimensions = platform::get_window_dimensions();
-  state.scene.proj = Mat4::perspective(radians(45.0f), static_cast<f32>(dimensions.width) / static_cast<f32>(dimensions.height), 0.1f, 100.0f);
+  scene.proj = Mat4::perspective(radians(45.0f), static_cast<f32>(dimensions.width) / static_cast<f32>(dimensions.height),
+                                 0.1f, 100.0f);
 
-  state.scene.drawables[0].model.rotate(static_cast<f32>(platform::get_ms()), {1.0f, 1.0f, 0.0f});
+  static u64 last_ms = 0;
+  if (platform::get_ms() - last_ms > 3000)
+  {
+    state.current_scene_idx += 1;
+    state.current_scene_idx %= 3;
+    last_ms = platform::get_ms();
+  }
+
+  scene.drawables[0].model.rotate(degree, {1.0f, 1.0f, 0.0f});
+
+  degree += 1.0f;
 }
 
 void render(State& state)
 {
   Renderer::clear_screen();
 
-  state.scene.draw();
+  state.scenes[state.current_scene_idx].draw();
 }
 
 void get_sound(SoundBuffer& sound_buffer)

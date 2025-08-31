@@ -4,26 +4,29 @@
 #include <stdint.h>
 #include <stddef.h>
 
-using u8  = uint8_t;
-using i8  = int8_t;
-using u16 = uint16_t;
-using i16 = int16_t;
-using u32 = uint32_t;
-using i32 = int32_t;
-using u64 = uint64_t;
-using i64 = int64_t;
+typedef uint8_t  u8;
+typedef int8_t   s8;
+typedef uint16_t u16;
+typedef int16_t  s16;
+typedef uint32_t u32;
+typedef int32_t  s32;
+typedef uint64_t u64;
+typedef int64_t  s64;
 
-using bool32  = i32;
-using usize   = size_t;
-using ptrsize = uintptr_t;
+typedef s32       bool32;
+typedef size_t    usize;
+typedef uintptr_t ptrsize;
 
-using f32 = float;
-using f64 = double;
+typedef float f32;
+typedef double f64;
+
+#define false 0
+#define true 1
 
 #define PI32 3.141592653f
 
-#define I16_MAX  32767
-#define I16_MIN -32768
+#define S16_MAX  32767
+#define S16_MIN -32768
 
 #define FPS  60
 #define MSPF (1000 / FPS)
@@ -38,79 +41,71 @@ using f64 = double;
 #define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 #ifdef GAME_DEBUG
-#  include <stdlib.h>
 #  define ASSERT(expr, msg, ...) do \
 { \
   if (!(expr)) \
   { \
     LOG(msg, ##__VA_ARGS__); \
-    asm ("int3"); \
+    __asm__("int3"); \
   } \
 } while (0)
 #else
 #  define ASSERT(expr, msg)
 #endif
 
-template <typename... Args>
-static void log_(const char* file, i64 line, const char* func, const char* fmt, const Args&... args);
+static void log_(const char* file, usize line, const char* func, const char* fmt, ...);
 
-#include "math.cpp"
-#include "result.cpp"
-#include "memory.cpp"
-#include "array.cpp"
-#include "string.cpp"
+#include "math.c"
+#include "error.c"
+#include "memory.c"
+#include "array.h"
+#include "string.c"
 
-template <typename... Args>
-static void format(String& buf, const char* fmt, const Args&... args);
+static Error platform_read_entire_file(void** out, Arena* arena, const char* path);
+static Error platform_read_entire_file_bytes_read(void** out, Arena* arena, const char* path,
+                                                  usize* bytes_read);
 
-namespace platform
+static void print(const char* msg);
+static u64 get_ms();
+
+typedef struct WindowDimensions
 {
-  static Result<void*> read_entire_file(mem::Arena& arena, const char* path,
-                                        usize* bytes_read = nullptr);
-  // TODO(szulf): cannot be static because compiler complains idk why
-  void print(const char* msg);
-  static u64 get_ms();
+  s32 width;
+  s32 height;
+} WindowDimensions;
 
-  struct WindowDimensions
-  {
-    i32 width;
-    i32 height;
-  };
-  
-  static WindowDimensions get_window_dimensions();
-}
-
-#include "vec3.cpp"
-#include "vec4.cpp"
-#include "mat4.cpp"
+static WindowDimensions get_window_dimensions();
 
 // TODO(szulf): this will probably need to change to a renderer.cpp
 #include "renderer.h"
 
-namespace game
+typedef struct GameSoundBuffer
 {
-
-struct SoundBuffer
-{
-  i16* memory;
+  s16* memory;
   usize size;
   u32 sample_count;
   u32 samples_per_second;
-};
+} GameSoundBuffer;
 
-struct State
+typedef struct SceneArray
+{
+  usize cap;
+  usize len;
+  Scene* items;
+} SceneArray;
+
+typedef struct GameState
 {
   usize current_scene_idx;
-  Array<Scene> scenes;
-};
+  SceneArray scenes;
+} GameState;
 
-static void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state);
+static Error game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state);
 
-static void render(State& state);
+static void game_update(GameState* state);
 
-static void get_sound(SoundBuffer& sound_buffer);
+static void game_render(GameState* state);
 
-}
-
+static void game_get_sound(GameSoundBuffer* sound_buffer);
 
 #endif

@@ -1,26 +1,32 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
-// TODO(szulf): should i define a copy constructor here
-// i guess shallow copies are fine since memory is managed by the arena
-template <typename T>
-struct Array
-{
-  usize capacity;
-  usize len;
-  T*    data;
+// NOTE(szulf): example of an array
+// struct TypeArray
+// {
+//   usize cap;
+//   usize len;
+//   Type* items;
+// };
 
-  Array() : len{0} {}
-  Array(mem::Arena& arena, T* data, usize size);
-  Array(mem::Arena& arena, usize size);
+#define ARRAY_PUSH(arr, val) do {\
+if ((arr)->len + 1 >= (arr)->cap) \
+{ \
+} \
+(arr)->items[(arr)->len] = (val); \
+++(arr)->len; \
+} while (0)
 
-  Result<void> push(const T& val);
-
-  T& operator[](usize idx);
-  const T& operator[](usize idx) const;
-
-  T* begin() const;
-  T* end() const;
-};
+#define ARRAY_INIT(arr, arena, capacity) ARRAY_INIT2(arr, arena, capacity, __COUNTER__)
+#define ARRAY_INIT2(arr, arena, capacity, counter) ARRAY_INIT3(arr, arena, capacity, counter)
+#define ARRAY_INIT3(arr, arena, capacity, counter) do { \
+(arr)->cap = (capacity); \
+(arr)->len = 0; \
+Error alloc_err##counter = arena_alloc((void**) &(arr)->items, (arena), (capacity) * sizeof(*(arr)->items)); \
+if (alloc_err##counter != SUCCESS) \
+{ \
+  return alloc_err##counter; \
+} \
+} while (0)
 
 #endif

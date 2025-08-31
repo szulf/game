@@ -1,4 +1,4 @@
-#include "game.cpp"
+#include "game.c"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
@@ -6,55 +6,65 @@
 #include "sdl3_game.h"
 
 // TODO(szulf): set better starting dimensions
-platform::WindowDimensions dimensions = {640, 480};
+WindowDimensions dimensions = {640, 480};
 
-namespace platform
+static Error
+platform_read_entire_file(void** out, Arena* arena, const char* path)
 {
+  return platform_read_entire_file_bytes_read(out, arena, path, 0);
+}
 
-Result<void*> read_entire_file(mem::Arena& arena, const char* path, usize* bytes_read)
+static Error
+platform_read_entire_file_bytes_read(void** out, Arena* arena, const char* path, usize* bytes_read)
 {
   usize read;
-
   void* file = SDL_LoadFile(path, &read);
-  if (file == nullptr)
+  if (file == 0)
   {
-    return {Error::FileReadingError};
+    ASSERT(false, "couldnt read file");
+    return FILE_READING;
   }
 
-  auto res = arena.alloc(read);
-  if (res.has_error)
+  void* file_data;
+  Error alloc_err = arena_alloc(&file_data, arena, read);
+  if (alloc_err != SUCCESS)
   {
-    return {Error::FileReadingError};
+    ASSERT(false, "couldnt allocate memory for file");
+    return alloc_err;
   }
 
-  mem::copy(res.val, file, read + 1);
+  // TODO(szulf): why the read + 1 here???
+  // possible was thinking of null terminator? but the file should have one either way
+  mem_copy(file_data, file, read + 1);
   SDL_free(file);
   if (bytes_read)
   {
     *bytes_read = read;
   }
 
-  return {res.val};
+  *out = file_data;
+  return SUCCESS;
 }
 
-void print(const char* msg)
+static void
+print(const char* msg)
 {
   SDL_Log("%s\n", msg);
 }
 
-[[maybe_unused]] u64 get_ms()
+static u64
+get_ms()
 {
   return SDL_GetTicks();
 }
 
-WindowDimensions get_window_dimensions()
+static WindowDimensions
+get_window_dimensions()
 {
   return dimensions;
 }
 
-}
-
-// TODO(szulf): implement these myself later and move to math.h
+// TODO(szulf): implement these myself later and move to math.c
 f32 sin(f32 rad)
 {
   return SDL_sinf(rad);
@@ -84,13 +94,6 @@ f32 acos(f32 val)
 f32 tan(f32 val)
 {
   return SDL_tanf(val);
-}
-
-// TODO(szulf): hate it here
-void write_val(String& buf, f32 val)
-{
-  auto written = SDL_snprintf(buf.data + buf.len, buf.cap - buf.len, "%f", val);
-  buf.len += static_cast<usize>(written);
 }
 
 #ifdef GAME_DEBUG
@@ -145,7 +148,8 @@ static void APIENTRY debug_callback(
 }
 #endif
 
-i32 main()
+s32
+main()
 {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
@@ -159,23 +163,21 @@ i32 main()
 #endif
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-  i32 width = 640;
-  i32 height = 480;
-  auto* window = SDL_CreateWindow("game", dimensions.width, dimensions.height,
+  SDL_Window* window = SDL_CreateWindow("game", dimensions.width, dimensions.height,
                                   SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-  if (window == nullptr)
+  if (!window)
   {
     SDL_Log("Error creating window: %s\n", SDL_GetError());
     return 1;
   }
 
-  sdl3::AudioBuffer audio_buffer = {};
+  SDL3AudioBuffer audio_buffer = {};
   audio_buffer.spec.format   = SDL_AUDIO_S16;
   audio_buffer.spec.channels = 2;
   audio_buffer.spec.freq     = 48000;
 
-  auto* audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
-                                                 &audio_buffer.spec, nullptr, nullptr);
+  SDL_AudioStream* audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+                                                            &audio_buffer.spec, 0, 0);
   if (!audio_stream)
   {
     SDL_Log("Error opening audio stream: %s\n", SDL_GetError());
@@ -183,49 +185,49 @@ i32 main()
   }
 
   // TODO(szulf): do i really want just enough audio for one tick?
-  audio_buffer.sample_count = static_cast<u32>(
-    ((audio_buffer.spec.freq * audio_buffer.spec.channels) / TPS));
-  audio_buffer.size         = audio_buffer.sample_count * sizeof(i16);
-  audio_buffer.memory       = static_cast<i16*>(SDL_malloc(audio_buffer.size));
+  audio_buffer.sample_count = (u32) (((audio_buffer.spec.freq * audio_buffer.spec.channels) / TPS));
+  audio_buffer.size         = audio_buffer.sample_count * sizeof(s16);
+  // TODO(szulf): put this into the perm arena??
+  audio_buffer.memory       = (s16*) SDL_malloc(audio_buffer.size);
 
-  auto glContext = SDL_GL_CreateContext(window);
+  SDL_GLContext glContext = SDL_GL_CreateContext(window);
   if (!glContext)
   {
     SDL_Log("Error creating OpenGL context: %s\n", SDL_GetError());
     return 1;
   }
 
-  if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress)))
+  if (!gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress))
   {
     SDL_Log("Error loading glad\n");
     return 1;
   }
 
-  glViewport(0, 0, width, height);
+  glViewport(0, 0, dimensions.width, dimensions.height);
 
 #ifdef GAME_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-  glDebugMessageCallback(debug_callback, nullptr);
+  glDebugMessageCallback(debug_callback, 0);
 #endif
 
-  mem::Arena perm_arena{};
+  Arena perm_arena = {};
   perm_arena.buffer_size = MEGABYTES(100);
   perm_arena.buffer = SDL_malloc(perm_arena.buffer_size);
 
-  mem::Arena temp_arena{};
+  Arena temp_arena = {};
   temp_arena.buffer_size = MEGABYTES(100);
   temp_arena.buffer = SDL_malloc(temp_arena.buffer_size);
 
-  game::State state{};
+  GameState state = {};
 
-  game::setup(perm_arena, temp_arena, state);
+  game_setup(&perm_arena, &temp_arena, &state);
 
   SDL_Event e;
   bool running = true;
 
-  i8  update_tick = 0;
-  i8  last_tick   = 0;
+  s8  update_tick = 0;
+  s8  last_tick   = 0;
   u32 last_second = 0;
   u64 starter_ms  = SDL_GetTicks();
 
@@ -237,14 +239,14 @@ i32 main()
     {
       ms = SDL_GetTicks() - starter_ms;
       u32 current_second_ms = ms % 1000;
-      u32 current_second = static_cast<u32>(ms / 1000);
+      u32 current_second = (u32) (ms / 1000);
 
       if (current_second != last_second)
       {
         update_tick = 0;
       }
 
-      update_tick = static_cast<i8>(current_second_ms / MSPT);
+      update_tick = (s8) current_second_ms / MSPT;
 
       last_second = current_second;
     }
@@ -260,7 +262,7 @@ i32 main()
           } break;
           case SDL_EVENT_WINDOW_RESIZED:
           {
-            dimensions = {e.window.data1, e.window.data2};
+            dimensions = (WindowDimensions) {e.window.data1, e.window.data2};
             glViewport(0, 0, dimensions.width, dimensions.height);
           } break;
         }
@@ -268,39 +270,38 @@ i32 main()
     }
 
     {
-      i8 safe_update_tick = update_tick;
+      s8 safe_update_tick = update_tick;
       if (last_tick > update_tick)
       {
         safe_update_tick += 20;
       }
 
-      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
+      for (s8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
         // NOTE(szulf): to really get the current tick you have to do tick % 20
 
-        game::SoundBuffer sound_buffer = {};
+        GameSoundBuffer sound_buffer = {};
         sound_buffer.memory = audio_buffer.memory;
         sound_buffer.size = audio_buffer.size;
         sound_buffer.sample_count = audio_buffer.sample_count;
-        sound_buffer.samples_per_second = static_cast<u32>(audio_buffer.spec.freq);
+        sound_buffer.samples_per_second = (u32) audio_buffer.spec.freq;
 
-        game::get_sound(sound_buffer);
-        if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory,
-                                    static_cast<i32>(sound_buffer.size)))
+        game_get_sound(&sound_buffer);
+        if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory, (s32) sound_buffer.size))
         {
           SDL_Log("Error putting audio stream data: %s\n", SDL_GetError());
           return 1;
         }
       }
 
-      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
+      game_update(&state);
+      for (s8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
-        game::update(state);
       }
     }
 
     {
-      game::render(state);
+      game_render(&state);
 
       SDL_GL_SwapWindow(window);
     }
@@ -311,7 +312,7 @@ i32 main()
 
       if (ms_in_frame < MSPF)
       {
-        SDL_Delay(static_cast<u32>(MSPF - ms_in_frame));
+        SDL_Delay((u32) (MSPF - ms_in_frame));
       }
 
       last_tick = update_tick;

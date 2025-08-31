@@ -1,32 +1,33 @@
 #ifndef STRING_H
 #define STRING_H
 
-// TODO(szulf): should i define a copy constructor here
-// i guess shallow copies are fine since memory is managed by the arena
-struct String
+// TODO(szulf): should these be null terminated?
+typedef struct String
 {
   usize cap;
   usize len;
   char* data;
+} String;
 
-  String() : len{0} {}
-  String(mem::Arena& arena, const char* c_str);
-  String(mem::Arena& arena, const char* c_str, usize size);
-  String(mem::Arena& arena, usize size);
+static Error string_init_cstr(String* str, Arena* arena, const char* cstr);
+static Error string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len);
+static Error string_init_cap(String* str, Arena* arena, usize cap);
 
-  usize count(char c) const;
-  Result<usize> find(char c, usize start_idx = 0) const;
-  Array<String> split(mem::Arena& arena, char c) const;
+static usize string_count_chars(String* str, char c);
+static Error string_find_char(usize* found_idx, String* str, char c, usize start_idx);
 
-  template <typename T>
-  Result<T> parse() const;
+typedef struct StringArray
+{
+  usize cap;
+  usize len;
+  String* items;
+} StringArray;
 
-  const char& operator[](usize idx) const;
-  bool operator==(const String& other) const;
-  bool operator==(const char* other) const;
-  String operator+(const String& other) const;
-};
+static Error string_split(StringArray* splits, String* str, Arena* arena, char c);
 
-usize c_str_len(const char* c_str);
+static Error string_parse_f32(f32* out, String* str);
+static Error string_parse_u32(u32* out, String* str);
+
+static usize cstr_len(const char* c_str);
 
 #endif

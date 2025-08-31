@@ -1,32 +1,24 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-namespace game
+typedef enum ShaderType
 {
+  SHADER_TYPE_VERTEX,
+  SHADER_TYPE_FRAGMENT,
+} ShaderType;
 
-enum class ShaderType : u8
-{
-  Vertex,
-  Fragment,
-};
-
-enum class Shader : u8
+typedef enum Shader
 {
   // NOTE(szulf): this has to be last
-  DefaultShader,
-};
+  SHADER_DEFAULT,
+} Shader;
 
-struct Renderer
-{
-  static void clear_screen();
-};
+static void clear_screen();
 
-u32 shader_map[static_cast<i32>(Shader::DefaultShader) + 1];
-
-}
+u32 shader_map[SHADER_DEFAULT + 1];
 
 #ifdef GAME_OPENGL
-#include "ogl_renderer.cpp"
+#include "ogl_renderer.c"
 #endif
 
 #endif

@@ -6,7 +6,7 @@ namespace game
 
 struct Vertex
 {
-  math::Vec3 pos;
+  Vec3 pos;
 };
 
 struct Mesh
@@ -30,15 +30,34 @@ struct Mesh
 struct Model
 {
   Array<Mesh> meshes;
-  math::Mat4  model;
+  Mat4  model;
 
   Model() {}
   Model(const Array<Mesh>& m) : meshes{m} {}
 
   // TODO(szulf): probably switch to some sort of a queue later on
-  void draw(Shader shader);
+  void draw(Shader shader) const;
 
-  void rotate(f32 deg, const math::Vec3& axis);
+  void rotate(f32 deg, const Vec3& axis);
+};
+
+// TODO(szulf): is this a good name
+struct Drawable
+{
+  Model model;
+  Shader shader;
+};
+
+struct Scene
+{
+  Array<Drawable> drawables;
+  Mat4 view;
+  Mat4 proj;
+
+  Scene() {}
+
+  // TODO(szulf): probably switch to some sort of a queue later on
+  void draw() const;
 };
 
 static Result<u32> setup_shader(mem::Arena& arena, const char* filepath,

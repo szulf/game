@@ -1,40 +1,6 @@
 #ifndef MAT4_H
 #define MAT4_H
 
-namespace math
-{
-
-// TODO(szulf): move this later
-struct Vec4
-{
-  union
-  {
-    struct
-    {
-      f32 x;
-      f32 y;
-      f32 z;
-      f32 w;
-    };
-    struct
-    {
-      f32 r;
-      f32 g;
-      f32 b;
-      f32 a;
-    };
-    f32 components[4];
-  };
-
-  Vec4(f32 x, f32 y, f32 z, f32 w) : components{x, y, z, w} {}
-
-  f32& operator[](usize idx)
-  {
-    return components[idx];
-  }
-  const f32& operator[](usize idx) const;
-};
-
 struct Mat4
 {
   union
@@ -45,12 +11,15 @@ struct Mat4
 
   Mat4() : rows{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}} {}
 
-  f32& operator[](usize idx);
-  const f32& operator[](usize idx) const;
+  static Mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far);
 
+  Vec4 cols(usize idx);
   void rotate(f32 rad, const Vec3& axis);
-};
+  void translate(const Vec3& vec);
 
-}
+  Vec4& operator[](usize idx);
+  const Vec4& operator[](usize idx) const;
+
+};
 
 #endif

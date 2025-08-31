@@ -35,7 +35,7 @@ void write_val(String& buf, usize val);
 void write_val(String& buf, u32 val);
 void write_val(String& buf, const game::Mesh& val);
 void write_val(String& buf, const game::Vertex& val);
-void write_val(String& buf, const math::Vec3& val);
+void write_val(String& buf, const Vec3& val);
 template <typename T>
 void write_val(String& buf, const Array<T>& val);
 void write_val(String& buf, f32 val);
@@ -44,6 +44,7 @@ template <typename T>
 void write_val(String& buf, const Result<T>& val);
 void write_val(String& buf, Error val);
 void write_val(String& buf, bool val);
+void write_val(String& buf, const Mat4& val);
 
 void write_val(String& buf, const char* val)
 {
@@ -124,7 +125,7 @@ void write_val(String& buf, const game::Vertex& val)
   write(buf, " }", 2);
 }
 
-void write_val(String& buf, const math::Vec3& val)
+void write_val(String& buf, const Vec3& val)
 {
   write(buf, "Vec3{ x: ", 9);
   write_val(buf, val.x);
@@ -213,6 +214,43 @@ void write_val(String& buf, bool val)
   }
 }
 
+void write_val(String& buf, const Mat4& val)
+{
+  write(buf, "Mat4{ (", 7);
+  write_val(buf, val.data[0]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[1]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[2]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[3]);
+  write(buf, ") (", 3);
+  write_val(buf, val.data[4]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[5]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[6]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[7]);
+  write(buf, ") (", 3);
+  write_val(buf, val.data[8]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[9]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[10]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[11]);
+  write(buf, ") (", 3);
+  write_val(buf, val.data[12]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[13]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[14]);
+  write(buf, " ", 1);
+  write_val(buf, val.data[15]);
+  write(buf, ") }", 3);
+}
+
 bool next_hole(String& buf, const char*& fmt)
 {
   auto prefix = fmt;
@@ -264,24 +302,34 @@ void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state)
 {
   setup_shaders(temp_arena);
 
-  // Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/sphere.obj").val};
+  Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/sphere.obj").val};
   // Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cube.obj").val};
-  Mesh meshes[] = {Mesh::from_obj(perm_arena, temp_arena, "assets/cone.obj").val};
-  state.model = Model{Array<Mesh>{perm_arena, meshes, 1}};
+  // Mesh meshes[]{Mesh::from_obj(perm_arena, temp_arena, "assets/cone.obj").val};
+  Model model{{perm_arena, meshes, 1}};
+  Drawable drawables[]{{model, Shader::DefaultShader}};
+
+  state.scene.drawables = {perm_arena, drawables, 1};
+  state.scene.view = Mat4{};
+  state.scene.proj = Mat4{};
 
   temp_arena.free_all();
 }
 
 void update(State& state)
 {
-  state.model.rotate(static_cast<f32>(platform::get_ms()), {1.0f, 1.0f, 0.0f});
+  state.scene.view.translate({0.0f, 0.0f, -3.0f});
+
+  auto dimensions = platform::get_window_dimensions();
+  state.scene.proj = Mat4::perspective(radians(45.0f), static_cast<f32>(dimensions.width) / static_cast<f32>(dimensions.height), 0.1f, 100.0f);
+
+  state.scene.drawables[0].model.rotate(static_cast<f32>(platform::get_ms()), {1.0f, 1.0f, 0.0f});
 }
 
 void render(State& state)
 {
   Renderer::clear_screen();
 
-  state.model.draw(Shader::DefaultShader);
+  state.scene.draw();
 }
 
 void get_sound(SoundBuffer& sound_buffer)
@@ -293,7 +341,7 @@ void get_sound(SoundBuffer& sound_buffer)
     f32 t = static_cast<f32>(sample_index) / static_cast<f32>(sound_buffer.samples_per_second);
     f32 frequency = 440.0f;
     f32 amplitude = 0.25f;
-    i16 sine_value = static_cast<i16>(math::sin(2.0f * PI32 * t * frequency) * I16_MAX * amplitude);
+    i16 sine_value = static_cast<i16>(sin(2.0f * PI32 * t * frequency) * I16_MAX * amplitude);
 
     ++sample_index;
 

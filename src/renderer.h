@@ -29,15 +29,4 @@ u32 shader_map[static_cast<i32>(Shader::DefaultShader) + 1];
 #include "ogl_renderer.cpp"
 #endif
 
-namespace game
-{
-
-struct Drawable
-{
-  Model& model;
-  Shader shader;
-};
-
-}
-
 #endif

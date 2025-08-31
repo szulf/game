@@ -5,7 +5,7 @@ namespace mem
 
 static ptrsize calc_padding(void* ptr, ptrsize alignment)
 {
-  ASSERT(math::is_power_of_two(alignment), "alignment has to be a power of two");
+  ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
 
   ptrsize modulo = reinterpret_cast<ptrsize>(ptr) & (alignment - 1);
 
@@ -22,9 +22,9 @@ static ptrsize calc_padding(void* ptr, ptrsize alignment)
 Result<void*> Arena::alloc(usize size, ptrsize alignment)
 {
   ASSERT(buffer != nullptr, "arena has to be initialized");
-  ASSERT(math::is_power_of_two(alignment), "alignment has to be a power of two");
+  ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
 
-  alignment = math::min(alignment, static_cast<ptrsize>(128));
+  alignment = min(alignment, static_cast<ptrsize>(128));
 
   void* curr_addr = static_cast<u8*>(buffer) + offset;
   auto padding = calc_padding(curr_addr, alignment);
@@ -46,6 +46,9 @@ Result<void*> Arena::alloc(usize size, ptrsize alignment)
 void Arena::free_all()
 {
   ASSERT(!temp_active, "cannot free all when temp allocation is active");
+#ifdef GAME_DEBUG
+  mem::set(buffer, 0, buffer_size);
+#endif
   offset = 0;
 }
 

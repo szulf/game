@@ -1,9 +1,6 @@
 #ifndef VEC3_H
 #define VEC3_H
 
-namespace math
-{
-
 struct Vec3
 {
   union
@@ -28,10 +25,18 @@ struct Vec3
   f32 length() const;
   void normalize();
 
+  Vec3& operator+=(const Vec3& other);
+  Vec3& operator-=(const Vec3& other);
+  Vec3& operator*=(const f32& other);
+  Vec3& operator/=(const f32& other);
+
+  Vec3 operator+(const Vec3& other);
+  Vec3 operator-(const Vec3& other);
+  Vec3 operator*(const f32& other);
+  Vec3 operator/(const f32& other);
+
   f32& operator[](usize idx);
   const f32& operator[](usize idx) const;
 };
-
-}
 
 #endif

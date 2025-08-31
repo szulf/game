@@ -71,9 +71,18 @@ namespace platform
   // TODO(szulf): cannot be static because compiler complains idk why
   void print(const char* msg);
   static u64 get_ms();
+
+  struct WindowDimensions
+  {
+    i32 width;
+    i32 height;
+  };
+  
+  static WindowDimensions get_window_dimensions();
 }
 
 #include "vec3.cpp"
+#include "vec4.cpp"
 #include "mat4.cpp"
 
 // TODO(szulf): this will probably need to change to a renderer.cpp
@@ -92,7 +101,7 @@ struct SoundBuffer
 
 struct State
 {
-  Model model;
+  Scene scene;
 };
 
 static void setup(mem::Arena& perm_arena, mem::Arena& temp_arena, State& state);

@@ -111,9 +111,8 @@ Result<Mesh> Mesh::from_obj(mem::Arena& perm_arena, mem::Arena& temp_arena, cons
   return {{vertices, indices}};
 }
 
-void Model::draw(Shader shader)
+void Model::draw(Shader shader) const
 {
-  glUseProgram(shader_map[static_cast<usize>(shader)]);
   glUniformMatrix4fv(glGetUniformLocation(shader_map[static_cast<usize>(shader)], "model"),
                      1, false, model.data);
 
@@ -123,9 +122,23 @@ void Model::draw(Shader shader)
   }
 }
 
-void Model::rotate(f32 deg, const math::Vec3& axis)
+void Model::rotate(f32 deg, const Vec3& axis)
 {
-  model.rotate(math::radians(deg), axis);
+  model.rotate(radians(deg), axis);
+}
+
+void Scene::draw() const
+{
+  for (const auto& drawable : drawables)
+  {
+    glUseProgram(shader_map[static_cast<usize>(drawable.shader)]);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[static_cast<usize>(drawable.shader)], "view"),
+                       1, false, view.data);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[static_cast<usize>(drawable.shader)], "proj"),
+                       1, false, proj.data);
+
+    drawable.model.draw(drawable.shader);
+  }
 }
 
 Result<u32> setup_shader(mem::Arena& arena, const char* filepath,

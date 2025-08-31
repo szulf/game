@@ -5,6 +5,9 @@
 
 #include "sdl3_game.h"
 
+// TODO(szulf): set better starting dimensions
+platform::WindowDimensions dimensions = {640, 480};
+
 namespace platform {
 
 Result<void*> read_entire_file(mem::Arena& arena, const char* path, usize* bytes_read)
@@ -43,12 +46,14 @@ void print(const char* msg)
   return SDL_GetTicks();
 }
 
+WindowDimensions get_window_dimensions()
+{
+  return dimensions;
 }
 
-// TODO(szulf): implement this myself later and move to math.h
-namespace math
-{
+}
 
+// TODO(szulf): implement these myself later and move to math.h
 f32 sin(f32 rad)
 {
   return SDL_sinf(rad);
@@ -70,6 +75,14 @@ f32 mod(f32 x, f32 y)
   return SDL_fmodf(x, y);
 }
 
+f32 acos(f32 val)
+{
+  return SDL_acosf(val);
+}
+
+f32 tan(f32 val)
+{
+  return SDL_tanf(val);
 }
 
 // TODO(szulf): hate it here
@@ -147,7 +160,8 @@ i32 main()
 
   i32 width = 640;
   i32 height = 480;
-  auto* window = SDL_CreateWindow("game", 640, 480, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+  auto* window = SDL_CreateWindow("game", dimensions.width, dimensions.height,
+                                  SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
   if (window == nullptr)
   {
     SDL_Log("Error creating window: %s\n", SDL_GetError());
@@ -245,7 +259,8 @@ i32 main()
           } break;
           case SDL_EVENT_WINDOW_RESIZED:
           {
-            glViewport(0, 0, e.window.data1, e.window.data2);
+            dimensions = {e.window.data1, e.window.data2};
+            glViewport(0, 0, dimensions.width, dimensions.height);
           } break;
         }
       }

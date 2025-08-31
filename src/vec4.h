@@ -1,9 +1,6 @@
 #ifndef VEC4_H
 #define VEC4_H
 
-namespace math
-{
-
 struct Vec4
 {
   union
@@ -22,18 +19,26 @@ struct Vec4
       f32 b;
       f32 a;
     };
-    f32 components[4];
+    f32 data[4];
   };
 
-  Vec4(f32 x, f32 y, f32 z, f32 w) : components{x, y, z, w} {}
+  Vec4(f32 x, f32 y, f32 z, f32 w) : data{x, y, z, w} {}
 
-  void length();
+  f32 length();
   void normalize();
+
+  Vec4& operator+=(const Vec4& other);
+  Vec4& operator-=(const Vec4& other);
+  Vec4& operator*=(const f32& other);
+  Vec4& operator/=(const f32& other);
+
+  Vec4 operator+(const Vec4& other);
+  Vec4 operator-(const Vec4& other);
+  Vec4 operator*(const f32& other);
+  Vec4 operator/(const f32& other);
 
   f32& operator[](usize idx);
   const f32& operator[](usize idx) const;
 };
-
-}
 
 #endif

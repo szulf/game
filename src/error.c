@@ -5,33 +5,35 @@ get_error_string(Error err)
 {
   switch (err)
   {
-    case SUCCESS:
+    case ERROR_SUCCESS:
     {
       return "success";
     } break;
-    case OUT_OF_MEMORY:
+    case ERROR_OUT_OF_MEMORY:
     {
       return "out of memory";
     } break;
-    case INVALID_PARAMETER:
+    case ERROR_INVALID_PARAMETER:
     {
       return "invalid parameter";
     } break;
-    case FILE_READING:
+    case ERROR_FILE_READING:
     {
       return "file reading";
     } break;
-    case SHADER_COMPILATION:
+    case ERROR_SHADER_COMPILATION:
     {
       return "shader compilation";
     } break;
-    case SHADER_LINKING:
+    case ERROR_SHADER_LINKING:
     {
       return "shader linking";
     } break;
-    case NOT_FOUND:
+    case ERROR_NOT_FOUND:
     {
       return "not found";
     } break;
   }
+
+  return "wut";
 }

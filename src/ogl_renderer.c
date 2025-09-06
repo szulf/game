@@ -14,7 +14,7 @@ mesh_init(Mesh* mesh, const VertexArray* vertices, const U32Array* indices)
 {
   mesh->vertices = *vertices;
   mesh->indices = *indices;
-  
+
   glGenVertexArrays(1, &mesh->vao);
   glBindVertexArray(mesh->vao);
 
@@ -40,35 +40,30 @@ mesh_draw(const Mesh* mesh)
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.len, GL_UNSIGNED_INT, 0);
 }
 
-static Error
-mesh_from_obj(Mesh* mesh, Arena* perm_arena, Arena* temp_arena, const char* path)
+static Mesh
+mesh_from_obj(Arena* perm_arena, Arena* temp_arena, const char* path, Error* err)
 {
-  char* file_content = {};
-  Error file_error = platform_read_entire_file((void**) &file_content, temp_arena, path);
-  if (file_error != SUCCESS)
-  {
-    ASSERT(false, "couldnt read mesh file");
-    return file_error;
-  }
+  Mesh mesh = {};
+  Error error = ERROR_SUCCESS;
+  char* file_content = platform_read_entire_file(temp_arena, path, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt read mesh file");
 
   String file = {};
-  string_init_cstr(&file, temp_arena, (char*) file_content);
+  string_init_cstr(&file, temp_arena, (char*) file_content, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init string");
 
-  StringArray lines = {};
-  Error splitting_err = string_split(&lines, &file, temp_arena, '\n');
-  if (splitting_err != SUCCESS)
-  {
-    ASSERT(false, "couldnt split file into lines");
-    return splitting_err;
-  }
+  StringArray lines = string_split(&file, temp_arena, '\n', &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt split file into lines");
 
   usize vert_count = string_count_chars(&file, 'v');
   usize idx_count = string_count_chars(&file, 'f') * 3;
 
   VertexArray vertices = {};
-  ARRAY_INIT(&vertices, perm_arena, vert_count);
+  ARRAY_INIT(&vertices, perm_arena, vert_count, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init array");
   U32Array indices = {};
-  ARRAY_INIT(&indices, perm_arena, idx_count);
+  ARRAY_INIT(&indices, perm_arena, idx_count, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init array");
 
   for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
   {
@@ -76,72 +71,31 @@ mesh_from_obj(Mesh* mesh, Arena* perm_arena, Arena* temp_arena, const char* path
     {
       case 'v':
       {
-        StringArray parts = {};
-        splitting_err = string_split(&parts, &lines.items[line_idx], temp_arena, ' ');
-        if (splitting_err != SUCCESS)
-        {
-          return splitting_err;
-        }
+        StringArray parts = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt split string");
+        ASSERT(parts.len >= 4, "invalid obj file");
 
-        if (parts.len < 4)
-        {
-          return INVALID_PARAMETER;
-        }
-        
-        f32 v1 = 0.0f;
-        Error parsing_err = string_parse_f32(&v1, &parts.items[1]);
-        if (parsing_err != SUCCESS)
-        {
-          return parsing_err;
-        }
-        f32 v2 = 0.0f;
-        parsing_err = string_parse_f32(&v2, &parts.items[2]);
-        if (parsing_err != SUCCESS)
-        {
-          return parsing_err;
-        }
-        f32 v3 = 0.0f;
-        parsing_err = string_parse_f32(&v3, &parts.items[3]);
-        if (parsing_err != SUCCESS)
-        {
-          return parsing_err;
-        }
+        f32 v1 = string_parse_f32(&parts.items[1], &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt parse vertex");
+        f32 v2 = string_parse_f32(&parts.items[2], &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt parse vertex");
+        f32 v3 = string_parse_f32(&parts.items[3], &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt parse vertex");
 
         ARRAY_PUSH(&vertices, ((Vertex) {{v1, v2, v3}}));
       } break;
       case 'f':
       {
-        StringArray parts = {};
-        splitting_err = string_split(&parts, &lines.items[line_idx], temp_arena, ' ');
-        if (splitting_err != SUCCESS)
-        {
-          return splitting_err;
-        }
+        StringArray parts = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt split string");
+        ASSERT(parts.len >= 4, "invalid obj file");
 
-        if (parts.len < 4)
-        {
-          return INVALID_PARAMETER;
-        }
-        
-        u32 i1 = 0;
-        Error parsing_error;
-        parsing_error = string_parse_u32(&i1, &parts.items[1]);
-        if (parsing_error != SUCCESS)
-        {
-          return parsing_error;
-        }
-        u32 i2 = 0;
-        parsing_error = string_parse_u32(&i2, &parts.items[2]);
-        if (parsing_error != SUCCESS)
-        {
-          return parsing_error;
-        }
-        u32 i3 = 0;
-        parsing_error = string_parse_u32(&i3, &parts.items[3]);
-        if (parsing_error != SUCCESS)
-        {
-          return parsing_error;
-        }
+        u32 i1 = string_parse_u32(&parts.items[1], &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt parse index");
+        u32 i2 = string_parse_u32(&parts.items[2], &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt parse index");
+        u32 i3 = string_parse_u32(&parts.items[3], &error);
+        ASSERT(error == ERROR_SUCCESS, "couldnt parse index");
 
         ARRAY_PUSH(&indices, i1 - 1);
         ARRAY_PUSH(&indices, i2 - 1);
@@ -150,8 +104,9 @@ mesh_from_obj(Mesh* mesh, Arena* perm_arena, Arena* temp_arena, const char* path
     }
   }
 
-  mesh_init(mesh, &vertices, &indices);
-  return SUCCESS;
+  mesh_init(&mesh, &vertices, &indices);
+  *err = ERROR_SUCCESS;
+  return mesh;
 }
 
 static void
@@ -189,16 +144,12 @@ scene_draw(const Scene* scene)
   }
 }
 
-static Error
-setup_shader(u32* out, Arena* arena, const char* path, ShaderType shader_type)
+static u32
+setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err)
 {
-  const char* shader_src;
-  Error file_reading_error = platform_read_entire_file((void**) &shader_src, arena, path);
-  if (file_reading_error != SUCCESS)
-  {
-    ASSERT(false, "cannot read shader file");
-    return file_reading_error;
-  }
+  Error error = ERROR_SUCCESS;
+  const char* shader_src = platform_read_entire_file(arena, path, &error);
+  ASSERT(error == ERROR_SUCCESS, "cannot read shader file");
 
   u32 shader;
   switch (shader_type)
@@ -227,25 +178,25 @@ setup_shader(u32* out, Arena* arena, const char* path, ShaderType shader_type)
     {
       case SHADER_TYPE_VERTEX:
       {
-        // TODO(szulf): change this to my logging
-        fprintf(stderr, "Error compiling vertex shader:\n%s\n", message);
-        return SHADER_COMPILATION;
+        LOG("Error compiling vertex shader:\n%s\n", message);
+        *err = ERROR_SHADER_COMPILATION;
+        return (u32) -1;
       } break;
       case SHADER_TYPE_FRAGMENT:
       {
-        // TODO(szulf): change this to my logging
-        fprintf(stderr, "Error compiling fragment shader:\n%s\n", message);
-        return SHADER_COMPILATION;
+        LOG("Error compiling fragment shader:\n%s\n", message);
+        *err = ERROR_SHADER_COMPILATION;
+        return (u32) -1;
       } break;
     }
   }
 
-  *out = shader;
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return shader;
 }
 
-static Error
-link_shaders(u32* out, u32 vertex_shader, u32 fragment_shader)
+static u32
+link_shaders(u32 vertex_shader, u32 fragment_shader, Error* err)
 {
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex_shader);
@@ -262,42 +213,32 @@ link_shaders(u32* out, u32 vertex_shader, u32 fragment_shader)
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
-    // TODO(szulf): change this to my logging
-    fprintf(stderr, "Error compiling fragment shader:\n%s\n", message);
-    return SHADER_LINKING;
+    LOG("Error compiling fragment shader:\n%s\n", message);
+    *err = ERROR_SHADER_LINKING;
+    return (u32) -1;
   }
 
-  *out = program;
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return program;
 }
 
-static Error
-setup_shaders(Arena* arena)
+static void
+setup_shaders(Arena* arena, Error* err)
 {
+  Error error = ERROR_SUCCESS;
+
   {
-    u32 v_shader;
-    Error v_shader_err = setup_shader(&v_shader, arena, "src/shader.vert", SHADER_TYPE_VERTEX);
-    if (v_shader_err != SUCCESS)
-    {
-      return v_shader_err;
-    }
+    u32 v_shader = setup_shader(arena, "src/shader.vert", SHADER_TYPE_VERTEX, &error);
+    ASSERT(error == ERROR_SUCCESS, "couldnt setup vertex shader");
 
-    u32 f_shader;
-    Error f_shader_err = setup_shader(&f_shader, arena, "src/shader.frag", SHADER_TYPE_FRAGMENT);
-    if (f_shader_err != SUCCESS)
-    {
-      return f_shader_err;
-    }
+    u32 f_shader = setup_shader(arena, "src/shader.frag", SHADER_TYPE_FRAGMENT, &error);
+    ASSERT(error == ERROR_SUCCESS, "couldnt setup fragment shader");
 
-    u32 shader;
-    Error shader_err = link_shaders(&shader, v_shader, f_shader);
-    if (shader_err != SUCCESS)
-    {
-      return shader_err;
-    }
+    u32 shader = link_shaders(v_shader, f_shader, &error);
+    ASSERT(error == ERROR_SUCCESS, "couldnt link shader");
 
     shader_map[SHADER_DEFAULT] = shader;
   }
 
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
 }

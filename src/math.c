@@ -139,7 +139,7 @@ mat4_init(Mat4* mat, f32 val)
 static Vec4
 mat4_col(Mat4* mat, usize idx)
 {
-  ASSERT(idx >= 0 && idx < 4, "index out of bounds");
+  ASSERT(idx < 4, "index out of bounds");
   // TODO(szulf): is this even correct??
   return (Vec4) {
     mat->data[idx * 4],

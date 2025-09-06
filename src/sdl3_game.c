@@ -8,29 +8,32 @@
 // TODO(szulf): set better starting dimensions
 WindowDimensions dimensions = {640, 480};
 
-static Error
-platform_read_entire_file(void** out, Arena* arena, const char* path)
+static void*
+platform_read_entire_file(Arena* arena, const char* path, Error* err)
 {
-  return platform_read_entire_file_bytes_read(out, arena, path, 0);
+  return platform_read_entire_file_bytes_read(arena, path, 0, err);
 }
 
-static Error
-platform_read_entire_file_bytes_read(void** out, Arena* arena, const char* path, usize* bytes_read)
+static void*
+platform_read_entire_file_bytes_read(Arena* arena, const char* path, usize* bytes_read, Error* err)
 {
+  Error error = ERROR_SUCCESS;
+
   usize read;
   void* file = SDL_LoadFile(path, &read);
   if (file == 0)
   {
     ASSERT(false, "couldnt read file");
-    return FILE_READING;
+    *err = ERROR_FILE_READING;
+    return 0;
   }
 
-  void* file_data;
-  Error alloc_err = arena_alloc(&file_data, arena, read);
-  if (alloc_err != SUCCESS)
+  void* file_data = arena_alloc(arena, read, &error);
+  if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "couldnt allocate memory for file");
-    return alloc_err;
+    *err = error;
+    return 0;
   }
 
   // TODO(szulf): why the read + 1 here???
@@ -42,14 +45,15 @@ platform_read_entire_file_bytes_read(void** out, Arena* arena, const char* path,
     *bytes_read = read;
   }
 
-  *out = file_data;
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return file_data;
 }
 
 static void
-print(const char* msg)
+platform_print(const char* msg, ...)
 {
-  SDL_Log("%s\n", msg);
+  va_list ap;
+  SDL_Log(msg, ap);
 }
 
 static u64
@@ -224,7 +228,7 @@ main()
   game_setup(&perm_arena, &temp_arena, &state);
 
   SDL_Event e;
-  bool running = true;
+  bool32 running = true;
 
   s8  update_tick = 0;
   s8  last_tick   = 0;
@@ -238,7 +242,7 @@ main()
     u64 ms;
     {
       ms = SDL_GetTicks() - starter_ms;
-      u32 current_second_ms = ms % 1000;
+      u32 current_second_ms = (u32) ms % 1000;
       u32 current_second = (u32) (ms / 1000);
 
       if (current_second != last_second)
@@ -294,9 +298,9 @@ main()
         }
       }
 
-      game_update(&state);
       for (s8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
+        game_update(&state);
       }
     }
 

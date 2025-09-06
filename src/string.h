@@ -9,12 +9,12 @@ typedef struct String
   char* data;
 } String;
 
-static Error string_init_cstr(String* str, Arena* arena, const char* cstr);
-static Error string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len);
-static Error string_init_cap(String* str, Arena* arena, usize cap);
+static void string_init_cstr(String* str, Arena* arena, const char* cstr, Error* err);
+static void string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len, Error* err);
+static void string_init_cap(String* str, Arena* arena, usize cap, Error* err);
 
 static usize string_count_chars(String* str, char c);
-static Error string_find_char(usize* found_idx, String* str, char c, usize start_idx);
+static usize string_find_char(String* str, char c, usize start_idx, Error* err);
 
 typedef struct StringArray
 {
@@ -23,10 +23,10 @@ typedef struct StringArray
   String* items;
 } StringArray;
 
-static Error string_split(StringArray* splits, String* str, Arena* arena, char c);
+static StringArray string_split(String* str, Arena* arena, char c, Error* err);
 
-static Error string_parse_f32(f32* out, String* str);
-static Error string_parse_u32(u32* out, String* str);
+static f32 string_parse_f32(String* str, Error* err);
+static u32 string_parse_u32(String* str, Error* err);
 
 static usize cstr_len(const char* c_str);
 

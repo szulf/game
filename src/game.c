@@ -1,5 +1,6 @@
 #include "game.h"
 
+// TODO(szulf): implement this?
 static void
 log_(const char* file, usize line, const char* func, const char* fmt, ...)
 {
@@ -9,31 +10,28 @@ log_(const char* file, usize line, const char* func, const char* fmt, ...)
   (void) fmt;
 }
 
-static Error
+static void
 game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
 {
-  Error shaders_err = setup_shaders(temp_arena);
-  if (shaders_err != SUCCESS)
-  {
-    ASSERT(false, "couldnt initialize shaders");
-    return shaders_err;
-  }
+  Error error = ERROR_SUCCESS;
 
-  Mesh sphere_mesh = {};
-  Error mesh_err = mesh_from_obj(&sphere_mesh, perm_arena, temp_arena, "assets/cube.obj");
-  if (mesh_err != SUCCESS)
-  {
-    ASSERT(false, "couldnt load sphere mesh");
-    return mesh_err;
-  }
+  setup_shaders(temp_arena, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
+
+  Mesh sphere_mesh = mesh_from_obj(perm_arena, temp_arena, "assets/cube.obj", &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
+
   MeshArray sphere_meshes = {};
-  ARRAY_INIT(&sphere_meshes, perm_arena, 1);
+  ARRAY_INIT(&sphere_meshes, perm_arena, 1, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init meshes array");
   ARRAY_PUSH(&sphere_meshes, sphere_mesh);
+
   Model sphere_model = {};
   sphere_model.meshes = sphere_meshes;
   mat4_init(&sphere_model.model, 1.0f);
   DrawableArray sphere_drawables = {};
-  ARRAY_INIT(&sphere_drawables, perm_arena, 1);
+  ARRAY_INIT(&sphere_drawables, perm_arena, 1, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init drawables array");
   ARRAY_PUSH(&sphere_drawables, ((Drawable) {sphere_model, SHADER_DEFAULT}));
 
   Scene scene = {};
@@ -42,11 +40,11 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
   mat4_init(&scene.proj, 1.0f);
 
   state->current_scene_idx = 0;
-  ARRAY_INIT(&state->scenes, perm_arena, 1);
+  ARRAY_INIT(&state->scenes, perm_arena, 1, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init scenes array");
   ARRAY_PUSH(&state->scenes, scene);
 
   arena_free_all(temp_arena);
-  return SUCCESS;
 }
 
 static void
@@ -71,7 +69,7 @@ game_update(GameState* state)
     last_ms = get_ms();
   }
 
-  Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
+  auto Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
   model_rotate(&scene->drawables.items[0].model, degree, &rotate_vec);
 
   degree += 1.0f;

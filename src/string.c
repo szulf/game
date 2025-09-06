@@ -1,15 +1,16 @@
 #include "string.h"
 
-static Error
-string_init_cstr(String* str, Arena* arena, const char* cstr)
+static void
+string_init_cstr(String* str, Arena* arena, const char* cstr, Error* err)
 {
+  Error error = ERROR_SUCCESS;
   usize cstr_length = cstr_len(cstr);
-  char* res;
-  Error alloc_error = arena_alloc((void**) &res, arena, cstr_length + 1);
-  if (alloc_error != SUCCESS)
+  char* res = arena_alloc(arena, cstr_length + 1, &error);
+  if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "error initializing string");
-    return OUT_OF_MEMORY;
+    *err = error;
+    return;
   }
 
   str->data = res;
@@ -17,18 +18,20 @@ string_init_cstr(String* str, Arena* arena, const char* cstr)
   str->cap = cstr_length;
   str->len = cstr_length;
   str->data[str->len] = 0;
-  return SUCCESS;
+
+  *err = ERROR_SUCCESS;
 }
 
-static Error
-string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len)
+static void
+string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len, Error* err)
 {
-  char* res;
-  Error alloc_err = arena_alloc((void**) &res, arena, len + 1);
-  if (alloc_err != SUCCESS)
+  Error error = ERROR_SUCCESS;
+  char* res = arena_alloc(arena, len + 1, &error);
+  if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "error initializing string");
-    return OUT_OF_MEMORY;
+    *err = error;
+    return;
   }
 
   str->data = res;
@@ -36,24 +39,27 @@ string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len)
   str->cap = len;
   str->len = len;
   str->data[str->len] = 0;
-  return SUCCESS;
+
+  *err = ERROR_SUCCESS;
 }
 
-static Error
-string_init_cap(String* str, Arena* arena, usize cap)
+static void
+string_init_cap(String* str, Arena* arena, usize cap, Error* err)
 {
-  char* res;
-  Error alloc_err = arena_alloc((void**) &res, arena, cap + 1);
-  if (alloc_err != SUCCESS)
+  Error error = ERROR_SUCCESS;
+  char* res = arena_alloc(arena, cap + 1, &error);
+  if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "error initializing string");
-    return OUT_OF_MEMORY;
+    *err = error;
+    return;
   }
 
   str->data = res;
   str->cap = cap;
   str->len = 0;
-  return SUCCESS;
+
+  *err = ERROR_SUCCESS;
 }
 
 static usize
@@ -72,42 +78,59 @@ string_count_chars(String* str, char c)
   return count;
 }
 
-static Error
-string_find_char(usize* found_idx, String* str, char c, usize start_idx)
+static usize
+string_find_char(String* str, char c, usize start_idx, Error* err)
 {
-  ASSERT(start_idx >= 0 && start_idx < str->len, "start_idx is out of bounds");
+  ASSERT(start_idx < str->len, "start_idx is out of bounds");
 
   for (usize i = start_idx; i < str->len; ++i)
   {
     if (str->data[i] == c)
     {
-      *found_idx = i;
-      return SUCCESS;
+      *err = ERROR_SUCCESS;
+      return i;
     }
   }
 
-  return NOT_FOUND;
+  *err = ERROR_NOT_FOUND;
+  return (usize) -1;
 }
 
 // TODO(szulf): this whole implementation is kinda whacky but idc for now
-static Error
-string_split(StringArray* splits, String* str, Arena* arena, char c)
+static StringArray
+string_split(String* str, Arena* arena, char c, Error* err)
 {
+  Error error = ERROR_SUCCESS;
+
+  StringArray splits = {};
   usize splits_count = string_count_chars(str, c) + 1;
-  ARRAY_INIT(splits, arena, splits_count);
+
+  ARRAY_INIT(&splits, arena, splits_count, &error);
+  if (error != ERROR_SUCCESS)
+  {
+    ASSERT(false, "couldnt init array");
+    *err = error;
+    return splits;
+  }
 
   usize start_idx = 0;
-  usize found_idx = 0;
-  while (string_find_char(&found_idx, str, c, start_idx) == SUCCESS)
+  for (
+    usize found_idx = string_find_char(str, c, start_idx, &error);
+    error == ERROR_SUCCESS;
+    found_idx = string_find_char(str, c, start_idx, &error)
+  )
   {
     String s = {};
-    Error init_error = string_init_cstr_len(&s, arena, str->data + start_idx, found_idx - start_idx);
-    if (init_error != SUCCESS)
+    Error init_err = ERROR_SUCCESS;
+    string_init_cstr_len(&s, arena, str->data + start_idx, found_idx - start_idx, &init_err);
+    if (init_err != ERROR_SUCCESS)
     {
-      return init_error;
+      ASSERT(false, "couldnt init string");
+      *err = init_err;
+      return splits;
     }
     start_idx = found_idx + 1;
-    ARRAY_PUSH(splits, s);
+    ARRAY_PUSH(&splits, s);
 
     if (start_idx >= str->len)
     {
@@ -118,21 +141,22 @@ string_split(StringArray* splits, String* str, Arena* arena, char c)
   if (str->len - start_idx > 0)
   {
     String s;
-    Error init_error = string_init_cstr_len(&s, arena, str->data + start_idx, str->len - start_idx);
-    if (init_error != SUCCESS)
+    string_init_cstr_len(&s, arena, str->data + start_idx, str->len - start_idx, &error);
+    if (error != ERROR_SUCCESS)
     {
-      return init_error;
+      ASSERT(false, "couldnt init string");
+      *err = error;
+      return splits;
     }
-    ARRAY_PUSH(splits, s);
+    ARRAY_PUSH(&splits, s);
   }
 
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return splits;
 }
 
-#include <SDL3/SDL.h>
-
-static Error
-string_parse_f32(f32* out, String* str)
+static f32
+string_parse_f32(String* str, Error* err)
 {
   const char* s = str->data;
 
@@ -158,7 +182,8 @@ string_parse_f32(f32* out, String* str)
     {
       if (is_fraction)
       {
-        return INVALID_PARAMETER;
+        *err = ERROR_INVALID_PARAMETER;
+        return 0.0f;
       }
       is_fraction = true;
       ++s;
@@ -178,17 +203,18 @@ string_parse_f32(f32* out, String* str)
     }
     else
     {
-      return INVALID_PARAMETER;
+      *err = ERROR_INVALID_PARAMETER;
+      return 0.0f;
     }
     ++s;
   }
 
-  *out = sign * (val + frac);
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return sign * (val + frac);
 }
 
-static Error
-string_parse_u32(u32* out, String* str)
+static u32
+string_parse_u32(String* str, Error* err)
 {
   const char* s = str->data;
 
@@ -201,13 +227,14 @@ string_parse_u32(u32* out, String* str)
     }
     else
     {
-      return INVALID_PARAMETER;
+      *err = ERROR_INVALID_PARAMETER;
+      return (u32) -1;
     }
     ++s;
   }
 
-  *out = val;
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return val;
 }
 
 static usize

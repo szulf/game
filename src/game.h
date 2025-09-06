@@ -53,6 +53,7 @@ typedef double f64;
 #  define ASSERT(expr, msg)
 #endif
 
+// TODO(szulf): need to implement this
 static void log_(const char* file, usize line, const char* func, const char* fmt, ...);
 
 #include "math.c"
@@ -61,11 +62,11 @@ static void log_(const char* file, usize line, const char* func, const char* fmt
 #include "array.h"
 #include "string.c"
 
-static Error platform_read_entire_file(void** out, Arena* arena, const char* path);
-static Error platform_read_entire_file_bytes_read(void** out, Arena* arena, const char* path,
-                                                  usize* bytes_read);
+static void* platform_read_entire_file(Arena* arena, const char* path, Error* err);
+static void* platform_read_entire_file_bytes_read(Arena* arena, const char* path,
+                                                  usize* bytes_read, Error* err);
 
-static void print(const char* msg);
+static void platform_print(const char* msg, ...);
 static u64 get_ms();
 
 typedef struct WindowDimensions
@@ -76,7 +77,7 @@ typedef struct WindowDimensions
 
 static WindowDimensions get_window_dimensions();
 
-// TODO(szulf): this will probably need to change to a renderer.cpp
+// TODO(szulf): this will probably need to change to a renderer.c
 #include "renderer.h"
 
 typedef struct GameSoundBuffer
@@ -100,8 +101,9 @@ typedef struct GameState
   SceneArray scenes;
 } GameState;
 
-static Error game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state);
+static void game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state);
 
+// TODO(szulf): need to interpolate the positions so the updates are not so sudden
 static void game_update(GameState* state);
 
 static void game_render(GameState* state);

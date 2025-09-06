@@ -33,7 +33,7 @@ typedef struct Mesh
 static void mesh_init(Mesh* mesh, const VertexArray* vertices, const U32Array* indices);
 // TODO(szulf): probably switch to some sort of a queue later on
 static void mesh_draw(const Mesh* mesh);
-static Error mesh_from_obj(Mesh* out, Arena* perm_arena, Arena* temp_arena, const char* path);
+static Mesh mesh_from_obj(Arena* perm_arena, Arena* temp_arena, const char* path, Error* err);
 
 typedef struct MeshArray
 {
@@ -76,8 +76,8 @@ typedef struct Scene
 // TODO(szulf): probably switch to some sort of a queue later on
 static void scene_draw(const Scene* scene);
 
-static Error setup_shader(u32* out, Arena* arena, const char* path, ShaderType shader_type);
-static Error link_shaders(u32* out, u32 vertex_shader, u32 fragment_shader);
-static Error setup_shaders(Arena* arena);
+static u32 setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err);
+static u32 link_shaders(u32 vertex_shader, u32 fragment_shader, Error* err);
+static void setup_shaders(Arena* arena, Error* err);
 
 #endif

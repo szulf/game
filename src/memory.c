@@ -17,25 +17,27 @@ calc_padding(void* ptr, ptrsize alignment)
   }
 }
 
-static Error
-arena_alloc(void** data, Arena* arena, usize size)
+static void*
+arena_alloc(Arena* arena, usize size, Error* err)
 {
-  return arena_alloc_align(data, arena, size, DEFAULT_ALIGNMENT);
+  return arena_alloc_align(arena, size, DEFAULT_ALIGNMENT, err);
 }
 
-static Error
-arena_alloc_align(void** data, Arena* arena, usize size, ptrsize alignment)
+static void*
+arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
 {
+  ASSERT(err != 0, "please handle the error");
   ASSERT(arena->buffer != 0, "arena has to be initialized");
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
 
-  alignment = umin(alignment, (ptrsize) 128);
+  alignment = umin(alignment, 128u);
 
   void* curr_addr = (u8*) arena->buffer + arena->offset;
   ptrsize padding = calc_padding(curr_addr, alignment);
   if (arena->offset + padding + size > arena->buffer_size)
   {
-    return OUT_OF_MEMORY;
+    *err = ERROR_OUT_OF_MEMORY;
+    return 0;
   }
 
   arena->offset += padding;
@@ -43,28 +45,27 @@ arena_alloc_align(void** data, Arena* arena, usize size, ptrsize alignment)
   void* next_addr = (u8*) curr_addr + padding;
   arena->offset += size;
 
-  mem_set(next_addr, 0, size);
+  mem_zero(next_addr, size);
 
-  *data = next_addr;
-
-  return SUCCESS;
+  *err = ERROR_SUCCESS;
+  return next_addr;
 }
 
 static void
 arena_free_all(Arena* arena)
 {
 #ifdef GAME_DEBUG
-  mem_set(arena->buffer, 0, arena->buffer_size);
+  mem_zero(arena->buffer, arena->buffer_size);
 #endif
   arena->offset = 0;
 }
 
 static void
-mem_set(void* dest, u8 val, usize bytes)
+mem_zero(void* dest, usize bytes)
 {
   for (usize i = 0; i < bytes; ++i)
   {
-    ((u8*) dest)[i] = val;
+    ((u8*) dest)[i] = 0;
   }
 }
 

@@ -10,6 +10,36 @@ log_(const char* file, usize line, const char* func, const char* fmt, ...)
   (void) fmt;
 }
 
+// TODO(szulf): delete this later
+static Scene
+setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
+{
+  Error error = ERROR_SUCCESS;
+
+  Mesh mesh = mesh_from_obj(perm_arena, temp_arena, obj_path, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
+
+  MeshArray meshes = {};
+  ARRAY_INIT(&meshes, perm_arena, 1, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init meshes array");
+  ARRAY_PUSH(&meshes, mesh);
+
+  Model model = {};
+  model.meshes = meshes;
+  mat4_init(&model.model, 1.0f);
+  DrawableArray drawables = {};
+  ARRAY_INIT(&drawables, perm_arena, 1, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init drawables array");
+  ARRAY_PUSH(&drawables, ((Drawable) {model, SHADER_DEFAULT}));
+
+  Scene scene = {};
+  scene.drawables = drawables;
+  mat4_init(&scene.view, 1.0f);
+  mat4_init(&scene.proj, 1.0f);
+
+  return scene;
+}
+
 static void
 game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
 {
@@ -18,58 +48,57 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
   setup_shaders(temp_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
 
-  Mesh sphere_mesh = mesh_from_obj(perm_arena, temp_arena, "assets/cube.obj", &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
-
-  MeshArray sphere_meshes = {};
-  ARRAY_INIT(&sphere_meshes, perm_arena, 1, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt init meshes array");
-  ARRAY_PUSH(&sphere_meshes, sphere_mesh);
-
-  Model sphere_model = {};
-  sphere_model.meshes = sphere_meshes;
-  mat4_init(&sphere_model.model, 1.0f);
-  DrawableArray sphere_drawables = {};
-  ARRAY_INIT(&sphere_drawables, perm_arena, 1, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt init drawables array");
-  ARRAY_PUSH(&sphere_drawables, ((Drawable) {sphere_model, SHADER_DEFAULT}));
-
-  Scene scene = {};
-  scene.drawables = sphere_drawables;
-  mat4_init(&scene.view, 1.0f);
-  mat4_init(&scene.proj, 1.0f);
+  Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
+  Scene cube_scene = setup_simple_scene("assets/cube.obj", perm_arena, temp_arena);
 
   state->current_scene_idx = 0;
-  ARRAY_INIT(&state->scenes, perm_arena, 1, &error);
+  ARRAY_INIT(&state->scenes, perm_arena, 2, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init scenes array");
-  ARRAY_PUSH(&state->scenes, scene);
+  ARRAY_PUSH(&state->scenes, sphere_scene);
+  ARRAY_PUSH(&state->scenes, cube_scene);
 
   arena_free_all(temp_arena);
 }
 
+Action keybind_map[] =
+{
+  [KEY_LMB] = ACTION_CHANGE_SCENE,
+  [KEY_SPACE] = ACTION_MOVE,
+};
+
 static void
-game_update(GameState* state)
+game_update(GameState* state, GameInput* input)
 {
   static f32 degree = 0.0f;
+  static f32 move = -3.0f;
+
+  for (usize i = 0; i < input->input_events.len; ++i)
+  {
+    switch (keybind_map[input->input_events.items[i].key])
+    {
+      case ACTION_CHANGE_SCENE:
+      {
+        state->current_scene_idx += 1;
+        state->current_scene_idx %= state->scenes.len;
+      } break;
+      case ACTION_MOVE:
+      {
+        move -= 1.0f;
+      } break;
+    };
+  }
+  input->input_events.len = 0;
 
   Scene* scene = &state->scenes.items[state->current_scene_idx];
 
-  Vec3 translation_vec = {0.0f, 0.0f, -3.0f};
+  Vec3 translation_vec = {0.0f, 0.0f, move};
   mat4_translate(&scene->view, &translation_vec);
 
   WindowDimensions dimensions = get_window_dimensions();
   scene->proj = perspective(radians(45.0f), (f32) dimensions.width / (f32) dimensions.height,
                             0.1f, 100.0f);
 
-  static u64 last_ms = 0;
-  if (get_ms() - last_ms > 3000)
-  {
-    state->current_scene_idx += 1;
-    state->current_scene_idx %= state->scenes.len;
-    last_ms = get_ms();
-  }
-
-  auto Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
+  Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
   model_rotate(&scene->drawables.items[0].model, degree, &rotate_vec);
 
   degree += 1.0f;

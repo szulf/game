@@ -95,6 +95,38 @@ typedef struct SceneArray
   Scene* items;
 } SceneArray;
 
+typedef enum Key
+{
+  KEY_LMB,
+  KEY_SPACE,
+} Key;
+
+// TODO(szulf): better name
+typedef struct InputEvent
+{
+  Key key;
+  // TODO(szulf): is this needed?
+  f32 duration;
+} InputEvent;
+
+typedef struct InputEventArray
+{
+  usize cap;
+  usize len;
+  InputEvent* items;
+} InputEventArray;
+
+typedef enum Action
+{
+  ACTION_CHANGE_SCENE,
+  ACTION_MOVE,
+} Action;
+
+typedef struct GameInput
+{
+  InputEventArray input_events;
+} GameInput;
+
 typedef struct GameState
 {
   usize current_scene_idx;
@@ -104,7 +136,7 @@ typedef struct GameState
 static void game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state);
 
 // TODO(szulf): need to interpolate the positions so the updates are not so sudden
-static void game_update(GameState* state);
+static void game_update(GameState* state, GameInput* input);
 
 static void game_render(GameState* state);
 

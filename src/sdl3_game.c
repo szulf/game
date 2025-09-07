@@ -225,6 +225,14 @@ main()
 
   GameState state = {};
 
+  InputEventArray input_events = {};
+  {
+    Error error = ERROR_SUCCESS;
+    ARRAY_INIT(&input_events, &perm_arena, 100, &error);
+    ASSERT(error == ERROR_SUCCESS, "couldnt init inputs array");
+  }
+  GameInput input = {input_events};
+
   game_setup(&perm_arena, &temp_arena, &state);
 
   SDL_Event e;
@@ -269,6 +277,24 @@ main()
             dimensions = (WindowDimensions) {e.window.data1, e.window.data2};
             glViewport(0, 0, dimensions.width, dimensions.height);
           } break;
+          case SDL_EVENT_MOUSE_BUTTON_DOWN:
+          {
+            if (e.button.button == 1)
+            {
+              SDL_Log("down: %b\n", e.button.down);
+              ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_LMB}));
+            }
+          } break;
+          case SDL_EVENT_KEY_DOWN:
+          {
+            switch (e.key.key)
+            {
+              case SDLK_SPACE:
+              {
+                ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_SPACE}));
+              } break;
+            }
+          } break;
         }
       }
     }
@@ -300,7 +326,7 @@ main()
 
       for (s8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
-        game_update(&state);
+        game_update(&state, &input);
       }
     }
 

@@ -10,13 +10,16 @@
 // };
 
 #define ARRAY_PUSH(arr, val) do {\
-if ((arr)->len + 1 >= (arr)->cap) \
+if ((arr)->len >= (arr)->cap) \
 { \
+  ASSERT(false, "array cap exceeded"); \
 } \
 (arr)->items[(arr)->len] = (val); \
 ++(arr)->len; \
 } while (0)
 
+
+// TODO(szulf): simplify this to just one macro and throw away counter
 #define ARRAY_INIT(arr, arena, capacity, err) ARRAY_INIT2(arr, arena, capacity, err, __COUNTER__)
 #define ARRAY_INIT2(arr, arena, capacity, err, counter) ARRAY_INIT3(arr, arena, capacity, err, counter)
 #define ARRAY_INIT3(arr, arena, capacity, err, counter) do { \

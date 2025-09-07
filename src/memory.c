@@ -63,38 +63,25 @@ arena_free_all(Arena* arena)
 static void
 mem_zero(void* dest, usize bytes)
 {
-  for (usize i = 0; i < bytes; ++i)
+  while (bytes--)
   {
-    ((u8*) dest)[i] = 0;
+    *(u8*)dest++ = 0;
   }
 }
 
 static void
 mem_copy(void* dest, const void* src, usize bytes)
 {
-  u8* d = dest;
-  const u8* s = src;
-
-  for (usize i = 0; i < bytes; ++i)
+  while (bytes--)
   {
-    d[i] = s[i];
+    *(u8*)dest++ = *(const u8*)src++;
   }
 }
 
-// TODO(szulf): idk about this implementation
 static bool32
-mem_cmp(const void* val1, const void* val2, usize bytes)
+mem_cmp(const void* v1, const void* v2, usize bytes)
 {
-  const u8* v1 = val1;
-  const u8* v2 = val2;
-
-  for (usize i = 0; i < bytes; ++i)
-  {
-    if (v1[i] != v2[i])
-    {
-      return false;
-    }
-  }
-
-  return true;
+  ASSERT(bytes > 0, "invalid bytes number");
+  while (--bytes && *(const u8*)v1++ == *(const u8*)v2++) {}
+  return !(*(const u8*)v1 - *(const u8*)v2);
 }

@@ -54,7 +54,7 @@ typedef struct Mat4
   f32 data[16];
 } Mat4;
 
-static void mat4_init(Mat4* mat, f32 val);
+static Mat4 mat4_make(f32 val);
 static Vec4 mat4_col(Mat4* mat, usize idx);
 static Vec4 mat4_row(Mat4* mat, usize idx);
 static void mat4_rotate(Mat4* mat, f32 rad, const Vec3* axis);

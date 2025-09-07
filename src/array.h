@@ -19,10 +19,7 @@ if ((arr)->len >= (arr)->cap) \
 } while (0)
 
 
-// TODO(szulf): simplify this to just one macro and throw away counter
-#define ARRAY_INIT(arr, arena, capacity, err) ARRAY_INIT2(arr, arena, capacity, err, __COUNTER__)
-#define ARRAY_INIT2(arr, arena, capacity, err, counter) ARRAY_INIT3(arr, arena, capacity, err, counter)
-#define ARRAY_INIT3(arr, arena, capacity, err, counter) do { \
+#define ARRAY_INIT(arr, arena, capacity, err) do { \
 (arr)->cap = (capacity); \
 (arr)->len = 0; \
 (arr)->items = arena_alloc((arena), (capacity) * sizeof(*(arr)->items), err); \

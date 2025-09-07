@@ -48,8 +48,7 @@ mesh_from_obj(Arena* perm_arena, Arena* temp_arena, const char* path, Error* err
   char* file_content = platform_read_entire_file(temp_arena, path, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt read mesh file");
 
-  String file = {};
-  string_init_cstr(&file, temp_arena, (char*) file_content, &error);
+  String file = string_make_cstr(temp_arena, file_content, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init string");
 
   StringArray lines = string_split(&file, temp_arena, '\n', &error);

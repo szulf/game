@@ -36,9 +36,7 @@ platform_read_entire_file_bytes_read(Arena* arena, const char* path, usize* byte
     return 0;
   }
 
-  // TODO(szulf): why the read + 1 here???
-  // possible was thinking of null terminator? but the file should have one either way
-  mem_copy(file_data, file, read + 1);
+  mem_copy(file_data, file, read);
   SDL_free(file);
   if (bytes_read)
   {
@@ -281,7 +279,6 @@ main()
           {
             if (e.button.button == 1)
             {
-              SDL_Log("down: %b\n", e.button.down);
               ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_LMB}));
             }
           } break;

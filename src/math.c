@@ -127,13 +127,15 @@ vec4_divide(const Vec4* vec, f32 scalar)
   return (Vec4) {vec->x / scalar, vec->y / scalar, vec->z / scalar, vec->w / scalar};
 }
 
-static void
-mat4_init(Mat4* mat, f32 val)
+static Mat4
+mat4_make(f32 val)
 {
-  mat->data[0] = val;
-  mat->data[5] = val;
-  mat->data[10] = val;
-  mat->data[15] = val;
+  Mat4 mat = {};
+  mat.data[0] = val;
+  mat.data[5] = val;
+  mat.data[10] = val;
+  mat.data[15] = val;
+  return mat;
 }
 
 static Vec4

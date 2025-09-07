@@ -52,7 +52,6 @@ typedef struct Model
 static void model_draw(const Model* model, Shader shader);
 static void model_rotate(Model* model, f32 deg, const Vec3* axis);
 
-// TODO(szulf): is this a good name
 typedef struct Drawable
 {
   Model model;

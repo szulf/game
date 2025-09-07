@@ -9,9 +9,9 @@ typedef struct String
   char* data;
 } String;
 
-static void string_init_cstr(String* str, Arena* arena, const char* cstr, Error* err);
-static void string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len, Error* err);
-static void string_init_cap(String* str, Arena* arena, usize cap, Error* err);
+static String string_make_cstr(Arena* arena, const char* cstr, Error* err);
+static String string_make_cstr_len(Arena* arena, const char* cstr, usize len, Error* err);
+static String string_make_cap(Arena* arena, usize cap, Error* err);
 
 static usize string_count_chars(String* str, char c);
 static usize string_find_char(String* str, char c, usize start_idx, Error* err);

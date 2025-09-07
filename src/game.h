@@ -101,12 +101,9 @@ typedef enum Key
   KEY_SPACE,
 } Key;
 
-// TODO(szulf): better name
 typedef struct InputEvent
 {
   Key key;
-  // TODO(szulf): is this needed?
-  f32 duration;
 } InputEvent;
 
 typedef struct InputEventArray

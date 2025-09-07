@@ -1,6 +1,5 @@
 #include "game.h"
 
-// TODO(szulf): implement this?
 static void
 log_(const char* file, usize line, const char* func, const char* fmt, ...)
 {
@@ -26,7 +25,7 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
 
   Model model = {};
   model.meshes = meshes;
-  mat4_init(&model.model, 1.0f);
+  model.model = mat4_make(1.0f);
   DrawableArray drawables = {};
   ARRAY_INIT(&drawables, perm_arena, 1, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init drawables array");
@@ -34,8 +33,8 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
 
   Scene scene = {};
   scene.drawables = drawables;
-  mat4_init(&scene.view, 1.0f);
-  mat4_init(&scene.proj, 1.0f);
+  scene.view = mat4_make(1.0f);
+  scene.proj = mat4_make(1.0f);
 
   return scene;
 }

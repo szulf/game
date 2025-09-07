@@ -1,65 +1,71 @@
 #include "string.h"
 
-static void
-string_init_cstr(String* str, Arena* arena, const char* cstr, Error* err)
+static String
+string_make_cstr(Arena* arena, const char* cstr, Error* err)
 {
   Error error = ERROR_SUCCESS;
+  String str = {};
   usize cstr_length = cstr_len(cstr);
   char* res = arena_alloc(arena, cstr_length + 1, &error);
   if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "error initializing string");
     *err = error;
-    return;
+    return str;
   }
 
-  str->data = res;
-  mem_copy(str->data, cstr, cstr_length);
-  str->cap = cstr_length;
-  str->len = cstr_length;
-  str->data[str->len] = 0;
+  str.data = res;
+  mem_copy(str.data, cstr, cstr_length);
+  str.cap = cstr_length;
+  str.len = cstr_length;
+  str.data[str.len] = 0;
 
   *err = ERROR_SUCCESS;
+  return str;
 }
 
-static void
-string_init_cstr_len(String* str, Arena* arena, const char* cstr, usize len, Error* err)
+static String
+string_make_cstr_len(Arena* arena, const char* cstr, usize len, Error* err)
 {
   Error error = ERROR_SUCCESS;
+  String str = {};
   char* res = arena_alloc(arena, len + 1, &error);
   if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "error initializing string");
     *err = error;
-    return;
+    return str;
   }
 
-  str->data = res;
-  mem_copy(str->data, cstr, len);
-  str->cap = len;
-  str->len = len;
-  str->data[str->len] = 0;
+  str.data = res;
+  mem_copy(str.data, cstr, len);
+  str.cap = len;
+  str.len = len;
+  str.data[str.len] = 0;
 
   *err = ERROR_SUCCESS;
+  return str;
 }
 
-static void
-string_init_cap(String* str, Arena* arena, usize cap, Error* err)
+static String
+string_make_cap(Arena* arena, usize cap, Error* err)
 {
   Error error = ERROR_SUCCESS;
+  String str = {};
   char* res = arena_alloc(arena, cap + 1, &error);
   if (error != ERROR_SUCCESS)
   {
     ASSERT(false, "error initializing string");
     *err = error;
-    return;
+    return str;
   }
 
-  str->data = res;
-  str->cap = cap;
-  str->len = 0;
+  str.data = res;
+  str.cap = cap;
+  str.len = 0;
 
   *err = ERROR_SUCCESS;
+  return str;
 }
 
 static usize
@@ -120,9 +126,8 @@ string_split(String* str, Arena* arena, char c, Error* err)
     found_idx = string_find_char(str, c, start_idx, &error)
   )
   {
-    String s = {};
     Error init_err = ERROR_SUCCESS;
-    string_init_cstr_len(&s, arena, str->data + start_idx, found_idx - start_idx, &init_err);
+    String s = string_make_cstr_len(arena, str->data + start_idx, found_idx - start_idx, &init_err);
     if (init_err != ERROR_SUCCESS)
     {
       ASSERT(false, "couldnt init string");
@@ -140,8 +145,7 @@ string_split(String* str, Arena* arena, char c, Error* err)
 
   if (str->len - start_idx > 0)
   {
-    String s;
-    string_init_cstr_len(&s, arena, str->data + start_idx, str->len - start_idx, &error);
+    String s = string_make_cstr_len(arena, str->data + start_idx, str->len - start_idx, &error);
     if (error != ERROR_SUCCESS)
     {
       ASSERT(false, "couldnt init string");

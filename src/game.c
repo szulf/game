@@ -44,26 +44,30 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
 {
   Error error = ERROR_SUCCESS;
 
+  usize png_image_data_size = 0;
+  void* png_image_data = platform_read_entire_file_bytes_read(temp_arena, "assets/rocks.png",
+                                                              &png_image_data_size, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt read png image file");
+
+  Image img = image_decode_png(png_image_data, png_image_data_size, temp_arena, perm_arena, &error);
+  (void) img;
+
   setup_shaders(temp_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
 
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
   Scene cube_scene = setup_simple_scene("assets/cube.obj", perm_arena, temp_arena);
+  Scene cone_scene = setup_simple_scene("assets/cone.obj", perm_arena, temp_arena);
 
   state->current_scene_idx = 0;
-  ARRAY_INIT(&state->scenes, perm_arena, 2, &error);
+  ARRAY_INIT(&state->scenes, perm_arena, 3, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init scenes array");
   ARRAY_PUSH(&state->scenes, sphere_scene);
   ARRAY_PUSH(&state->scenes, cube_scene);
+  ARRAY_PUSH(&state->scenes, cone_scene);
 
   arena_free_all(temp_arena);
 }
-
-Action keybind_map[] =
-{
-  [KEY_LMB] = ACTION_CHANGE_SCENE,
-  [KEY_SPACE] = ACTION_MOVE,
-};
 
 static void
 game_update(GameState* state, GameInput* input)
@@ -100,6 +104,7 @@ game_update(GameState* state, GameInput* input)
   Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
   model_rotate(&scene->drawables.items[0].model, degree, &rotate_vec);
 
+
   degree += 1.0f;
 }
 
@@ -124,13 +129,16 @@ game_get_sound(GameSoundBuffer* sound_buffer)
     f32 frequency = 440.0f;
     f32 amplitude = 0.25f;
     s16 sine_value = (s16) (sin(2.0f * PI32 * t * frequency) * S16_MAX * amplitude);
+    (void) sine_value;
 
     ++sample_index;
 
     s16* left  = sound_buffer->memory + i;
     s16* right = sound_buffer->memory + i + 1;
 
-    *left  = sine_value;
-    *right = sine_value;
+    // *left  = sine_value;
+    // *right = sine_value;
+    *left  = 0;
+    *right = 0;
   }
 }

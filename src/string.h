@@ -31,3 +31,4 @@ static u32 string_parse_u32(String* str, Error* err);
 static usize cstr_len(const char* c_str);
 
 #endif
+

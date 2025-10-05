@@ -176,7 +176,7 @@ string_parse_f32(String* str, Error* err)
   }
 
 
-  bool32 is_fraction = false;
+  b32 is_fraction = false;
   f32 val = 0.0f;
   f32 frac = 0.0f;
   f32 divisor = 1.0f;

@@ -36,7 +36,7 @@ fmax(f32 a, f32 b)
   return a > b ? a : b;
 }
 
-static bool32
+static b32
 is_power_of_two(usize val)
 {
   return (val & (val - 1)) == 0;
@@ -46,6 +46,13 @@ static f32
 radians(f32 deg)
 {
   return deg * 0.01745329251994329576923690768489f;
+}
+
+static s64
+sabs(s64 v)
+{
+  if (v >= 0) return v;
+  return -v;
 }
 
 static f32

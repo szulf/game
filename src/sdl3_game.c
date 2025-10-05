@@ -234,7 +234,7 @@ main()
   game_setup(&perm_arena, &temp_arena, &state);
 
   SDL_Event e;
-  bool32 running = true;
+  b32 running = true;
 
   s8  update_tick = 0;
   s8  last_tick   = 0;

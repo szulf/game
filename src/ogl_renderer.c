@@ -40,6 +40,8 @@ mesh_draw(const Mesh* mesh)
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.len, GL_UNSIGNED_INT, 0);
 }
 
+// TODO(szulf): i dont think these asserts should happen at this level
+// TODO(szulf): shouldnt this return a model and not a mesh?
 static Mesh
 mesh_from_obj(Arena* perm_arena, Arena* temp_arena, const char* path, Error* err)
 {

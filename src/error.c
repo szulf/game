@@ -33,6 +33,54 @@ get_error_string(Error err)
     {
       return "not found";
     } break;
+    case ERROR_PNG_IHDR_NOT_FIRST:
+    {
+      return "[PNG] ihdr chunk is not first";
+    } break;
+    case ERROR_PNG_INVALID_IHDR:
+    {
+      return "[PNG] invalid ihdr chunk";
+    } break;
+    case ERROR_PNG_INVALID_IDAT:
+    {
+      return "[PNG] invalid idat chunk";
+    } break;
+    case ERROR_PNG_BAD_SIZES:
+    {
+      return "[PNG] bad sizes";
+    } break;
+    case ERROR_PNG_BAD_CODE_LENGTHS:
+    {
+      return "[PNG] bad code_lengths";
+    } break;
+    case ERROR_PNG_BAD_HUFFMAN_CODE:
+    {
+      return "[PNG] bad huffman code";
+    } break;
+    case ERROR_PNG_BAD_DIST:
+    {
+      return "[PNG] bad dist";
+    } break;
+    case ERROR_PNG_UNEXPECTED_END:
+    {
+      return "[PNG] unexpected end";
+    } break;
+    case ERROR_PNG_CORRUPT_ZLIB:
+    {
+      return "[PNG] corrupt zlib";
+    } break;
+    case ERROR_PNG_READ_PAST_BUFFER:
+    {
+      return "[PNG] read past buffer";
+    } break;
+    case ERROR_PNG_INVALID_FILTER:
+    {
+      return "[PNG] invalid filter";
+    } break;
+    case ERROR_PNG_ILLEGAL_COMPRESION_TYPE:
+    {
+      return "[PNG] encountered illegal compression type";
+    } break;
   }
 
   return "wut";

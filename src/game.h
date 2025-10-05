@@ -13,7 +13,7 @@ typedef int32_t  s32;
 typedef uint64_t u64;
 typedef int64_t  s64;
 
-typedef s32       bool32;
+typedef u32       b32;
 typedef size_t    usize;
 typedef uintptr_t ptrsize;
 
@@ -37,6 +37,8 @@ typedef double f64;
 #define KILOBYTES(n) ((n) * 1024)
 #define MEGABYTES(n) (KILOBYTES(n) * 1024)
 #define GIGBAYTES(n) (MEGABYTES(n) * 1024)
+
+#define ARRAY_LENGTH(arr) (sizeof((arr)) / sizeof(*(arr)))
 
 #define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
@@ -67,16 +69,20 @@ static void* platform_read_entire_file_bytes_read(Arena* arena, const char* path
                                                   usize* bytes_read, Error* err);
 
 static void platform_print(const char* msg, ...);
+// TODO(szulf): change to platform_get_ms?
 static u64 get_ms();
 
+// TODO(szulf): change to PlatformWindowDimensions?
 typedef struct WindowDimensions
 {
   s32 width;
   s32 height;
 } WindowDimensions;
 
+// TODO(szulf): change to platform_get_window_dimensions?
 static WindowDimensions get_window_dimensions();
 
+#include "image.c"
 // TODO(szulf): this will probably need to change to a renderer.c
 #include "renderer.h"
 
@@ -101,6 +107,7 @@ typedef enum Key
   KEY_SPACE,
 } Key;
 
+// TODO(szulf): change to GameInputEvent?
 typedef struct InputEvent
 {
   Key key;
@@ -113,11 +120,18 @@ typedef struct InputEventArray
   InputEvent* items;
 } InputEventArray;
 
+// TODO(szulf): change to GameAction?
 typedef enum Action
 {
   ACTION_CHANGE_SCENE,
   ACTION_MOVE,
 } Action;
+
+static Action keybind_map[] =
+{
+  [KEY_LMB] = ACTION_CHANGE_SCENE,
+  [KEY_SPACE] = ACTION_MOVE,
+};
 
 typedef struct GameInput
 {

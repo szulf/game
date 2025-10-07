@@ -83,8 +83,7 @@ typedef struct WindowDimensions
 static WindowDimensions get_window_dimensions();
 
 #include "image.c"
-// TODO(szulf): this will probably need to change to a renderer.c
-#include "renderer.h"
+#include "renderer.c"
 
 typedef struct GameSoundBuffer
 {

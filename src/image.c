@@ -557,9 +557,9 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
         ASSERT(channels == 3, "png only allows 1, 3, 4 channels");
         for (u32 i = 0; i < img->width; ++i)
         {
-          dest[i * 4 + 2] = curr[i * 3 + 0];
+          dest[i * 4 + 0] = curr[i * 3 + 0];
           dest[i * 4 + 1] = curr[i * 3 + 1];
-          dest[i * 4 + 0] = curr[i * 3 + 2];
+          dest[i * 4 + 2] = curr[i * 3 + 2];
           dest[i * 4 + 3] = 255;
         }
       }

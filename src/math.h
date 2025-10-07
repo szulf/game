@@ -20,6 +20,12 @@ static f32 mod(f32 x, f32 y);
 static f32 acos(f32 val);
 static f32 tan(f32 val);
 
+typedef struct Vec2
+{
+  f32 x;
+  f32 y;
+} Vec2;
+
 typedef struct Vec3
 {
   f32 x;

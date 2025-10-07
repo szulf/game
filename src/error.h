@@ -3,7 +3,6 @@
 
 typedef enum Error
 {
-  ERROR_SUCCESS,
   ERROR_OUT_OF_MEMORY,
   ERROR_INVALID_PARAMETER,
   ERROR_FILE_READING,
@@ -23,6 +22,10 @@ typedef enum Error
   ERROR_PNG_READ_PAST_BUFFER,
   ERROR_PNG_INVALID_FILTER,
   ERROR_PNG_ILLEGAL_COMPRESION_TYPE,
+
+  ERROR_OBJ_INVALID_DATA,
+
+  ERROR_SUCCESS,
 } Error;
 
 const char* get_error_string(Error err);

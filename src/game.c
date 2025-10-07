@@ -15,7 +15,12 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
 {
   Error error = ERROR_SUCCESS;
 
-  Mesh mesh = mesh_from_obj(perm_arena, temp_arena, obj_path, &error);
+  usize obj_file_size = 0;
+  void* obj_file_data = platform_read_entire_file_bytes_read(temp_arena, obj_path, &obj_file_size,
+                                                             &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt read obj file");
+
+  Mesh mesh = mesh_from_obj(obj_file_data, obj_file_size, temp_arena, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
 
   MeshArray meshes = {};
@@ -44,16 +49,13 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
 {
   Error error = ERROR_SUCCESS;
 
-  usize png_image_data_size = 0;
-  void* png_image_data = platform_read_entire_file_bytes_read(temp_arena, "assets/rocks.png",
-                                                              &png_image_data_size, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt read png image file");
-
-  Image img = image_decode_png(png_image_data, png_image_data_size, temp_arena, perm_arena, &error);
-  (void) img;
+  setup_renderer();
 
   setup_shaders(temp_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
+
+  setup_global_materials(perm_arena, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt initialize global materials");
 
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
   Scene cube_scene = setup_simple_scene("assets/cube.obj", perm_arena, temp_arena);

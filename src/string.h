@@ -2,6 +2,7 @@
 #define STRING_H
 
 // TODO(szulf): should these be null terminated?
+// NOTE(szulf): these are immutable, changing the data field is UB
 typedef struct String
 {
   usize cap;
@@ -15,6 +16,9 @@ static String string_make_cap(Arena* arena, usize cap, Error* err);
 
 static usize string_count_chars(String* str, char c);
 static usize string_find_char(String* str, char c, usize start_idx, Error* err);
+static usize string_count_substrings(String* str, const char* substr);
+
+static String string_prepend(String* str, const char* cstr, Arena* arena, Error* err);
 
 typedef struct StringArray
 {

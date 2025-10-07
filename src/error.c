@@ -81,6 +81,10 @@ get_error_string(Error err)
     {
       return "[PNG] encountered illegal compression type";
     } break;
+    case ERROR_OBJ_INVALID_DATA:
+    {
+      return "[OBJ] invalid data";
+    } break;
   }
 
   return "wut";

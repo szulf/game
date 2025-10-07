@@ -25,6 +25,6 @@ static void arena_alloc_finish(Arena* arena, usize size, Error* err);
 static void mem_zero(void* dest, usize bytes);
 static void mem_set(void* dest, usize bytes, u8 val);
 static void mem_copy(void* dest, const void* src, usize bytes);
-static b32 mem_cmp(const void* val1, const void* val2, usize bytes);
+static b32 mem_compare(const void* val1, const void* val2, usize bytes);
 
 #endif

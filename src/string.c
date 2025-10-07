@@ -72,7 +72,6 @@ static usize
 string_count_chars(String* str, char c)
 {
   usize count = 0;
-
   for (usize i = 0; i < str->len; ++i)
   {
     if (str->data[i] == c)
@@ -80,7 +79,6 @@ string_count_chars(String* str, char c)
       ++count;
     }
   }
-
   return count;
 }
 
@@ -100,6 +98,34 @@ string_find_char(String* str, char c, usize start_idx, Error* err)
 
   *err = ERROR_NOT_FOUND;
   return (usize) -1;
+}
+
+static usize
+string_count_substrings(String* str, const char* substr)
+{
+  usize count = 0;
+  usize substr_len = cstr_len(substr);
+  for (usize i = 0; i < str->len - substr_len + 1; ++i)
+  {
+    if (mem_compare(str->data + i, substr, substr_len))
+    {
+      ++count;
+    }
+  }
+  return count;
+}
+
+// TODO(szulf): does this handle null terminator?
+static String
+string_prepend(String* str, const char* cstr, Arena* arena, Error* err)
+{
+  Error error = ERROR_SUCCESS;
+  usize cstr_length = cstr_len(cstr);
+  String s = string_make_cap(arena, str->len + cstr_length, &error);
+  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, s);
+  mem_copy(s.data, cstr, cstr_length);
+  mem_copy(s.data + cstr_length, str->data, str->len);
+  return s;
 }
 
 // TODO(szulf): this whole implementation is kinda whacky but idc for now

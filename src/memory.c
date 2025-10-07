@@ -134,7 +134,7 @@ mem_copy(void* dest, const void* src, usize bytes)
 }
 
 static b32
-mem_cmp(const void* v1, const void* v2, usize bytes)
+mem_compare(const void* v1, const void* v2, usize bytes)
 {
   for (usize i = 0; i < bytes; ++i)
   {

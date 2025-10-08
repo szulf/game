@@ -1,36 +1,29 @@
 #ifndef STRING_H
 #define STRING_H
 
-// TODO(szulf): should these be null terminated?
 // NOTE(szulf): these are immutable, changing the data field is UB
-typedef struct String
+// NOTE(szulf): these are null-terminated
+struct String
 {
   usize cap;
   usize len;
   char* data;
-} String;
 
-static String string_make_cstr(Arena* arena, const char* cstr, Error* err);
-static String string_make_cstr_len(Arena* arena, const char* cstr, usize len, Error* err);
-static String string_make_cap(Arena* arena, usize cap, Error* err);
+  static String make_cstr(const char* cstr, Arena* arena, Error* err);
+  static String make_cstr_len(const char* cstr, usize len, Arena* arena, Error* err);
+  static String make_capacity(usize capacity, Arena* arena, Error* err);
 
-static usize string_count_chars(String* str, char c);
-static usize string_find_char(String* str, char c, usize start_idx, Error* err);
-static usize string_count_substrings(String* str, const char* substr);
+  usize find_char(char c, usize start_idx, Error* err) const;
+  usize count_chars(char c) const;
+  usize count_substrings(const char* substr) const;
 
-static String string_prepend(String* str, const char* cstr, Arena* arena, Error* err);
+  String prepend(const char* cstr, Arena* arena, Error* err) const;
 
-typedef struct StringArray
-{
-  usize cap;
-  usize len;
-  String* items;
-} StringArray;
+  Array<String> split(char c, Arena* arena, Error* err) const;
 
-static StringArray string_split(String* str, Arena* arena, char c, Error* err);
-
-static f32 string_parse_f32(String* str, Error* err);
-static u32 string_parse_u32(String* str, Error* err);
+  template <typename T>
+  T parse(Error* err) const;
+};
 
 static usize cstr_len(const char* c_str);
 

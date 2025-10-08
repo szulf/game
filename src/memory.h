@@ -3,7 +3,7 @@
 
 #define DEFAULT_ALIGNMENT (2*sizeof(void*))
 
-typedef struct Arena
+struct Arena
 {
   void* buffer;
   usize offset;
@@ -11,16 +11,16 @@ typedef struct Arena
 #ifdef GAME_DEBUG
   b32 allocation_active;
 #endif
-} Arena;
 
-static void* arena_alloc(Arena* arena, usize size, Error* err);
-static void* arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err);
-static void arena_free_all(Arena* arena);
-// NOTE(szulf): this is for allocations that i know are at the top, and i have to do some work before knowing the end size
-// TODO(szulf): think of a better name
-static void* arena_alloc_start(Arena* arena);
-static void* arena_alloc_align_start(Arena* arena, ptrsize alignment);
-static void arena_alloc_finish(Arena* arena, usize size, Error* err);
+  void* alloc(usize size, Error* err, ptrsize alignment = DEFAULT_ALIGNMENT);
+  void free_all();
+
+  // NOTE(szulf): this is for allocations that i know are at the top,
+  // and i have to do some work before knowing the end size
+  // TODO(szulf): think of a better name
+  void* alloc_start(ptrsize alignment = DEFAULT_ALIGNMENT);
+  void alloc_finish(usize size, Error* err);
+};
 
 static void mem_zero(void* dest, usize bytes);
 static void mem_set(void* dest, usize bytes, u8 val);

@@ -1,4 +1,4 @@
-#include "game.c"
+#include "game.cpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
@@ -6,35 +6,19 @@
 #include "sdl3_game.h"
 
 // TODO(szulf): set better starting dimensions
-WindowDimensions dimensions = {640, 480};
+PlatformWindowDimensions dimensions = {640, 480};
 
 static void*
-platform_read_entire_file(Arena* arena, const char* path, Error* err)
+platform_read_entire_file(const char* path, Arena* arena, Error* err, usize* bytes_read)
 {
-  return platform_read_entire_file_bytes_read(arena, path, 0, err);
-}
-
-static void*
-platform_read_entire_file_bytes_read(Arena* arena, const char* path, usize* bytes_read, Error* err)
-{
-  Error error = ERROR_SUCCESS;
+  Error error = Error::Success;
 
   usize read;
   void* file = SDL_LoadFile(path, &read);
-  if (file == 0)
-  {
-    ASSERT(false, "couldnt read file");
-    *err = ERROR_FILE_READING;
-    return 0;
-  }
+  ERROR_ASSERT(file != nullptr, *err, Error::FileReading, nullptr);
 
-  void* file_data = arena_alloc(arena, read, &error);
-  if (error != ERROR_SUCCESS)
-  {
-    ASSERT(false, "couldnt allocate memory for file");
-    *err = error;
-    return 0;
-  }
+  void* file_data = arena->alloc(read, &error);
+  ERROR_ASSERT(error == Error::Success, *err, error, 0);
 
   mem_copy(file_data, file, read);
   SDL_free(file);
@@ -43,57 +27,62 @@ platform_read_entire_file_bytes_read(Arena* arena, const char* path, usize* byte
     *bytes_read = read;
   }
 
-  *err = ERROR_SUCCESS;
+  *err = Error::Success;
   return file_data;
 }
 
 static void
-platform_print(const char* msg, ...)
+platform_print(const char* msg)
 {
-  va_list ap;
-  SDL_Log(msg, ap);
+  SDL_Log("%s", msg);
 }
 
 static u64
-get_ms()
+platform_get_ms()
 {
   return SDL_GetTicks();
 }
 
-static WindowDimensions
-get_window_dimensions()
+static PlatformWindowDimensions
+platform_get_window_dimensions()
 {
   return dimensions;
 }
 
 // TODO(szulf): implement these myself later and move to math.c
-f32 sin(f32 rad)
+inline f32
+fsin(f32 rad)
 {
   return SDL_sinf(rad);
 }
 
-f32 cos(f32 rad)
+inline f32
+fcos(f32 rad)
 {
   return SDL_cosf(rad);
 }
 
-f32 sqrt(f32 val)
+inline f32
+fsqrt(f32 val)
 {
   return SDL_sqrtf(val);
 }
 
-f32 mod(f32 x, f32 y)
+inline f32
+fmod(f32 x, f32 y)
 {
   ASSERT(y != 0, "denominator cannot be 0");
   return SDL_fmodf(x, y);
 }
 
-f32 acos(f32 val)
+inline f32
+facos(f32 val)
 {
   return SDL_acosf(val);
 }
 
-f32 tan(f32 val)
+inline f32
+ftan(f32 val)
 {
   return SDL_tanf(val);
 }
@@ -104,8 +93,8 @@ static void APIENTRY debug_callback(
     GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar* message, const void* user)
 {
-  (void) length;
-  (void) user;
+  UNUSED(length);
+  UNUSED(user);
 
   // Ignore non-significant notification messages
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
@@ -150,7 +139,7 @@ static void APIENTRY debug_callback(
 }
 #endif
 
-s32
+i32
 main()
 {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -188,9 +177,9 @@ main()
 
   // TODO(szulf): do i really want just enough audio for one tick?
   audio_buffer.sample_count = (u32) (((audio_buffer.spec.freq * audio_buffer.spec.channels) / TPS));
-  audio_buffer.size         = audio_buffer.sample_count * sizeof(s16);
+  audio_buffer.size         = audio_buffer.sample_count * sizeof(i16);
   // TODO(szulf): put this into the perm arena??
-  audio_buffer.memory       = (s16*) SDL_malloc(audio_buffer.size);
+  audio_buffer.memory       = (i16*) SDL_malloc(audio_buffer.size);
 
   SDL_GLContext glContext = SDL_GL_CreateContext(window);
   if (!glContext)
@@ -221,23 +210,23 @@ main()
   temp_arena.buffer_size = MEGABYTES(100);
   temp_arena.buffer = SDL_malloc(temp_arena.buffer_size);
 
-  GameState state = {};
+  State state = {};
 
-  InputEventArray input_events = {};
+  Array<InputEvent> input_events;
   {
-    Error error = ERROR_SUCCESS;
-    ARRAY_INIT(&input_events, &perm_arena, 100, &error);
-    ASSERT(error == ERROR_SUCCESS, "couldnt init inputs array");
+    Error error = Error::Success;
+    input_events = Array<InputEvent>::make(100, &perm_arena, &error);
+    ASSERT(error == Error::Success, "couldnt init inputs array");
   }
-  GameInput input = {input_events};
+  Input input = {input_events};
 
   game_setup(&perm_arena, &temp_arena, &state);
 
   SDL_Event e;
   b32 running = true;
 
-  s8  update_tick = 0;
-  s8  last_tick   = 0;
+  i8  update_tick = 0;
+  i8  last_tick   = 0;
   u32 last_second = 0;
   u64 starter_ms  = SDL_GetTicks();
 
@@ -256,7 +245,7 @@ main()
         update_tick = 0;
       }
 
-      update_tick = (s8) current_second_ms / MSPT;
+      update_tick = (i8) current_second_ms / MSPT;
 
       last_second = current_second;
     }
@@ -272,23 +261,24 @@ main()
           } break;
           case SDL_EVENT_WINDOW_RESIZED:
           {
-            dimensions = (WindowDimensions) {e.window.data1, e.window.data2};
+            dimensions = {e.window.data1, e.window.data2};
             glViewport(0, 0, dimensions.width, dimensions.height);
           } break;
           case SDL_EVENT_MOUSE_BUTTON_DOWN:
           {
             if (e.button.button == 1)
             {
-              ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_LMB}));
+              input.input_events.push({Key::LMB});
             }
           } break;
           case SDL_EVENT_KEY_DOWN:
           {
+            // TODO(szulf): if i want rebindable keys this should handle all of them
             switch (e.key.key)
             {
               case SDLK_SPACE:
               {
-                ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_SPACE}));
+                input.input_events.push({Key::Space});
               } break;
             }
           } break;
@@ -297,31 +287,31 @@ main()
     }
 
     {
-      s8 safe_update_tick = update_tick;
+      i8 safe_update_tick = update_tick;
       if (last_tick > update_tick)
       {
         safe_update_tick += 20;
       }
 
-      for (s8 tick = last_tick; tick < safe_update_tick; ++tick)
+      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
         // NOTE(szulf): to really get the current tick you have to do tick % 20
 
-        GameSoundBuffer sound_buffer = {};
+        SoundBuffer sound_buffer = {};
         sound_buffer.memory = audio_buffer.memory;
         sound_buffer.size = audio_buffer.size;
         sound_buffer.sample_count = audio_buffer.sample_count;
         sound_buffer.samples_per_second = (u32) audio_buffer.spec.freq;
 
         game_get_sound(&sound_buffer);
-        if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory, (s32) sound_buffer.size))
+        if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory, (i32) sound_buffer.size))
         {
           SDL_Log("Error putting audio stream data: %s\n", SDL_GetError());
           return 1;
         }
       }
 
-      for (s8 tick = last_tick; tick < safe_update_tick; ++tick)
+      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
         game_update(&state, &input);
       }

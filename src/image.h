@@ -5,16 +5,15 @@
 
 #define IMAGE_MAX_SIZE (1 << 24)
 
-typedef struct Image
+struct Image
 {
   void* data;
   usize size;
   usize width;
   usize height;
   usize channels;
-} Image;
+};
 
-static Image image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_arena,
-                              Error* err);
+static Image image_decode_png(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err);
 
 #endif

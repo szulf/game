@@ -471,11 +471,8 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, std::pmr::vector<u8> data,
 
   // NOTE(szulf): (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
   usize bytes_per_scanline = ((img.width * channels * ctx.bit_depth) + 0b111) >> 3;
-  std::pmr::memory_resource* allocator = std::pmr::get_default_resource();
   usize filter_buffer_size = bytes_per_scanline * 2;
-  u8* filter_buffer = static_cast<u8*>(allocator->allocate(filter_buffer_size));
-  // TODO(szulf): get rid of this defer, by reading todo.md
-  defer(allocator->deallocate(filter_buffer, filter_buffer_size));
+  AllocatedBuffer filter_buffer{filter_buffer_size};
 
   usize width = img.width;
   if (ctx.bit_depth < 8)
@@ -485,7 +482,7 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, std::pmr::vector<u8> data,
   }
 
   u8* curr = filter_buffer;
-  u8* prev = filter_buffer + (img.width * data_bytes_per_pixel);
+  u8* prev = curr + (img.width * data_bytes_per_pixel);
   for (u32 line_idx = 0; line_idx < img.height; ++line_idx)
   {
     u32 filter_method_int = data[data_idx++];

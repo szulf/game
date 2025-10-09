@@ -28,7 +28,7 @@ static constexpr i32 FPS = 60;
 static constexpr i32 MSPF = 1000 / FPS;
 
 static constexpr i32 TPS = 20;
-static constexpr i32 MSPT = 1000 / 20;
+static constexpr i32 MSPT = 1000 / TPS;
 
 consteval u64 kilobytes(u64 n);
 consteval u64 megabytes(u64 n);
@@ -84,12 +84,12 @@ privDefer<F> defer_func(F f)
 
 #include "math.cpp"
 #include "error.cpp"
-// #include "memory.cpp"
+#include "memory.cpp"
 
 namespace platform
 {
 
-static void* read_entire_file(const char* path, Error* err, usize* bytes_read = nullptr);
+static AllocatedBuffer read_entire_file(const char* path, Error* err, usize* bytes_read = nullptr);
 
 static void print(const char* msg);
 static u64 get_ms();

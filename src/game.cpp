@@ -24,8 +24,8 @@ namespace game
 static void
 setup_default_keybinds()
 {
-  g_keybind_map[(usize) Key::LMB] = Action::ChangeScene;
-  g_keybind_map[(usize) Key::Space] = Action::Move;
+  g_keybind_map[static_cast<usize>(Key::LMB)] = Action::ChangeScene;
+  g_keybind_map[static_cast<usize>(Key::Space)] = Action::Move;
 }
 
 // TODO(szulf): delete this later
@@ -71,9 +71,9 @@ setup(State& state)
 
   state.current_scene_idx = 0;
   state.scenes.reserve(3);
-  state.scenes.push_back(sphere_scene);
-  state.scenes.push_back(cube_scene);
-  state.scenes.push_back(cone_scene);
+  state.scenes.emplace_back(std::move(sphere_scene));
+  state.scenes.emplace_back(std::move(cube_scene));
+  state.scenes.emplace_back(std::move(cone_scene));
 }
 
 static void

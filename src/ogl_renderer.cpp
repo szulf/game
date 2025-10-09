@@ -129,7 +129,6 @@ static void
 obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length, Error* err)
 {
   Error error{Error::Success};
-  // TODO(szulf): does this call the right constructor?
   std::pmr::string mtl_file{mtl_file_cstr, mtl_file_cstr_length};
   std::stringstream mtl_stream{};
   mtl_stream.str(mtl_file);

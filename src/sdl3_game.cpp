@@ -11,17 +11,14 @@ namespace platform
 // TODO(szulf): set better starting dimensions
 WindowDimensions g_dimensions = {640, 480};
 
-static void*
+static AllocatedBuffer
 read_entire_file(const char* path, Error* err, usize* bytes_read)
 {
-  usize read;
-  void* file = SDL_LoadFile(path, &read);
-  ERROR_ASSERT(file != nullptr, *err, Error::FileReading, nullptr);
+  usize read{};
+  void* file{SDL_LoadFile(path, &read)};
+  ERROR_ASSERT(file != nullptr, *err, Error::FileReading, {});
 
-  // TODO(szulf): look at todo.md and change this
-  std::pmr::memory_resource* allocator = std::pmr::get_default_resource();
-
-  void* file_data = allocator->allocate(read);
+  AllocatedBuffer file_data{read};
   std::memcpy(file_data, file, read);
   SDL_free(file);
   if (bytes_read)
@@ -207,16 +204,17 @@ main()
   glDebugMessageCallback(debug_callback, 0);
 #endif
 
-  void* memory_buffer = new u8[gigabytes(2)];
+  void* memory_buffer{new u8[gigabytes(2)]};
   std::pmr::monotonic_buffer_resource arena{memory_buffer, gigabytes(2),
                                             std::pmr::null_memory_resource()};
   std::pmr::unsynchronized_pool_resource pool{&arena};
   std::pmr::set_default_resource(&pool);
 
-  game::State state = {};
+  game::State state{};
 
-  std::pmr::vector<game::InputEvent> input_events{100};
-  game::Input input = {input_events};
+  std::pmr::vector<game::InputEvent> input_events{};
+  input_events.reserve(100);
+  game::Input input{input_events};
 
   game::setup(state);
 
@@ -232,6 +230,9 @@ main()
 
   while (running)
   {
+    if (!SDL_GL_MakeCurrent(window, glContext)) {
+      printf("Failed to make GL context current: %s\n", SDL_GetError());
+    }
     u64 ms;
     {
       ms = SDL_GetTicks() - starter_ms;

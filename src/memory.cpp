@@ -1,131 +1,44 @@
 #include "memory.h"
 
-static usize
-calc_padding(void* ptr, usize alignment)
+AllocatedBuffer::AllocatedBuffer(usize size) : size{size}
 {
-  ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-
-  usize modulo = reinterpret_cast<usize>(ptr) & (alignment - 1);
-
-  if (modulo != 0)
-  {
-    return alignment - modulo;
-  }
-  else
-  {
-    return 0;
-  }
+  std::pmr::memory_resource* allocator = std::pmr::get_default_resource();
+  data = allocator->allocate(size);
 }
 
-void*
-Arena::alloc(usize size, Error* err, usize alignment)
+AllocatedBuffer::~AllocatedBuffer()
 {
-  ASSERT(buffer != 0, "arena has to be initialized");
-  ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-  ASSERT(!allocation_active, "cannot allocate memory when an allocation is active");
-
-  alignment = std::min(alignment, static_cast<usize>(128));
-
-  u8* curr_addr = (u8*) buffer + offset;
-  usize padding = calc_padding(curr_addr, alignment);
-  ERROR_ASSERT(offset + padding + size <= buffer_size, *err, Error::OutOfMemory, 0);
-
-  offset += padding;
-
-  void* next_addr = curr_addr + padding;
-  offset += size;
-
-  mem_zero(next_addr, size);
-
-  *err = Error::Success;
-  return next_addr;
+  std::pmr::memory_resource* allocator = std::pmr::get_default_resource();
+  allocator->deallocate(data, size);
 }
 
-void
-Arena::free_all()
+AllocatedBuffer::AllocatedBuffer(AllocatedBuffer&& other) : data{other.data}, size{other.size}
 {
-#ifdef GAME_DEBUG
-  mem_zero(buffer, buffer_size);
-#endif
-  offset = 0;
+  other.data = nullptr;
+  other.size = 0;
 }
 
-void*
-Arena::alloc_start(usize alignment)
+AllocatedBuffer& 
+AllocatedBuffer::operator=(AllocatedBuffer&& other)
 {
-  ASSERT(buffer != 0, "arena has to be initialized");
-  ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-  ASSERT(!allocation_active, "cannot start a new allocation when an old one is stil active");
-
-  alignment = std::min(alignment, static_cast<usize>(128));
-
-  u8* curr_addr = (u8*) buffer + offset;
-  usize padding = calc_padding(curr_addr, alignment);
-
-  offset += padding;
-
-  void* next_addr = curr_addr + padding;
-
-#ifdef GAME_DEBUG
-  allocation_active = true;
-#endif
-  return next_addr;
+  data = other.data;
+  other.data = nullptr;
+  size = other.size;
+  other.size = 0;
+  return *this;
 }
 
-void
-Arena::alloc_finish(usize size, Error* err)
+AllocatedBuffer::operator void*()
 {
-  ASSERT(allocation_active, "cannot finish an allocation when it is active");
-#ifdef GAME_DEBUG
-  allocation_active = false;
-#endif
-  ERROR_ASSERT(offset + size <= buffer_size, *err, Error::OutOfMemory,);
-
-  *err = Error::Success;
-  offset += size;
+  return data;
 }
 
-static void
-mem_zero(void* dest, usize bytes)
+AllocatedBuffer::operator char*()
 {
-  u8* d = (u8*) dest;
-  while (bytes--)
-  {
-    *d++ = 0;
-  }
+  return static_cast<char*>(data);
 }
 
-static void
-mem_set(void* dest, usize bytes, u8 val)
+AllocatedBuffer::operator u8*()
 {
-  u8* d = (u8*) dest;
-  while (bytes--)
-  {
-    *d++ = val;
-  }
+  return static_cast<u8*>(data);
 }
-
-static void
-mem_copy(void* dest, const void* src, usize bytes)
-{
-  u8* d = (u8*) dest;
-  const u8* s = (const u8*) src;
-  while (bytes--)
-  {
-    *d++ = *s++;
-  }
-}
-
-static bool
-mem_compare(const void* v1, const void* v2, usize bytes)
-{
-  for (usize i = 0; i < bytes; ++i)
-  {
-    if (((const u8*)v1)[i] != ((const u8*)v2)[i])
-    {
-      return false;
-    }
-  }
-  return true;
-}
-

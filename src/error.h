@@ -46,7 +46,7 @@ if (!(expr)) \
 } \
 } while (0)
 #else
-#  define ERROR_ASSERT(expr, err_var, err_val, ret_val, line, file) do { \
+#  define ERROR_ASSERT(expr, err_var, err_val, ret_val) do { \
 if (!(expr)) \
 { \
   (err_var) = (err_val); \

@@ -486,10 +486,6 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, std::pmr::vector<u8> data,
   for (u32 line_idx = 0; line_idx < img.height; ++line_idx)
   {
     u32 filter_method_int = data[data_idx++];
-    if (filter_method_int >= 5)
-    {
-      std::cout << "test\n" << line_idx << '\n';
-    }
     ERROR_ASSERT(filter_method_int < 5, *err, Error::PngInvalidFilter,);
     auto filter_method = static_cast<ImagePngFilterMethod>(filter_method_int);
     if (line_idx == 0) filter_method = first_line_filter_method[(usize) filter_method];

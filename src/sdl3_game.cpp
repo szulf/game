@@ -5,22 +5,24 @@
 
 #include "sdl3_game.h"
 
+namespace platform
+{
+
 // TODO(szulf): set better starting dimensions
-PlatformWindowDimensions dimensions = {640, 480};
+WindowDimensions g_dimensions = {640, 480};
 
 static void*
-platform_read_entire_file(const char* path, Arena* arena, Error* err, usize* bytes_read)
+read_entire_file(const char* path, Error* err, usize* bytes_read)
 {
-  Error error = Error::Success;
-
   usize read;
   void* file = SDL_LoadFile(path, &read);
   ERROR_ASSERT(file != nullptr, *err, Error::FileReading, nullptr);
 
-  void* file_data = arena->alloc(read, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, 0);
+  // TODO(szulf): look at todo.md and change this
+  std::pmr::memory_resource* allocator = std::pmr::get_default_resource();
 
-  mem_copy(file_data, file, read);
+  void* file_data = allocator->allocate(read);
+  std::memcpy(file_data, file, read);
   SDL_free(file);
   if (bytes_read)
   {
@@ -32,21 +34,23 @@ platform_read_entire_file(const char* path, Arena* arena, Error* err, usize* byt
 }
 
 static void
-platform_print(const char* msg)
+print(const char* msg)
 {
   SDL_Log("%s", msg);
 }
 
 static u64
-platform_get_ms()
+get_ms()
 {
   return SDL_GetTicks();
 }
 
-static PlatformWindowDimensions
-platform_get_window_dimensions()
+static WindowDimensions
+get_window_dimensions()
 {
-  return dimensions;
+  return g_dimensions;
+}
+
 }
 
 // TODO(szulf): implement these myself later and move to math.c
@@ -154,8 +158,9 @@ main()
 #endif
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-  SDL_Window* window = SDL_CreateWindow("game", dimensions.width, dimensions.height,
-                                  SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+  SDL_Window* window = SDL_CreateWindow("game",
+                                        platform::g_dimensions.width, platform::g_dimensions.height,
+                                        SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
   if (!window)
   {
     SDL_Log("Error creating window: %s\n", SDL_GetError());
@@ -194,7 +199,7 @@ main()
     return 1;
   }
 
-  glViewport(0, 0, dimensions.width, dimensions.height);
+  glViewport(0, 0, platform::g_dimensions.width, platform::g_dimensions.height);
 
 #ifdef GAME_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
@@ -202,28 +207,21 @@ main()
   glDebugMessageCallback(debug_callback, 0);
 #endif
 
-  Arena perm_arena = {};
-  perm_arena.buffer_size = MEGABYTES(100);
-  perm_arena.buffer = SDL_malloc(perm_arena.buffer_size);
+  void* memory_buffer = new u8[gigabytes(2)];
+  std::pmr::monotonic_buffer_resource arena{memory_buffer, gigabytes(2),
+                                            std::pmr::null_memory_resource()};
+  std::pmr::unsynchronized_pool_resource pool{&arena};
+  std::pmr::set_default_resource(&pool);
 
-  Arena temp_arena = {};
-  temp_arena.buffer_size = MEGABYTES(100);
-  temp_arena.buffer = SDL_malloc(temp_arena.buffer_size);
+  game::State state = {};
 
-  State state = {};
+  std::pmr::vector<game::InputEvent> input_events{100};
+  game::Input input = {input_events};
 
-  Array<InputEvent> input_events;
-  {
-    Error error = Error::Success;
-    input_events = Array<InputEvent>::make(100, &perm_arena, &error);
-    ASSERT(error == Error::Success, "couldnt init inputs array");
-  }
-  Input input = {input_events};
-
-  game_setup(&perm_arena, &temp_arena, &state);
+  game::setup(state);
 
   SDL_Event e;
-  b32 running = true;
+  bool running = true;
 
   i8  update_tick = 0;
   i8  last_tick   = 0;
@@ -261,14 +259,14 @@ main()
           } break;
           case SDL_EVENT_WINDOW_RESIZED:
           {
-            dimensions = {e.window.data1, e.window.data2};
-            glViewport(0, 0, dimensions.width, dimensions.height);
+            platform::g_dimensions = {e.window.data1, e.window.data2};
+            glViewport(0, 0, platform::g_dimensions.width, platform::g_dimensions.height);
           } break;
           case SDL_EVENT_MOUSE_BUTTON_DOWN:
           {
             if (e.button.button == 1)
             {
-              input.input_events.push({Key::LMB});
+              input.input_events.push_back({game::Key::LMB});
             }
           } break;
           case SDL_EVENT_KEY_DOWN:
@@ -278,7 +276,7 @@ main()
             {
               case SDLK_SPACE:
               {
-                input.input_events.push({Key::Space});
+                input.input_events.push_back({game::Key::Space});
               } break;
             }
           } break;
@@ -297,13 +295,13 @@ main()
       {
         // NOTE(szulf): to really get the current tick you have to do tick % 20
 
-        SoundBuffer sound_buffer = {};
+        game::SoundBuffer sound_buffer = {};
         sound_buffer.memory = audio_buffer.memory;
         sound_buffer.size = audio_buffer.size;
         sound_buffer.sample_count = audio_buffer.sample_count;
         sound_buffer.samples_per_second = (u32) audio_buffer.spec.freq;
 
-        game_get_sound(&sound_buffer);
+        game::get_sound(&sound_buffer);
         if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory, (i32) sound_buffer.size))
         {
           SDL_Log("Error putting audio stream data: %s\n", SDL_GetError());
@@ -313,12 +311,12 @@ main()
 
       for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
       {
-        game_update(&state, &input);
+        game::update(state, input);
       }
     }
 
     {
-      game_render(&state);
+      game::render(state);
 
       SDL_GL_SwapWindow(window);
     }

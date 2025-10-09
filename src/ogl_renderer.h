@@ -5,7 +5,8 @@ struct Texture
 {
   u32 id;
 
-  static Texture make(Image* img);
+  Texture() {}
+  Texture(const image::Image& img);
 };
 
 struct Material
@@ -13,16 +14,22 @@ struct Material
   Texture texture;
 };
 
+static std::pmr::vector<Material> g_materials{};
+
 struct Mesh
 {
-  Array<Vertex> vertices;
-  Array<u32> indices;
-  Material material;
+  std::pmr::vector<Vertex> vertices{};
+  std::pmr::vector<u32> indices{};
+  Material material{};
 
-  u32 vao;
+  u32 vao{};
 
-  static Mesh make(Array<Vertex>* vertices, Array<u32>* indices, Material* material);
-  static Mesh from_obj(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err);
+  Mesh() {}
+  // TODO(szulf): these vector should probably get moved and not copied
+  Mesh(const std::pmr::vector<Vertex>& vertices, const std::pmr::vector<u32>& indices,
+       const Material& material);
+
+  static Mesh from_obj(const char* path, Error* err);
 
   // TODO(szulf): probably switch to some sort of a queue later on
   void draw(Shader shader) const;

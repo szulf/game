@@ -3,7 +3,7 @@
 mkdir -p build
 
 clang++ \
-    -std=c++11 -g3 -O0 \
+    -std=c++20 -g3 -O0 \
     -Wall -Wextra -Wconversion -Werror \
     -Wno-unused-function -Wvla \
     -fno-builtin-sin -fno-builtin-cos -fno-builtin-sqrt -fno-builtin-mod -fno-builtin-acos -fno-builtin-tan -fno-builtin-fmax -fno-builtin-fmin \

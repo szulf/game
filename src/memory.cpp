@@ -1,11 +1,11 @@
 #include "memory.h"
 
-static ptrsize
-calc_padding(void* ptr, ptrsize alignment)
+static usize
+calc_padding(void* ptr, usize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
 
-  ptrsize modulo = (ptrsize) ptr & (alignment - 1);
+  usize modulo = reinterpret_cast<usize>(ptr) & (alignment - 1);
 
   if (modulo != 0)
   {
@@ -18,16 +18,16 @@ calc_padding(void* ptr, ptrsize alignment)
 }
 
 void*
-Arena::alloc(usize size, Error* err, ptrsize alignment)
+Arena::alloc(usize size, Error* err, usize alignment)
 {
   ASSERT(buffer != 0, "arena has to be initialized");
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
   ASSERT(!allocation_active, "cannot allocate memory when an allocation is active");
 
-  alignment = umin(alignment, 128u);
+  alignment = std::min(alignment, static_cast<usize>(128));
 
   u8* curr_addr = (u8*) buffer + offset;
-  ptrsize padding = calc_padding(curr_addr, alignment);
+  usize padding = calc_padding(curr_addr, alignment);
   ERROR_ASSERT(offset + padding + size <= buffer_size, *err, Error::OutOfMemory, 0);
 
   offset += padding;
@@ -51,16 +51,16 @@ Arena::free_all()
 }
 
 void*
-Arena::alloc_start(ptrsize alignment)
+Arena::alloc_start(usize alignment)
 {
   ASSERT(buffer != 0, "arena has to be initialized");
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
   ASSERT(!allocation_active, "cannot start a new allocation when an old one is stil active");
 
-  alignment = umin(alignment, 128u);
+  alignment = std::min(alignment, static_cast<usize>(128));
 
   u8* curr_addr = (u8*) buffer + offset;
-  ptrsize padding = calc_padding(curr_addr, alignment);
+  usize padding = calc_padding(curr_addr, alignment);
 
   offset += padding;
 
@@ -116,7 +116,7 @@ mem_copy(void* dest, const void* src, usize bytes)
   }
 }
 
-static b32
+static bool
 mem_compare(const void* v1, const void* v2, usize bytes)
 {
   for (usize i = 0; i < bytes; ++i)

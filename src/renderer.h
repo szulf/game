@@ -18,15 +18,11 @@ enum class Shader : u8
 
 u32 shader_map[(usize) Shader::Default + 1];
 
-static void setup_shaders(Arena* arena, Error* err);
+static void setup_shaders(Error* err);
 
 struct Texture;
 
 struct Material;
-
-static Array<Material> g_materials;
-
-inline static void setup_global_materials(Arena* perm_arena, Error* err);
 
 struct Mesh;
 
@@ -35,11 +31,14 @@ struct Vertex
   Vec3 pos;
   Vec3 normal;
   Vec2 uv;
+
+  bool operator==(const Vertex& other) const;
+  bool operator!=(const Vertex& other) const;
 };
 
 struct Model
 {
-  Array<Mesh> meshes;
+  std::pmr::vector<Mesh> meshes;
   Mat4 model;
 
   // TODO(szulf): probably switch to some sort of a queue later on
@@ -55,7 +54,7 @@ struct Drawable
 
 struct Scene
 {
-  Array<Drawable> drawables;
+  std::pmr::vector<Drawable> drawables;
   Mat4 view;
   Mat4 proj;
 

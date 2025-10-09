@@ -1,9 +1,13 @@
 #include "renderer.h"
 
-inline static void
-setup_global_materials(Arena* perm_arena, Error* err)
+bool
+Vertex::operator==(const Vertex& other) const
 {
-  Error error = Error::Success;
-  g_materials = Array<Material>::make(100, perm_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error,);
+  return pos == other.pos && normal == other.normal && uv == other.uv;
+}
+
+bool
+Vertex::operator!=(const Vertex& other) const
+{
+  return !(*this == other);
 }

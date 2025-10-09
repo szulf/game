@@ -1,41 +1,41 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdint>
+#include <cstddef>
 
-typedef uint8_t  u8;
-typedef int8_t   i8;
-typedef uint16_t u16;
-typedef int16_t  i16;
-typedef uint32_t u32;
-typedef int32_t  i32;
-typedef uint64_t u64;
-typedef int64_t  i64;
+using u8 = std::uint8_t;
+using i8 = std::int8_t;
+using u16 = std::uint16_t;
+using i16 = std::int16_t;
+using u32 = std::uint32_t;
+using i32 = std::int32_t;
+using u64 = std::uint64_t;
+using i64 = std::int64_t;
 
-typedef u32       b32;
-typedef size_t    usize;
-typedef uintptr_t ptrsize;
+using usize = std::size_t;
+using ptrsize = std::ptrdiff_t;
 
-typedef float f32;
-typedef double f64;
+using f32 = float;
+using f64 = double;
 
-#define PI32 3.141592653f
+static constexpr f32 PI32 = 3.141592653f;
 
-#define I16_MAX  32767
-#define I16_MIN -32768
+static constexpr i16 I16_MAX = 32767;
+static constexpr i16 I16_MIN = -32768;
 
-#define FPS  60
-#define MSPF (1000 / FPS)
+static constexpr i32 FPS = 60;
+static constexpr i32 MSPF = 1000 / FPS;
 
-#define TPS  20
-#define MSPT (1000 / TPS)
+static constexpr i32 TPS = 20;
+static constexpr i32 MSPT = 1000 / 20;
 
-#define KILOBYTES(n) ((n) * 1024)
-#define MEGABYTES(n) (KILOBYTES(n) * 1024)
-#define GIGBAYTES(n) (MEGABYTES(n) * 1024)
+consteval u64 kilobytes(u64 n);
+consteval u64 megabytes(u64 n);
+consteval u64 gigabytes(u64 n);
 
-#define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+// #define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define LOG(msg, ...)
 
 #ifdef GAME_DEBUG
 #  define ASSERT(expr, msg, ...) do \
@@ -51,33 +51,64 @@ typedef double f64;
 #endif
 
 #define TODO(msg) ASSERT(false, "[TODO] " msg)
-#define UNUSED(var) (void) var;
+#define UNUSED(var) (void) var
 
-// TODO(szulf): need to implement this
-static void log_(const char* file, usize line, const char* func, const char* fmt, ...);
+template <typename F>
+struct privDefer
+{
+  F f;
+  privDefer(F f): f{f} {}
+  ~privDefer() { f(); }
+};
+
+template <typename F>
+privDefer<F> defer_func(F f)
+{
+  return privDefer<F>(f);
+}
+
+#define DEFER_1(x, y) x##y
+#define DEFER_2(x, y) DEFER_1(x, y)
+#define DEFER_3(x) DEFER_2(x, __COUNTER__)
+#define defer(code) auto DEFER_3(_defer_) = defer_func([&](){code;})
+
+#include <iostream>
+#include <charconv>
+#include <cstring>
+#include <algorithm>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <memory_resource>
+#include <sstream>
 
 #include "math.cpp"
 #include "error.cpp"
-#include "memory.cpp"
-#include "array.cpp"
-#include "string.cpp"
+// #include "memory.cpp"
 
-static void* platform_read_entire_file(const char* path, Arena* arena, Error* err,
-                                       usize* bytes_read = nullptr);
+namespace platform
+{
 
-static void platform_print(const char* msg);
-static u64 platform_get_ms();
+static void* read_entire_file(const char* path, Error* err, usize* bytes_read = nullptr);
 
-struct PlatformWindowDimensions
+static void print(const char* msg);
+static u64 get_ms();
+
+struct WindowDimensions
 {
   i32 width;
   i32 height;
 };
 
-static PlatformWindowDimensions platform_get_window_dimensions();
+static WindowDimensions get_window_dimensions();
+
+}
 
 #include "image.cpp"
 #include "renderer.cpp"
+
+namespace game
+{
 
 struct SoundBuffer
 {
@@ -110,22 +141,24 @@ static void setup_default_keybinds();
 
 struct Input
 {
-  Array<InputEvent> input_events;
+  std::pmr::vector<InputEvent> input_events;
 };
 
 struct State
 {
   usize current_scene_idx;
-  Array<Scene> scenes;
+  std::pmr::vector<Scene> scenes;
 };
 
-static void game_setup(Arena* perm_arena, Arena* temp_arena, State* state);
+static void setup(State& state);
 
 // TODO(szulf): need to interpolate the positions so the updates are not so sudden
-static void game_update(State* state, Input* input);
+static void update(State& state, Input& input);
 
-static void game_render(State* state);
+static void render(State& state);
 
-static void game_get_sound(SoundBuffer* sound_buffer);
+static void get_sound(SoundBuffer& sound_buffer);
+
+}
 
 #endif

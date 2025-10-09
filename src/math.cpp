@@ -1,42 +1,6 @@
 #include "math.h"
 
-inline u64
-umin(u64 a, u64 b)
-{
-  return a < b ? a : b;
-}
-
-inline i64
-imin(i64 a, i64 b)
-{
-  return a < b ? a : b;
-}
-
-inline f32
-fmin(f32 a, f32 b)
-{
-  return a < b ? a : b;
-}
-
-inline u64
-umax(u64 a, u64 b)
-{
-  return a > b ? a : b;
-}
-
-inline i64
-imax(i64 a, i64 b)
-{
-  return a > b ? a : b;
-}
-
-inline f32
-fmax(f32 a, f32 b)
-{
-  return a > b ? a : b;
-}
-
-inline b32
+inline bool
 is_power_of_two(usize val)
 {
   return (val & (val - 1)) == 0;
@@ -48,16 +12,21 @@ radians(f32 deg)
   return deg * 0.01745329251994329576923690768489f;
 }
 
-inline i64
-iabs(i64 v)
+bool
+Vec2::operator==(const Vec2& other) const
 {
-  return v >= 0 ? v : -v;
+  return x == other.x && y == other.y;
+}
+
+bool Vec2::operator!=(const Vec2& other) const
+{
+  return !(*this == other);
 }
 
 f32
 Vec3::length() const
 {
-  return fsqrt((x * x) + (y * y) + (z * z));
+  return std::sqrt((x * x) + (y * y) + (z * z));
 }
 
 void
@@ -79,6 +48,18 @@ Vec3
 Vec3::operator-(const Vec3& other) const
 {
   return {x - other.x, y - other.y, z - other.z};
+}
+
+bool
+Vec3::operator==(const Vec3& other) const
+{
+  return x == other.x && y == other.y && z == other.z;
+}
+
+bool
+Vec3::operator!=(const Vec3& other) const
+{
+  return !(*this == other);
 }
 
 Vec3
@@ -121,6 +102,18 @@ Vec4::operator-(const Vec4& other) const
   return {x - other.x, y - other.y, z - other.z, w - other.w};
 }
 
+bool
+Vec4::operator==(const Vec4& other) const
+{
+  return x == other.x && y == other.y && z == other.z && w == other.w;
+}
+
+bool
+Vec4::operator!=(const Vec4& other) const
+{
+  return !(*this == other);
+}
+
 Vec4
 Vec4::multiply(f32 scalar) const
 {
@@ -133,24 +126,21 @@ Vec4::divide(f32 scalar) const
   return {x / scalar, y / scalar, z / scalar, w / scalar};
 }
 
-Mat4
-Mat4::make(f32 val)
+Mat4::Mat4(f32 val)
 {
-  Mat4 mat = {};
-  mat.data[0] = val;
-  mat.data[5] = val;
-  mat.data[10] = val;
-  mat.data[15] = val;
-  return mat;
+  data[0] = val;
+  data[5] = val;
+  data[10] = val;
+  data[15] = val;
 }
 
 Mat4
 Mat4::perspective(f32 fov, f32 aspect, f32 near, f32 far)
 {
-  f32 right = near * ftan(fov / 2.0f);
+  f32 right = near * std::tan(fov / 2.0f);
   f32 top = right / aspect;
 
-  Mat4 mat = {};
+  Mat4 mat{};
   mat.data[0] = near / right;
   mat.data[5] = near / top;
   mat.data[10] = -(far + near) / (far - near);
@@ -163,8 +153,8 @@ Mat4::perspective(f32 fov, f32 aspect, f32 near, f32 far)
 void
 Mat4::rotate(f32 rad, const Vec3* axis)
 {
-  f32 s = fsin(rad);
-  f32 c = fcos(rad);
+  f32 s = std::sin(rad);
+  f32 c = std::cos(rad);
   f32 t = 1.0f - c;
   Vec3 u = *axis;
   u.normalize();

@@ -15,38 +15,31 @@ clear_screen()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-#include <stdio.h>
-
-Mesh
-Mesh::make(Array<Vertex>* vertices, Array<u32>* indices, Material* material)
+Mesh::Mesh(const std::pmr::vector<Vertex>& vertices, const std::pmr::vector<u32>& indices,
+           const Material& material) : vertices{vertices}, indices{indices}, material{material}
 {
-  Mesh mesh;
-  mesh.vertices = *vertices;
-  mesh.indices = *indices;
-  mesh.material = *material;
-
-  glGenVertexArrays(1, &mesh.vao);
-  glBindVertexArray(mesh.vao);
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
 
   u32 vertex_vbo;
   u32 vertex_ebo;
   glGenBuffers(1, &vertex_vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vertex_vbo);
-  glBufferData(GL_ARRAY_BUFFER, (GLsizei) (mesh.vertices.len * sizeof(Vertex)),
-               mesh.vertices.items, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizei>(vertices.size() * sizeof(Vertex)),
+               vertices.data(), GL_STATIC_DRAW);
   glGenBuffers(1, &vertex_ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizei) (mesh.indices.len * sizeof(u32)),
-               mesh.indices.items, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizei>(indices.size() * sizeof(u32)),
+               indices.data(), GL_STATIC_DRAW);
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) 0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(0));
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) (3 * sizeof(f32)));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                        reinterpret_cast<void*>(3 * sizeof(f32)));
   glEnableVertexAttribArray(1);
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) (6 * sizeof(f32)));
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+                        reinterpret_cast<void*>(6 * sizeof(f32)));
   glEnableVertexAttribArray(2);
-
-  return mesh;
 }
 
 void
@@ -56,9 +49,9 @@ Mesh::draw(Shader shader) const
   // should also check how many textures should be made active
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, material.texture.id);
-  glUniform1i(glGetUniformLocation(shader_map[(usize) shader], "sampler"), 0);
+  glUniform1i(glGetUniformLocation(shader_map[static_cast<usize>(shader)], "sampler"), 0);
   glBindVertexArray(vao);
-  glDrawElements(GL_TRIANGLES, (GLsizei) indices.len, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
 }
 
 #define OBJ_VERTEX_HEADER "v "
@@ -73,51 +66,58 @@ Mesh::draw(Shader shader) const
 #define OBJ_MATERIAL_FILE_HEADER_SIZE 7
 
 static Vertex
-obj_vertex_from_index_part(String* part, Array<Vec3>* vertices, Array<Vec3>* normals,
-                           Array<Vec2>* uvs, Arena* temp_arena, Error* err)
+obj_vertex_from_index_part(const std::pmr::string& part, const std::pmr::vector<Vec3>& vertices,
+                           const std::pmr::vector<Vec3>& normals, const std::pmr::vector<Vec2>& uvs,
+                           Error* err)
 {
-  Error error = Error::Success;
-  Vertex vertex = {};
+  Vertex vertex{};
+  std::size_t pos{0};
 
-  Array<String> index = part->split('/', temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, vertex);
-  ERROR_ASSERT(index.len == 3, *err, Error::ObjInvalidData, vertex);
+  std::size_t slash_idx{part.find('/', pos)};
+  ERROR_ASSERT(slash_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+  std::size_t vertex_idx{};
+  auto error{std::from_chars(part.data() + pos, part.data() + slash_idx, vertex_idx).ec};
+  ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+  vertex.pos = vertices[vertex_idx - 1];
+  pos = slash_idx + 1;
 
-  u32 vertex_idx = index[0].parse<u32>(&error);
-  ERROR_ASSERT(error == Error::Success, *err, error, vertex);
-  vertex.pos = (*vertices)[vertex_idx - 1];
+  slash_idx = part.find('/', pos);
+  ERROR_ASSERT(slash_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+  std::size_t uv_idx{};
+  error = std::from_chars(part.data() + pos, part.data() + slash_idx, uv_idx).ec;
+  ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+  vertex.uv = uvs[uv_idx - 1];
+  pos = slash_idx + 1;
 
-  u32 uv_idx = index[1].parse<u32>(&error);
-  ERROR_ASSERT(error == Error::Success, *err, error, vertex);
-  vertex.uv = (*uvs)[uv_idx - 1];
-
-  u32 normal_idx = index[2].parse<u32>(&error);
-  ERROR_ASSERT(error == Error::Success, *err, error, vertex);
-  vertex.normal = (*normals)[normal_idx - 1];
+  std::size_t normal_idx{};
+  error = std::from_chars(part.data() + pos, part.data() + slash_idx, normal_idx).ec;
+  ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+  vertex.normal = normals[normal_idx - 1];
 
   return vertex;
 }
 
 static usize
-obj_vertex_get_idx(Array<Vertex>* vertices, Vertex* vertex)
+obj_vertex_get_idx(const std::pmr::vector<Vertex>& vertices, const Vertex& vertex)
 {
-  for (usize i = 0; i < vertices->len; ++i)
+  for (usize i = 0; i < vertices.size(); ++i)
   {
-    if (mem_compare(&(*vertices)[i], vertex, sizeof(Vertex))) return i;
+    if (vertices[i] == vertex) return i;
   }
   return (usize) -1;
 }
 
 static void
-obj_vertex_push_if_missing_and_push_idx(Array<Vertex>* vertices, Array<u32>* indices, Vertex* vertex)
+obj_vertex_push_if_missing_and_push_idx(std::pmr::vector<Vertex>& vertices,
+                                        std::pmr::vector<u32>& indices, const Vertex& vertex)
 {
   usize vertex_idx = obj_vertex_get_idx(vertices, vertex);
-  if (vertex_idx == (usize) -1)
+  if (vertex_idx == static_cast<usize>(-1))
   {
-    vertices->push(*vertex);
-    vertex_idx = vertices->len - 1;
+    vertices.push_back(vertex);
+    vertex_idx = vertices.size() - 1;
   }
-  indices->push((u32) vertex_idx);
+  indices.push_back(static_cast<u32>(vertex_idx));
 }
 
 #define OBJ_MTL_NEW_HEADER "newmtl "
@@ -126,171 +126,210 @@ obj_vertex_push_if_missing_and_push_idx(Array<Vertex>* vertices, Array<u32>* ind
 #define OBJ_MTL_TEXTURE_FILE_HEADER_SIZE 7
 
 static void
-obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length,
-                        Arena* temp_arena, Arena* perm_arena, Error* err)
+obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length, Error* err)
 {
-  Error error = Error::Success;
-  String mtl_file = String::make_cstr_len(mtl_file_cstr, mtl_file_cstr_length, temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error,);
-  Array<String> lines = mtl_file.split('\n', temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error,);
+  Error error{Error::Success};
+  // TODO(szulf): does this call the right constructor?
+  std::pmr::string mtl_file{mtl_file_cstr, mtl_file_cstr_length};
+  std::stringstream mtl_stream{};
+  mtl_stream.str(mtl_file);
+  std::pmr::string line{};
+  bool parsing_flag{false};
+  Material mat{};
 
-  b32 parsing_flag = false;
-  Material mat = {};
-  for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
+  while (std::getline(mtl_stream, line))
   {
-    if (mem_compare(lines[line_idx].data, OBJ_MTL_NEW_HEADER, OBJ_MTL_NEW_HEADER_SIZE))
+    if (line.starts_with(OBJ_MTL_NEW_HEADER))
     {
       parsing_flag = true;
     }
-    else if (mem_compare(lines[line_idx].data,
-                         OBJ_MTL_TEXTURE_FILE_HEADER, OBJ_MTL_TEXTURE_FILE_HEADER_SIZE))
+    else if (line.starts_with(OBJ_MTL_TEXTURE_FILE_HEADER))
     {
       if (!parsing_flag) continue;
 
-      Array<String> parts = lines[line_idx].split(' ', temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error,);
-      String texture_file_path = parts[1].prepend("assets/", temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error,);
+      usize space_idx{line.find(' ')};
+      std::pmr::string texture_file_path{line.substr(space_idx + 1)};
+      texture_file_path.insert(0, "assets/");
       // TODO(szulf): probably need some asset manager to not lose this image variable
       // (data is allocated in the arena anyway)
-      Image img = image_decode_png(texture_file_path.data, temp_arena, perm_arena, &error);
+      image::Image img = image::decode_png(texture_file_path.data(), &error);
       ERROR_ASSERT(error == Error::Success, *err, error,);
-      mat.texture = Texture::make(&img);
-      g_materials.push(mat);
+      mat.texture = Texture{img};
+      g_materials.push_back(mat);
     }
   }
 }
 
 // TODO(szulf): shouldnt this return a model and not a mesh?
 Mesh
-Mesh::from_obj(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err)
+Mesh::from_obj(const char* path, Error* err)
 {
   Error error = Error::Success;
 
   usize data_len;
-  const char* data = (const char*) platform_read_entire_file(path, temp_arena, &error, &data_len);
+  const char* data = (const char*) platform::read_entire_file(path, &error, &data_len);
   ERROR_ASSERT(error == Error::Success, *err, error, {});
-  String file = String::make_cstr_len(data, data_len, temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
-  Array<String> lines = file.split('\n', temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
+  std::pmr::string file{data, data_len};
 
-  usize vert_count = file.count_substrings(OBJ_VERTEX_HEADER);
-  usize normal_count = file.count_substrings(OBJ_NORMAL_HEADER);
-  usize uv_count = file.count_substrings(OBJ_UV_HEADER);
-  usize index_count = file.count_substrings(OBJ_INDEX_HEADER) * 3;
-  UNUSED(index_count);
-
-  Array<Vec3> positions = Array<Vec3>::make(vert_count, temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-  Array<Vec3> normals = Array<Vec3>::make(normal_count, temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-  Array<Vec2> uvs = Array<Vec2>::make(uv_count, temp_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-  // TODO(szulf): change this size to something else than a 10000
-  Array<Vertex> vertices = Array<Vertex>::make(10000, perm_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
-  Array<u32> indices = Array<u32>::make(10000, perm_arena, &error);
-  ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-  for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
+  std::stringstream file_stream{};
+  file_stream.str(file);
+  std::pmr::string line{};
+  usize pos_count{};
+  usize normal_count{};
+  usize uv_count{};
+  usize index_count{};
+  while (std::getline(file_stream, line))
   {
-    if (mem_compare(lines[line_idx].data,
-                    OBJ_MATERIAL_FILE_HEADER, OBJ_MATERIAL_FILE_HEADER_SIZE))
+    if (line.starts_with(OBJ_VERTEX_HEADER)) ++pos_count;
+    else if (line.starts_with(OBJ_NORMAL_HEADER)) ++normal_count;
+    else if (line.starts_with(OBJ_UV_HEADER)) ++uv_count;
+    else if (line.starts_with(OBJ_INDEX_HEADER)) ++index_count;
+  }
+  index_count *= 3;
+
+  std::pmr::vector<Vec3> positions{};
+  positions.reserve(pos_count);
+  std::pmr::vector<Vec3> normals{};
+  normals.reserve(normal_count);
+  std::pmr::vector<Vec2> uvs{};
+  uvs.reserve(uv_count);
+  // TODO(szulf): is this actually better to set to index_count or am i stupid
+  std::pmr::vector<Vertex> vertices{};
+  vertices.reserve(index_count);
+  std::pmr::vector<u32> indices{};
+  indices.reserve(index_count);
+
+  file_stream.clear();
+  file_stream.str(file);
+  // TODO(szulf): pull things out?
+  while (std::getline(file_stream, line))
+  {
+    if (line.starts_with(OBJ_INDEX_HEADER))
     {
-      Array<String> splits = lines[line_idx].split(' ', temp_arena, &error);
+      std::size_t pos{0};
+      std::size_t space_idx{line.find(' ', pos)};
+      pos = space_idx + 1;
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      std::pmr::string part{line.substr(pos, space_idx - pos)};
+      auto vertex{obj_vertex_from_index_part(part, positions, normals, uvs, &error)};
       ERROR_ASSERT(error == Error::Success, *err, error, {});
-      String material_file_path = splits[1].prepend("assets/", temp_arena, &error);
+      pos = space_idx + 1;
+      obj_vertex_push_if_missing_and_push_idx(vertices, indices, vertex);
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      part = line.substr(pos, space_idx - pos);
+      vertex = obj_vertex_from_index_part(part, positions, normals, uvs, &error);
       ERROR_ASSERT(error == Error::Success, *err, error, {});
+      pos = space_idx + 1;
+      obj_vertex_push_if_missing_and_push_idx(vertices, indices, vertex);
+
+      part = line.substr(pos, space_idx - pos);
+      vertex = obj_vertex_from_index_part(part, positions, normals, uvs, &error);
+      ERROR_ASSERT(error == Error::Success, *err, error, {});
+      obj_vertex_push_if_missing_and_push_idx(vertices, indices, vertex);
+    }
+    else if (line.starts_with(OBJ_VERTEX_HEADER))
+    {
+      std::size_t pos{0};
+      std::size_t space_idx{line.find(' ', pos)};
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      f32 v1{};
+      auto error{std::from_chars(line.data() + pos, line.data() + space_idx, v1).ec};
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      f32 v2{};
+      error = std::from_chars(line.data() + pos, line.data() + space_idx, v2).ec;
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      f32 v3{};
+      error = std::from_chars(line.data() + pos, line.data() + line.size(), v3).ec;
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+
+      positions.push_back({v1, v2, v3});
+    }
+    else if (line.starts_with(OBJ_NORMAL_HEADER))
+    {
+      std::size_t pos{0};
+      std::size_t space_idx{line.find(' ', pos)};
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      f32 n1{};
+      auto error{std::from_chars(line.data() + pos, line.data() + space_idx, n1).ec};
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      f32 n2{};
+      error = std::from_chars(line.data() + pos, line.data() + space_idx, n2).ec;
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      f32 n3{};
+      error = std::from_chars(line.data() + pos, line.data() + line.size(), n3).ec;
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+
+      normals.push_back({n1, n2, n3});
+    }
+    else if (line.starts_with(OBJ_UV_HEADER))
+    {
+      std::size_t pos{0};
+      std::size_t space_idx{line.find(' ', pos)};
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      space_idx = line.find(' ', pos);
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData, {});
+      f32 u{};
+      auto error{std::from_chars(line.data() + pos, line.data() + space_idx, u).ec};
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+      pos = space_idx + 1;
+
+      f32 v{};
+      error = std::from_chars(line.data() + pos, line.data() + space_idx, v).ec;
+      ERROR_ASSERT(error == std::errc(), *err, Error::ObjInvalidData, {});
+
+      uvs.push_back({u, v});
+    }
+    else if (line.starts_with(OBJ_MATERIAL_FILE_HEADER))
+    {
+      usize space_idx{line.find(' ')};
+      std::pmr::string material_file_path{line.substr(space_idx + 1)};
+      material_file_path.insert(0, "assets/");
       usize material_file_size;
-      void* material_file = platform_read_entire_file(material_file_path.data, temp_arena, &error,
-                                                      &material_file_size);
-      obj_parse_material_file((const char*) material_file, material_file_size,
-                              temp_arena, perm_arena, &error);
-    }
-    else if (mem_compare(lines[line_idx].data, OBJ_VERTEX_HEADER, OBJ_VERTEX_HEADER_SIZE))
-    {
-      Array<String> splits = lines[line_idx].split(' ', temp_arena, &error);
+      void* material_file = platform::read_entire_file(material_file_path.data(), &error,
+                                                       &material_file_size);
       ERROR_ASSERT(error == Error::Success, *err, error, {});
-      ERROR_ASSERT(splits.len == 4, *err, Error::ObjInvalidData, {});
-
-      f32 v1 = splits[1].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      f32 v2 = splits[2].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      f32 v3 = splits[3].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-      positions.push({v1, v2, v3});
-    }
-    else if (mem_compare(lines[line_idx].data, OBJ_NORMAL_HEADER, OBJ_NORMAL_HEADER_SIZE))
-    {
-      Array<String> splits = lines[line_idx].split(' ', temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      ERROR_ASSERT(splits.len == 4, *err, Error::ObjInvalidData, {});
-
-      f32 n1 = splits[1].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      f32 n2 = splits[2].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      f32 n3 = splits[3].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-      normals.push({n1, n2, n3});
-    }
-    else if (mem_compare(lines[line_idx].data,
-                         OBJ_UV_HEADER, OBJ_UV_HEADER_SIZE))
-    {
-      Array<String> splits = lines[line_idx].split(' ', temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      ERROR_ASSERT(splits.len == 3, *err, Error::ObjInvalidData, {});
-
-      f32 u = splits[1].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      f32 v = splits[2].parse<f32>(&error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-
-      uvs.push({u, v});
-    }
-    else if (mem_compare(lines[line_idx].data, OBJ_INDEX_HEADER, OBJ_INDEX_HEADER_SIZE))
-    {
-      Array<String> parts = lines[line_idx].split(' ', temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      ERROR_ASSERT(parts.len == 4, *err, Error::ObjInvalidData, {});
-
-      Vertex vertex_1 = obj_vertex_from_index_part(&parts[1], &positions, &normals, &uvs,
-                                                   temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      obj_vertex_push_if_missing_and_push_idx(&vertices, &indices, &vertex_1);
-
-      Vertex vertex_2 = obj_vertex_from_index_part(&parts[2], &positions, &normals, &uvs,
-                                                   temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      obj_vertex_push_if_missing_and_push_idx(&vertices, &indices, &vertex_2);
-
-      Vertex vertex_3 = obj_vertex_from_index_part(&parts[3], &positions, &normals, &uvs,
-                                                   temp_arena, &error);
-      ERROR_ASSERT(error == Error::Success, *err, error, {});
-      obj_vertex_push_if_missing_and_push_idx(&vertices, &indices, &vertex_3);
+      obj_parse_material_file(static_cast<const char*>(material_file), material_file_size, &error);
     }
   }
 
-  return Mesh::make(&vertices, &indices, &g_materials[0]);
+  return Mesh(vertices, indices, g_materials[0]);
 }
 
 void
 Model::draw(Shader shader) const
 {
-  glUniformMatrix4fv(glGetUniformLocation(shader_map[(usize) shader], "model"),
+  glUniformMatrix4fv(glGetUniformLocation(shader_map[static_cast<usize>(shader)], "model"),
                      1, false, model.data);
 
-  for (usize mesh_idx = 0; mesh_idx < meshes.len; ++mesh_idx)
+  for (const auto& mesh : meshes)
   {
-    meshes[mesh_idx].draw(shader);
+    mesh.draw(shader);
   }
 }
 
@@ -303,26 +342,24 @@ Model::rotate(f32 deg, const Vec3* axis)
 void
 Scene::draw() const
 {
-  for (usize drawable_idx = 0; drawable_idx < drawables.len; ++drawable_idx)
+  for (const auto& drawable : drawables)
   {
-    const Drawable* drawable = &drawables[drawable_idx];
-
-    glUseProgram(shader_map[(usize) drawable->shader]);
-    glUniformMatrix4fv(glGetUniformLocation(shader_map[(usize) drawable->shader], "view"),
+    glUseProgram(shader_map[static_cast<usize>(drawable.shader)]);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[static_cast<usize>(drawable.shader)], "view"),
                        1, false, view.data);
-    glUniformMatrix4fv(glGetUniformLocation(shader_map[(usize) drawable->shader], "proj"),
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[static_cast<usize>(drawable.shader)], "proj"),
                        1, false, proj.data);
 
-    drawables[drawable_idx].model.draw(drawables[drawable_idx].shader);
+    drawable.model.draw(drawable.shader);
   }
 }
 
 static u32
-setup_shader(const char* path, ShaderType shader_type, Arena* arena, Error* err)
+setup_shader(const char* path, ShaderType shader_type, Error* err)
 {
   Error error = Error::Success;
-  const char* shader_src = (const char*) platform_read_entire_file(path, arena, &error);
-  ASSERT(error == Error::Success, "cannot read shader file");
+  const char* shader_src = static_cast<const char*>(platform::read_entire_file(path, &error));
+  ERROR_ASSERT(error == Error::Success, *err, error, static_cast<u32>(-1));
 
   u32 shader;
   switch (shader_type)
@@ -396,33 +433,30 @@ link_shaders(u32 vertex_shader, u32 fragment_shader, Error* err)
 }
 
 static void
-setup_shaders(Arena* arena, Error* err)
+setup_shaders(Error* err)
 {
   Error error = Error::Success;
 
   {
-    u32 v_shader = setup_shader("src/shader.vert", ShaderType::Vertex, arena, &error);
+    u32 v_shader = setup_shader("src/shader.vert", ShaderType::Vertex, &error);
     ASSERT(error == Error::Success, "couldnt setup vertex shader");
 
-    u32 f_shader = setup_shader("src/shader.frag", ShaderType::Fragment, arena, &error);
+    u32 f_shader = setup_shader("src/shader.frag", ShaderType::Fragment, &error);
     ASSERT(error == Error::Success, "couldnt setup fragment shader");
 
     u32 shader = link_shaders(v_shader, f_shader, &error);
     ASSERT(error == Error::Success, "couldnt link shader");
 
-    shader_map[(usize) Shader::Default] = shader;
+    shader_map[static_cast<usize>(Shader::Default)] = shader;
   }
 
   *err = Error::Success;
 }
 
-Texture
-Texture::make(Image* img)
+Texture::Texture(const image::Image& img)
 {
-  Texture texture = {0};
-
-  glGenTextures(1, &texture.id);
-  glBindTexture(GL_TEXTURE_2D, texture.id);
+  glGenTextures(1, &id);
+  glBindTexture(GL_TEXTURE_2D, id);
 
   // TODO(szulf): do i want to customize these
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -430,9 +464,7 @@ Texture::make(Image* img)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei) img->width, (GLsizei) img->height, 0,
-               GL_RGBA, GL_UNSIGNED_BYTE, img->data);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, static_cast<GLsizei>(img.width),
+               static_cast<GLsizei>(img.height), 0, GL_RGBA, GL_UNSIGNED_BYTE, img.data);
   glGenerateMipmap(GL_TEXTURE_2D);
-
-  return texture;
 }

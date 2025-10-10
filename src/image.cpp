@@ -27,16 +27,17 @@ enum class ImagePngColorFormat : u8
   Palette,
   GrayscaleAlpha,
   Rgba,
+  Invalid,
 };
 
 ImagePngColorFormat color_to_color_format[7] =
 {
   ImagePngColorFormat::Grayscale,
-  (ImagePngColorFormat) -1,
+  ImagePngColorFormat::Invalid,
   ImagePngColorFormat::Rgb,
   ImagePngColorFormat::Palette,
   ImagePngColorFormat::GrayscaleAlpha,
-  (ImagePngColorFormat) -1,
+  ImagePngColorFormat::Invalid,
   ImagePngColorFormat::Rgba,
 };
 
@@ -193,7 +194,8 @@ image_zlib_huffman_build(ImageHuffman& huffman, const u8* code_lengths, u32 code
   u32 sizes[17] = {};
   for (u32 i = 0; i < code_lengths_size; ++i) ++sizes[code_lengths[i]];
   sizes[0] = 0;
-  for (u32 i = 1; i < 16; ++i) ERROR_ASSERT(sizes[i] <= (1 << i), *err, Error::PngBadSizes,);
+  for (u32 i = 1; i < 16; ++i) ERROR_ASSERT(sizes[i] <= static_cast<u32>(1 << i), *err,
+                                            Error::PngBadSizes,);
 
   u32 k = 0;
   u32 code = 0;
@@ -204,7 +206,7 @@ image_zlib_huffman_build(ImageHuffman& huffman, const u8* code_lengths, u32 code
     huffman.first_code[i] = (u16) code;
     huffman.first_symbol[i] = (u16) k;
     code += sizes[i];
-    if (sizes[i]) ERROR_ASSERT(code - 1 < (1 << i), *err, Error::PngBadCodeLengths,);
+    if (sizes[i]) ERROR_ASSERT(code - 1 < static_cast<u32>(1 << i), *err, Error::PngBadCodeLengths,);
     huffman.max_code[i] = code << (16 - i);
     code <<= 1;
     k += sizes[i];
@@ -527,7 +529,8 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, std::pmr::vector<u8> data,
         }
         for (u32 i = data_bytes_per_pixel; i < data_bytes_per_line; ++i)
         {
-          curr[i] = (data[data_idx + i] + ((prev[i] + curr[i - data_bytes_per_pixel]) / 2)) & 255;
+          curr[i] = static_cast<u8>((data[data_idx + i] +
+                                    ((prev[i] + curr[i - data_bytes_per_pixel]) / 2)) & 255);
         }
       } break;
       case ImagePngFilterMethod::Paeth:
@@ -538,11 +541,11 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, std::pmr::vector<u8> data,
         }
         for (u32 i = data_bytes_per_pixel; i < data_bytes_per_line; ++i)
         {
-          curr[i] = (
+          curr[i] = static_cast<u8>((
               data[data_idx + i] +
               image_png_paeth_predictor(curr[i - data_bytes_per_pixel],
                                         prev[i], prev[i - data_bytes_per_pixel])
-            ) & 255;
+            ) & 255);
         }
       } break;
       case ImagePngFilterMethod::AverageFirstLine:
@@ -719,7 +722,6 @@ decode_png(const char* path, Error* err)
                 zlib_ctx.bits_buffer >>= 8;
                 zlib_ctx.bits_buffered -= 8;
               }
-              ERROR_ASSERT(zlib_ctx.bits_buffered >= 0, *err, Error::PngCorruptZlib, img);
 
               while (k < 4)
               {

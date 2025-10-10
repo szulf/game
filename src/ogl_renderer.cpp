@@ -357,7 +357,7 @@ static u32
 setup_shader(const char* path, ShaderType shader_type, Error* err)
 {
   Error error = Error::Success;
-  const char* shader_src = static_cast<const char*>(platform::read_entire_file(path, &error));
+  AllocatedBuffer shader_src = platform::read_entire_file(path, &error);
   ERROR_ASSERT(error == Error::Success, *err, error, static_cast<u32>(-1));
 
   u32 shader;
@@ -374,7 +374,8 @@ setup_shader(const char* path, ShaderType shader_type, Error* err)
     } break;
   }
 
-  glShaderSource(shader, 1, &shader_src, 0);
+  const char* shader_data = shader_src;
+  glShaderSource(shader, 1, &shader_data, 0);
   glCompileShader(shader);
   GLint compiled;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);

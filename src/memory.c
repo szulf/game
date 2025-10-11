@@ -45,8 +45,6 @@ arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
   void* next_addr = curr_addr + padding;
   arena->offset += size;
 
-  mem_zero(next_addr, size);
-
   *err = ERROR_SUCCESS;
   return next_addr;
 }
@@ -54,9 +52,6 @@ arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
 static void
 arena_free_all(Arena* arena)
 {
-#ifdef GAME_DEBUG
-  mem_zero(arena->buffer, arena->buffer_size);
-#endif
   arena->offset = 0;
 }
 

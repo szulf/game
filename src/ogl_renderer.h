@@ -12,8 +12,6 @@ struct Material {
   Texture texture;
 };
 
-static std::vector<Material> g_materials{};
-
 struct Mesh {
   std::vector<Vertex> vertices{};
   std::vector<u32> indices{};

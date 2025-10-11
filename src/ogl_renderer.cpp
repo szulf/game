@@ -1,5 +1,8 @@
 #include "ogl_renderer.h"
 
+// TODO(szulf): really dont like this
+#include "assets.h"
+
 #include "glad/src/glad.c"
 
 static void
@@ -55,6 +58,7 @@ static constexpr std::string_view NORMAL_HEADER = "vn ";
 static constexpr std::string_view UV_HEADER = "vt ";
 static constexpr std::string_view INDEX_HEADER = "f ";
 static constexpr std::string_view MTL_FILE_HEADER = "mtllib ";
+static constexpr std::string_view USE_MTL_HEADER = "usemtl ";
 
 static Vertex
 obj_vertex_from_index_part(const std::string& part, const std::vector<Vec3>& vertices,
@@ -106,10 +110,8 @@ obj_vertex_push_if_missing_and_push_idx(std::vector<Vertex>& vertices,
   indices.push_back(static_cast<u32>(vertex_idx));
 }
 
-#define OBJ_MTL_NEW_HEADER "newmtl "
-#define OBJ_MTL_NEW_HEADER_SIZE 7
-#define OBJ_MTL_TEXTURE_FILE_HEADER "map_Kd "
-#define OBJ_MTL_TEXTURE_FILE_HEADER_SIZE 7
+static constexpr std::string_view MTL_NEW_HEADER = "newmtl ";
+static constexpr std::string_view MTL_TEXTURE_FILE_HEADER = "map_Kd ";
 
 static void
 obj_parse_material_file(const std::string& mtl_file, Error* err) {
@@ -118,23 +120,34 @@ obj_parse_material_file(const std::string& mtl_file, Error* err) {
   mtl_stream.str(mtl_file);
   std::string line{};
   bool parsing_flag{false};
+  std::string material_name{};
   Material mat{};
 
   while (std::getline(mtl_stream, line)) {
-    if (line.starts_with(OBJ_MTL_NEW_HEADER)) {
-      parsing_flag = true;
-    } else if (line.starts_with(OBJ_MTL_TEXTURE_FILE_HEADER)) {
+    if (line.starts_with(MTL_NEW_HEADER)) {
+      std::size_t space_idx = line.find(' ');
+      ERROR_ASSERT(space_idx != std::string::npos, *err, Error::ObjInvalidData,);
+      material_name = line.substr(space_idx + 1);
+      if (!g_assets.materials.contains(material_name)) {
+        parsing_flag = true;
+      }
+    } else if (line.starts_with(MTL_TEXTURE_FILE_HEADER)) {
       if (!parsing_flag) continue;
 
       usize space_idx{line.find(' ')};
       std::string texture_file_path{line.substr(space_idx + 1)};
       texture_file_path.insert(0, "assets/");
-      // TODO(szulf): probably need some asset manager to not lose this image variable
-      // (data is allocated in the arena anyway)
-      image::Image img = image::decode_png(texture_file_path.data(), &error);
-      ERROR_ASSERT(error == Error::Success, *err, error,);
-      mat.texture = Texture{img};
-      g_materials.push_back(mat);
+      if (!g_assets.textures.contains(texture_file_path)) {
+        image::Image img = image::decode_png(texture_file_path, &error);
+        ERROR_ASSERT(error == Error::Success, *err, error,);
+        mat.texture = Texture{img};
+        g_assets.textures[texture_file_path] = mat.texture;
+      } else {
+        mat.texture = g_assets.textures[texture_file_path];
+      }
+      g_assets.materials[material_name] = mat;
+      mat = {};
+      material_name = {};
     }
   }
 }
@@ -172,6 +185,8 @@ Mesh::from_obj(const char* path, Error* err) {
   vertices.reserve(index_count);
   std::vector<u32> indices{};
   indices.reserve(index_count);
+
+  std::string material_name{};
 
   file_stream.clear();
   file_stream.str(file);
@@ -276,10 +291,13 @@ Mesh::from_obj(const char* path, Error* err) {
       material_file_path.insert(0, "assets/");
       std::string material_file = platform::read_entire_file(material_file_path);
       obj_parse_material_file(material_file, &error);
+    } else if (line.starts_with(USE_MTL_HEADER)) {
+      std::size_t space_idx{line.find(' ')};
+      material_name = line.substr(space_idx + 1);
     }
   }
 
-  return Mesh(vertices, indices, g_materials[0]);
+  return Mesh(vertices, indices, g_assets.materials[material_name]);
 }
 
 void

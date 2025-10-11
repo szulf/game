@@ -4,7 +4,7 @@ static String
 string_make_cstr(Arena* arena, const char* cstr, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  String str = {};
+  String str = {0};
   usize cstr_length = cstr_len(cstr);
   char* res = arena_alloc(arena, cstr_length + 1, &error);
   if (error != ERROR_SUCCESS)
@@ -28,7 +28,7 @@ static String
 string_make_cstr_len(Arena* arena, const char* cstr, usize len, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  String str = {};
+  String str = {0};
   char* res = arena_alloc(arena, len + 1, &error);
   if (error != ERROR_SUCCESS)
   {
@@ -51,7 +51,7 @@ static String
 string_make_cap(Arena* arena, usize cap, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  String str = {};
+  String str = {0};
   char* res = arena_alloc(arena, cap + 1, &error);
   if (error != ERROR_SUCCESS)
   {
@@ -134,7 +134,7 @@ string_split(String* str, Arena* arena, char c, Error* err)
 {
   Error error = ERROR_SUCCESS;
 
-  StringArray splits = {};
+  StringArray splits = {0};
   usize splits_count = string_count_chars(str, c) + 1;
 
   ARRAY_INIT(&splits, arena, splits_count, &error);

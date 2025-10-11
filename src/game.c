@@ -23,20 +23,20 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
   Mesh mesh = mesh_from_obj(obj_file_data, obj_file_size, temp_arena, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
 
-  MeshArray meshes = {};
+  MeshArray meshes = {0};
   ARRAY_INIT(&meshes, perm_arena, 1, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init meshes array");
   ARRAY_PUSH(&meshes, mesh);
 
-  Model model = {};
+  Model model = {0};
   model.meshes = meshes;
   model.model = mat4_make(1.0f);
-  DrawableArray drawables = {};
+  DrawableArray drawables = {0};
   ARRAY_INIT(&drawables, perm_arena, 1, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init drawables array");
   ARRAY_PUSH(&drawables, ((Drawable) {model, SHADER_DEFAULT}));
 
-  Scene scene = {};
+  Scene scene = {0};
   scene.drawables = drawables;
   scene.view = mat4_make(1.0f);
   scene.proj = mat4_make(1.0f);
@@ -49,13 +49,11 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
 {
   Error error = ERROR_SUCCESS;
 
+  assets_setup(perm_arena, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt initialize asset manager");
   setup_renderer();
-
   setup_shaders(temp_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
-
-  setup_global_materials(perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt initialize global materials");
 
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
   Scene cube_scene = setup_simple_scene("assets/cube.obj", perm_arena, temp_arena);

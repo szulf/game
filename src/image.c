@@ -179,14 +179,14 @@ static void
 image_zlib_huffman_build(ImageHuffman* huffman, const u8* code_lengths, u32 code_lengths_size,
                          Error* err)
 {
-  u32 sizes[17] = {};
+  u32 sizes[17] = {0};
   for (u32 i = 0; i < code_lengths_size; ++i) ++sizes[code_lengths[i]];
   sizes[0] = 0;
   for (u32 i = 1; i < 16; ++i) ERROR_ASSERT(sizes[i] <= (1 << i), *err, ERROR_PNG_BAD_SIZES,);
 
   u32 k = 0;
   u32 code = 0;
-  u32 next_code[16] = {};
+  u32 next_code[16] = {0};
   for (u32 i = 1; i < 16; ++i)
   {
     next_code[i] = code;
@@ -251,7 +251,7 @@ image_zlib_huffman_decode(ImageZlibContext* zlib_ctx, ImageHuffman* huffman, Err
     u16 code_length = fast_value >> 9;
     zlib_ctx->bits_buffer >>= code_length;
     zlib_ctx->bits_buffered -= code_length;
-    return fast_value & 0b111111111;
+    return fast_value & 511;
   }
 
   // NOTE(szulf): lookup table failed, doing it the slow way
@@ -286,8 +286,8 @@ image_zlib_huffman_compute_codes(ImageZlibContext* zlib_ctx, Error* err)
   u32 hclen = image_zlib_read_bits(zlib_ctx, 4) + 4;
   u32 total_iterations = hlit + hdist;
 
-  u8 code_length_sizes[19] = {};
-  ImageHuffman code_length_tree = {};
+  u8 code_length_sizes[19] = {0};
+  ImageHuffman code_length_tree = {0};
   for (u32 i = 0; i < hclen; ++i)
   {
     u8 code_length = (u8) image_zlib_read_bits(zlib_ctx, 3);
@@ -297,7 +297,7 @@ image_zlib_huffman_compute_codes(ImageZlibContext* zlib_ctx, Error* err)
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   u32 iteration_idx = 0;
-  u8 code_lengths[286 + 32 + 137] = {};
+  u8 code_lengths[286 + 32 + 137] = {0};
   while (iteration_idx < total_iterations)
   {
     u32 decoded_value = image_zlib_huffman_decode(zlib_ctx, &code_length_tree, &error);
@@ -462,8 +462,8 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
   img->data = arena_alloc(perm_arena, img->width * img->height * RGBA8_BYTES_PER_PIXEL, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
-  // NOTE(szulf): (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
-  usize bytes_per_scanline = ((img->width * channels * ctx->bit_depth) + 0b111) >> 3;
+  // NOTE(szulf): (x + 7) >> 3 is basically doing ceil(x / 8.0f)
+  usize bytes_per_scanline = ((img->width * channels * ctx->bit_depth) + 7) >> 3;
   u8* filter_buffer = arena_alloc(temp_arena, bytes_per_scanline * 2, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
@@ -482,7 +482,7 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
     ERROR_ASSERT(filter_method < 5, *err, ERROR_PNG_INVALID_FILTER,);
     if (line_idx == 0) filter_method = first_line_filter_method[filter_method];
     usize data_bytes_per_line = data_bytes_per_pixel * width;
-    u8* dest = img->data + (stride * line_idx);
+    u8* dest = (u8*) img->data + (stride * line_idx);
 
     switch (filter_method)
     {
@@ -579,11 +579,11 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
 static Image
 image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_arena, Error* err)
 {
-  Image img = {};
+  Image img = {0};
   Error error = ERROR_SUCCESS;
-  ImageContext ctx = {};
+  ImageContext ctx = {0};
   ctx.data = data;
-  ctx.data_end = data + data_size;
+  ctx.data_end = ((u8*) data) + data_size;
 
   // NOTE(szulf): check png header
   static const u8 png_header[] = {137, 80, 78, 71, 13, 10, 26, 10};
@@ -603,7 +603,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
   usize combined_idat_chunks_size_limit = 0;
   while (running && ctx.data != ctx.data_end)
   {
-    ImagePngChunk chunk = {};
+    ImagePngChunk chunk = {0};
     chunk.length = image_get32be(&ctx);
     chunk.type = image_get32be(&ctx);
 
@@ -662,7 +662,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, img);
 
         // NOTE(szulf): zlib parsing
-        ImageZlibContext zlib_ctx = {};
+        ImageZlibContext zlib_ctx = {0};
         zlib_ctx.data = combined_idat_chunks;
         zlib_ctx.data_end = combined_idat_chunks + combined_idat_chunks_size;
 
@@ -690,15 +690,15 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
           {
             case IMAGE_PNG_COMPRESSION_TYPE_UNCOMPRESSED:
             {
-              if (zlib_ctx.bits_buffered & 0b111)
+              if (zlib_ctx.bits_buffered & 7)
               {
-                image_zlib_read_bits(&zlib_ctx, zlib_ctx.bits_buffered & 0b111);
+                image_zlib_read_bits(&zlib_ctx, zlib_ctx.bits_buffered & 7);
               }
               u8 header[4];
               u32 k = 0;
               while (zlib_ctx.bits_buffered > 0)
               {
-                header[k++] = (u8) (zlib_ctx.bits_buffer & 0b11111111);
+                header[k++] = (u8) (zlib_ctx.bits_buffer & 255);
                 zlib_ctx.bits_buffer >>= 8;
                 zlib_ctx.bits_buffered -= 8;
               }

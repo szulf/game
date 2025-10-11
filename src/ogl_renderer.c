@@ -1,15 +1,18 @@
 #include "ogl_renderer.h"
 
+// TODO(szulf): i really dont like this
+#include "assets.h"
+
 #include "glad/src/glad.c"
 
 static void
-setup_renderer()
+setup_renderer(void)
 {
   glEnable(GL_DEPTH_TEST);
 }
 
 static void
-clear_screen()
+clear_screen(void)
 {
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -60,17 +63,6 @@ mesh_draw(const Mesh* mesh, Shader shader)
   glBindVertexArray(mesh->vao);
   glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.len, GL_UNSIGNED_INT, 0);
 }
-
-#define OBJ_VERTEX_HEADER "v "
-#define OBJ_VERTEX_HEADER_SIZE 2
-#define OBJ_NORMAL_HEADER "vn "
-#define OBJ_NORMAL_HEADER_SIZE 3
-#define OBJ_UV_HEADER "vt "
-#define OBJ_UV_HEADER_SIZE 3
-#define OBJ_INDEX_HEADER "f "
-#define OBJ_INDEX_HEADER_SIZE 2
-#define OBJ_MATERIAL_FILE_HEADER "mtllib "
-#define OBJ_MATERIAL_FILE_HEADER_SIZE 7
 
 static Vertex
 obj_vertex_from_index_part(String* part, Vec3Array* vertices, Vec3Array* normals, Vec2Array* uvs,
@@ -136,18 +128,30 @@ obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length,
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   b32 parsing_flag = false;
-  Material mat = {};
+  String material_name = {0};
+  (void) material_name;
+  Material mat = {0};
   for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
   {
-    if (mem_compare(lines.items[line_idx].data, OBJ_MTL_NEW_HEADER, OBJ_MTL_NEW_HEADER_SIZE))
+    String* curr_line = &lines.items[line_idx];
+    if (mem_compare(curr_line->data, OBJ_MTL_NEW_HEADER, OBJ_MTL_NEW_HEADER_SIZE))
     {
-      parsing_flag = true;
+      // get the material name here
+      StringArray parts = string_split(curr_line, temp_arena, ' ', &error);
+      ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+      if (!assets_material_exists(&parts.items[1])) {
+        material_name = string_make_cstr_len(perm_arena, parts.items[1].data, parts.items[1].len,
+                                             &error);
+        ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+        parsing_flag = true;
+      }
     }
-    else if (mem_compare(lines.items[line_idx].data, OBJ_MTL_TEXTURE_FILE_HEADER, OBJ_MTL_TEXTURE_FILE_HEADER_SIZE))
+    else if (mem_compare(curr_line->data, OBJ_MTL_TEXTURE_FILE_HEADER,
+                         OBJ_MTL_TEXTURE_FILE_HEADER_SIZE))
     {
       if (!parsing_flag) continue;
 
-      StringArray parts = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray parts = string_split(curr_line, temp_arena, ' ', &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
       String texture_file_path = string_prepend(&parts.items[1], "assets/", temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
@@ -156,15 +160,27 @@ obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length,
                                                             &img_file_size, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
-      // TODO(szulf): probably need some asset manager to not lose this image variable
-      // (data is allocated in the arena anyway)
-      Image img = image_decode_png(img_file, img_file_size, temp_arena, perm_arena, &error);
-      ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+      Image img = image_decode_png(img_file, img_file_size, temp_arena, temp_arena, &error);
       mat.texture = texture_make(&img);
-      ARRAY_PUSH(&g_materials, mat);
+      assets_texture_new(&texture_file_path, &mat.texture);
+      assets_material_new(&material_name, &mat);
+      mat = (Material) {0};
     }
   }
 }
+
+#define OBJ_VERTEX_HEADER "v "
+#define OBJ_VERTEX_HEADER_SIZE 2
+#define OBJ_NORMAL_HEADER "vn "
+#define OBJ_NORMAL_HEADER_SIZE 3
+#define OBJ_UV_HEADER "vt "
+#define OBJ_UV_HEADER_SIZE 3
+#define OBJ_INDEX_HEADER "f "
+#define OBJ_INDEX_HEADER_SIZE 2
+#define OBJ_MATERIAL_FILE_HEADER "mtllib "
+#define OBJ_MATERIAL_FILE_HEADER_SIZE 7
+#define OBJ_MATERIAL_USE_HEADER "usemtl "
+#define OBJ_MATERIAL_USE_HEADER_SIZE 7
 
 // TODO(szulf): shouldnt this return a model and not a mesh?
 static Mesh
@@ -210,6 +226,8 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
   U32Array indices = {0};
   ARRAY_INIT(&indices, perm_arena, 10000, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
+
+  String material_name = {0};
 
   for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
   {
@@ -291,9 +309,19 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       obj_vertex_push_if_missing_and_push_idx(&vertices, &indices, &vertex_3);
     }
+    else if (mem_compare(lines.items[line_idx].data, OBJ_MATERIAL_USE_HEADER,
+                         OBJ_MATERIAL_USE_HEADER_SIZE))
+    {
+      StringArray parts = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
+      material_name = parts.items[1];
+    }
   }
 
-  return mesh_make(&vertices, &indices, &g_materials.items[0]);
+  Material* material = assets_material_get(&material_name, &error);
+  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
+
+  return mesh_make(&vertices, &indices, material);
 }
 
 static void

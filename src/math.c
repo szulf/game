@@ -137,7 +137,7 @@ vec4_divide(const Vec4* vec, f32 scalar)
 static Mat4
 mat4_make(f32 val)
 {
-  Mat4 mat = {};
+  Mat4 mat = {0};
   mat.data[0] = val;
   mat.data[5] = val;
   mat.data[10] = val;
@@ -194,7 +194,7 @@ perspective(f32 fov, f32 aspect, f32 near, f32 far)
   f32 right = near * tan(fov / 2.0f);
   f32 top = right / aspect;
 
-  Mat4 mat = {};
+  Mat4 mat = {0};
   mat.data[0] = near / right;
   mat.data[5] = near / top;
   mat.data[10] = -(far + near) / (far - near);

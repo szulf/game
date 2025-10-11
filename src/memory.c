@@ -104,27 +104,31 @@ arena_alloc_finish(Arena* arena, usize size, Error* err)
 static void
 mem_zero(void* dest, usize bytes)
 {
+  u8* d = dest;
   while (bytes--)
   {
-    *(u8*)dest++ = 0;
+    *d++ = 0;
   }
 }
 
 static void
 mem_set(void* dest, usize bytes, u8 val)
 {
+  u8* d = dest;
   while (bytes--)
   {
-    *(u8*)dest++ = val;
+    *d++ = val;
   }
 }
 
 static void
 mem_copy(void* dest, const void* src, usize bytes)
 {
+  u8* d = dest;
+  const u8* s = src;
   while (bytes--)
   {
-    *(u8*)dest++ = *(const u8*)src++;
+    *d++ = *s++;
   }
 }
 

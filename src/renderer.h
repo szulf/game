@@ -1,8 +1,8 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-static void setup_renderer();
-static void clear_screen();
+static void setup_renderer(void);
+static void clear_screen(void);
 
 typedef enum ShaderType
 {
@@ -22,6 +22,13 @@ static void setup_shaders(Arena* arena, Error* err);
 
 typedef struct Texture Texture;
 
+typedef struct TextureArray
+{
+  usize len;
+  usize cap;
+  Texture* items;
+} TextureArray;
+
 static Texture texture_make(Image* img);
 
 typedef struct Material Material;
@@ -32,8 +39,6 @@ typedef struct MaterialArray
   usize len;
   Material* items;
 } MaterialArray;
-
-static MaterialArray g_materials;
 
 inline static void setup_global_materials(Arena* perm_arena, Error* err);
 

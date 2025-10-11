@@ -55,13 +55,13 @@ platform_print(const char* msg, ...)
 }
 
 static u64
-get_ms()
+get_ms(void)
 {
   return SDL_GetTicks();
 }
 
 static WindowDimensions
-get_window_dimensions()
+get_window_dimensions(void)
 {
   return dimensions;
 }
@@ -151,7 +151,7 @@ static void APIENTRY debug_callback(
 #endif
 
 s32
-main()
+main(void)
 {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
@@ -173,7 +173,7 @@ main()
     return 1;
   }
 
-  SDL3AudioBuffer audio_buffer = {};
+  SDL3AudioBuffer audio_buffer = {0};
   audio_buffer.spec.format   = SDL_AUDIO_S16;
   audio_buffer.spec.channels = 2;
   audio_buffer.spec.freq     = 48000;
@@ -213,17 +213,17 @@ main()
   glDebugMessageCallback(debug_callback, 0);
 #endif
 
-  Arena perm_arena = {};
+  Arena perm_arena = {0};
   perm_arena.buffer_size = MEGABYTES(100);
   perm_arena.buffer = SDL_malloc(perm_arena.buffer_size);
 
-  Arena temp_arena = {};
+  Arena temp_arena = {0};
   temp_arena.buffer_size = MEGABYTES(100);
   temp_arena.buffer = SDL_malloc(temp_arena.buffer_size);
 
-  GameState state = {};
+  GameState state = {0};
 
-  InputEventArray input_events = {};
+  InputEventArray input_events = {0};
   {
     Error error = ERROR_SUCCESS;
     ARRAY_INIT(&input_events, &perm_arena, 100, &error);
@@ -307,7 +307,7 @@ main()
       {
         // NOTE(szulf): to really get the current tick you have to do tick % 20
 
-        GameSoundBuffer sound_buffer = {};
+        GameSoundBuffer sound_buffer = {0};
         sound_buffer.memory = audio_buffer.memory;
         sound_buffer.size = audio_buffer.size;
         sound_buffer.sample_count = audio_buffer.sample_count;

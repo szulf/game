@@ -40,14 +40,14 @@ typedef double f64;
 
 #define ARRAY_LENGTH(arr) (sizeof((arr)) / sizeof(*(arr)))
 
-#define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define LOG(...) log_(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
 #ifdef GAME_DEBUG
-#  define ASSERT(expr, msg, ...) do \
+#  define ASSERT(expr, ...) do \
 { \
   if (!(expr)) \
   { \
-    LOG(msg, ##__VA_ARGS__); \
+    LOG(__VA_ARGS__); \
     __asm__("int3"); \
   } \
 } while (0)
@@ -70,7 +70,7 @@ static void* platform_read_entire_file_bytes_read(Arena* arena, const char* path
 
 static void platform_print(const char* msg, ...);
 // TODO(szulf): change to platform_get_ms?
-static u64 get_ms();
+static u64 get_ms(void);
 
 // TODO(szulf): change to PlatformWindowDimensions?
 typedef struct WindowDimensions
@@ -80,10 +80,11 @@ typedef struct WindowDimensions
 } WindowDimensions;
 
 // TODO(szulf): change to platform_get_window_dimensions?
-static WindowDimensions get_window_dimensions();
+static WindowDimensions get_window_dimensions(void);
 
 #include "image.c"
 #include "renderer.c"
+#include "assets.c"
 
 typedef struct GameSoundBuffer
 {

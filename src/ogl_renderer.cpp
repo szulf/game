@@ -102,12 +102,13 @@ obj_vertex_get_idx(const std::vector<Vertex>& vertices, const Vertex& vertex) {
 static void
 obj_vertex_push_if_missing_and_push_idx(std::vector<Vertex>& vertices,
                                         std::vector<u32>& indices, const Vertex& vertex) {
-  usize vertex_idx = obj_vertex_get_idx(vertices, vertex);
-  if (vertex_idx == static_cast<usize>(-1)) {
+  const auto vertex_found{std::ranges::find(vertices, vertex)};
+  if (vertex_found != vertices.end()) {
+    indices.push_back(static_cast<std::uint32_t>(vertex_found - vertices.begin()));
+  } else {
     vertices.push_back(vertex);
-    vertex_idx = vertices.size() - 1;
+    indices.push_back(static_cast<std::uint32_t>(vertices.size() - 1));
   }
-  indices.push_back(static_cast<u32>(vertex_idx));
 }
 
 static constexpr std::string_view MTL_NEW_HEADER = "newmtl ";

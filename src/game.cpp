@@ -65,12 +65,13 @@ setup(State& state)
   setup_shaders(&error);
   ASSERT(error == Error::Success, "couldnt initialize shaders");
 
+  Scene backpack_scene = setup_simple_scene("assets/backpack.obj");
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj");
   Scene cube_scene = setup_simple_scene("assets/cube.obj");
   Scene cone_scene = setup_simple_scene("assets/cone.obj");
 
   state.current_scene_idx = 0;
-  state.scenes.reserve(3);
+  state.scenes.emplace_back(std::move(backpack_scene));
   state.scenes.emplace_back(std::move(sphere_scene));
   state.scenes.emplace_back(std::move(cube_scene));
   state.scenes.emplace_back(std::move(cone_scene));

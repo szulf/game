@@ -1,20 +1,24 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
-// NOTE(szulf): shoutout to stb_image since i pretty much just copied their implementation of this decoder
+// NOTE(szulf): shoutout to stb_image since i pretty much just copied that implementation of this decoder
 
-#define IMAGE_MAX_SIZE (1 << 24)
+namespace image {
 
-typedef struct Image
-{
-  void* data;
-  usize size;
-  usize width;
-  usize height;
-  usize channels;
-} Image;
+static constexpr std::uint32_t MAX_SIZE = 1 << 24;
 
-static Image image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_arena,
-                              Error* err);
+struct Image {
+  Image() {}
+
+  static constexpr std::uint8_t channels = 4;
+  std::vector<std::uint8_t> data{};
+  std::size_t width{};
+  std::size_t height{};
+  std::size_t size{};
+};
+
+static Image decode_png(const std::filesystem::path& path, Error* err);
+
+}
 
 #endif

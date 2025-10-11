@@ -1,52 +1,44 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdint>
 
-typedef uint8_t  u8;
-typedef int8_t   s8;
-typedef uint16_t u16;
-typedef int16_t  s16;
-typedef uint32_t u32;
-typedef int32_t  s32;
-typedef uint64_t u64;
-typedef int64_t  s64;
+using u8 = std::uint8_t;
+using i8 = std::int8_t;
+using u16 = std::uint16_t;
+using i16 = std::int16_t;
+using u32 = std::uint32_t;
+using i32 = std::int32_t;
+using u64 = std::uint64_t;
+using i64 = std::int64_t;
 
-typedef u32       b32;
-typedef size_t    usize;
-typedef uintptr_t ptrsize;
+using usize = std::size_t;
+using ptrsize = std::ptrdiff_t;
 
-typedef float f32;
-typedef double f64;
+using f32 = float;
+using f64 = double;
 
-#define false 0
-#define true 1
+static constexpr f32 PI32 = 3.141592653f;
 
-#define PI32 3.141592653f
+static constexpr i16 I16_MAX = 32767;
+static constexpr i16 I16_MIN = -32768;
 
-#define S16_MAX  32767
-#define S16_MIN -32768
+static constexpr i32 FPS = 60;
+static constexpr i32 MSPF = 1000 / FPS;
 
-#define FPS  60
-#define MSPF (1000 / FPS)
+static constexpr i32 TPS = 20;
+static constexpr i32 MSPT = 1000 / TPS;
 
-#define TPS  20
-#define MSPT (1000 / TPS)
+consteval u64 kilobytes(u64 n);
+consteval u64 megabytes(u64 n);
+consteval u64 gigabytes(u64 n);
 
-#define KILOBYTES(n) ((n) * 1024)
-#define MEGABYTES(n) (KILOBYTES(n) * 1024)
-#define GIGBAYTES(n) (MEGABYTES(n) * 1024)
-
-#define ARRAY_LENGTH(arr) (sizeof((arr)) / sizeof(*(arr)))
-
-#define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+// #define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define LOG(msg, ...)
 
 #ifdef GAME_DEBUG
-#  define ASSERT(expr, msg, ...) do \
-{ \
-  if (!(expr)) \
-  { \
+#  define ASSERT(expr, msg, ...) do { \
+  if (!(expr)) { \
     LOG(msg, ##__VA_ARGS__); \
     __asm__("int3"); \
   } \
@@ -55,101 +47,90 @@ typedef double f64;
 #  define ASSERT(expr, msg)
 #endif
 
-// TODO(szulf): need to implement this
-static void log_(const char* file, usize line, const char* func, const char* fmt, ...);
+#define TODO(msg) ASSERT(false, "[TODO] " msg)
+#define UNUSED(var) (void) var
 
-#include "math.c"
-#include "error.c"
-#include "memory.c"
-#include "array.h"
-#include "string.c"
+#include <iostream>
+#include <charconv>
+#include <cstring>
+#include <algorithm>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <filesystem>
+#include <ranges>
+#include <optional>
+#include <print>
+#include <unordered_map>
 
-static void* platform_read_entire_file(Arena* arena, const char* path, Error* err);
-static void* platform_read_entire_file_bytes_read(Arena* arena, const char* path,
-                                                  usize* bytes_read, Error* err);
+#include "math.cpp"
+#include "error.h"
 
-static void platform_print(const char* msg, ...);
-// TODO(szulf): change to platform_get_ms?
+namespace platform {
+
+static std::string read_entire_file(const std::filesystem::path& path);
+
 static u64 get_ms();
 
-// TODO(szulf): change to PlatformWindowDimensions?
-typedef struct WindowDimensions
-{
-  s32 width;
-  s32 height;
-} WindowDimensions;
+struct WindowDimensions {
+  i32 width;
+  i32 height;
+};
 
-// TODO(szulf): change to platform_get_window_dimensions?
 static WindowDimensions get_window_dimensions();
 
-#include "image.c"
-#include "renderer.c"
+}
 
-typedef struct GameSoundBuffer
-{
-  s16* memory;
+#include "image.cpp"
+#include "renderer.cpp"
+
+namespace game {
+
+struct SoundBuffer {
+  i16* memory;
   usize size;
   u32 sample_count;
   u32 samples_per_second;
-} GameSoundBuffer;
-
-typedef struct SceneArray
-{
-  usize cap;
-  usize len;
-  Scene* items;
-} SceneArray;
-
-typedef enum Key
-{
-  KEY_LMB,
-  KEY_SPACE,
-} Key;
-
-// TODO(szulf): change to GameInputEvent?
-typedef struct InputEvent
-{
-  Key key;
-} InputEvent;
-
-typedef struct InputEventArray
-{
-  usize cap;
-  usize len;
-  InputEvent* items;
-} InputEventArray;
-
-// TODO(szulf): change to GameAction?
-typedef enum Action
-{
-  ACTION_CHANGE_SCENE,
-  ACTION_MOVE,
-} Action;
-
-static Action keybind_map[] =
-{
-  [KEY_LMB] = ACTION_CHANGE_SCENE,
-  [KEY_SPACE] = ACTION_MOVE,
 };
 
-typedef struct GameInput
-{
-  InputEventArray input_events;
-} GameInput;
+enum class Key : u8 {
+  Space,
+  // NOTE(szulf): this has to be last?
+  LMB,
+};
 
-typedef struct GameState
-{
+struct InputEvent {
+  Key key;
+};
+
+enum class Action : u8 {
+  ChangeScene,
+  Move,
+};
+
+static Action g_keybind_map[(usize) Key::LMB + 1];
+static void setup_default_keybinds();
+
+struct Input {
+  std::vector<InputEvent> input_events;
+};
+
+struct State {
   usize current_scene_idx;
-  SceneArray scenes;
-} GameState;
+  std::vector<Scene> scenes;
+};
 
-static void game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state);
+static void setup(State& state);
 
 // TODO(szulf): need to interpolate the positions so the updates are not so sudden
-static void game_update(GameState* state, GameInput* input);
+static void update(State& state, Input& input);
 
-static void game_render(GameState* state);
+static void render(State& state);
 
-static void game_get_sound(GameSoundBuffer* sound_buffer);
+static void get_sound(SoundBuffer& sound_buffer);
+
+}
 
 #endif

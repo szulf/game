@@ -1,8 +1,8 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-static void setup_renderer();
-static void clear_screen();
+static void setup_renderer(void);
+static void clear_screen(void);
 
 typedef enum ShaderType
 {
@@ -97,22 +97,22 @@ typedef struct Model
 static void model_draw(const Model* model, Shader shader);
 static void model_rotate(Model* model, f32 deg, const Vec3* axis);
 
-typedef struct Drawable
+typedef struct Renderable
 {
   Model model;
   Shader shader;
-} Drawable;
+} Renderable;
 
-typedef struct DrawableArray
+typedef struct RenderableArray
 {
   usize cap;
   usize len;
-  Drawable* items;
-} DrawableArray;
+  Renderable* items;
+} RenderableArray;
 
 typedef struct Scene
 {
-  DrawableArray drawables;
+  RenderableArray renderables;
   Mat4 view;
   Mat4 proj;
 } Scene;

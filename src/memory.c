@@ -7,14 +7,8 @@ calc_padding(void* ptr, ptrsize alignment)
 
   ptrsize modulo = (ptrsize) ptr & (alignment - 1);
 
-  if (modulo != 0)
-  {
-    return alignment - modulo;
-  }
-  else
-  {
-    return 0;
-  }
+  if (modulo != 0) return alignment - modulo;
+  return 0;
 }
 
 static void*
@@ -26,26 +20,19 @@ arena_alloc(Arena* arena, usize size, Error* err)
 static void*
 arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
 {
-  ASSERT(arena->buffer != 0, "arena has to be initialized");
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
   ASSERT(!arena->allocation_active, "cannot allocate memory when an allocation is active");
 
-  alignment = umin(alignment, 128u);
-
   u8* curr_addr = (u8*) arena->buffer + arena->offset;
   ptrsize padding = calc_padding(curr_addr, alignment);
-  if (arena->offset + padding + size > arena->buffer_size)
-  {
-    *err = ERROR_OUT_OF_MEMORY;
-    return 0;
-  }
-
+  ERROR_ASSERT(arena->offset + padding + size <= arena->buffer_size, *err, ERROR_OUT_OF_MEMORY, 0);
   arena->offset += padding;
-
   void* next_addr = curr_addr + padding;
   arena->offset += size;
 
+#ifdef GAME_DEBUG
   mem_zero(next_addr, size);
+#endif
 
   *err = ERROR_SUCCESS;
   return next_addr;
@@ -54,9 +41,6 @@ arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
 static void
 arena_free_all(Arena* arena)
 {
-#ifdef GAME_DEBUG
-  mem_zero(arena->buffer, arena->buffer_size);
-#endif
   arena->offset = 0;
 }
 
@@ -69,17 +53,12 @@ arena_alloc_start(Arena* arena)
 static void*
 arena_alloc_align_start(Arena* arena, ptrsize alignment)
 {
-  ASSERT(arena->buffer != 0, "arena has to be initialized");
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
   ASSERT(!arena->allocation_active, "cannot start a new allocation when an old one is stil active");
 
-  alignment = umin(alignment, 128u);
-
   u8* curr_addr = (u8*) arena->buffer + arena->offset;
   ptrsize padding = calc_padding(curr_addr, alignment);
-
   arena->offset += padding;
-
   void* next_addr = curr_addr + padding;
 
 #ifdef GAME_DEBUG
@@ -96,12 +75,7 @@ arena_alloc_finish(Arena* arena, usize size, Error* err)
   arena->allocation_active = false;
 #endif
 
-  if (arena->offset + size > arena->buffer_size)
-  {
-    *err = ERROR_OUT_OF_MEMORY;
-    return;
-  }
-
+  ERROR_ASSERT(arena->offset + size <= arena->buffer_size, *err, ERROR_OUT_OF_MEMORY,);
   *err = ERROR_SUCCESS;
   arena->offset += size;
 }
@@ -109,27 +83,31 @@ arena_alloc_finish(Arena* arena, usize size, Error* err)
 static void
 mem_zero(void* dest, usize bytes)
 {
+  u8* d = dest;
   while (bytes--)
   {
-    *(u8*)dest++ = 0;
+    *d++ = 0;
   }
 }
 
 static void
 mem_set(void* dest, usize bytes, u8 val)
 {
+  u8* d = dest;
   while (bytes--)
   {
-    *(u8*)dest++ = val;
+    *d++ = val;
   }
 }
 
 static void
 mem_copy(void* dest, const void* src, usize bytes)
 {
+  u8* d = dest;
+  const u8* s = src;
   while (bytes--)
   {
-    *(u8*)dest++ = *(const u8*)src++;
+    *d++ = *s++;
   }
 }
 
@@ -138,10 +116,7 @@ mem_compare(const void* v1, const void* v2, usize bytes)
 {
   for (usize i = 0; i < bytes; ++i)
   {
-    if (((const u8*)v1)[i] != ((const u8*)v2)[i])
-    {
-      return false;
-    }
+    if (((const u8*)v1)[i] != ((const u8*)v2)[i]) return false;
   }
 
   return true;

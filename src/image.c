@@ -152,7 +152,7 @@ image_zlib_read_bits(ImageZlibContext* zlib_ctx, u32 n)
 {
   u32 k = 0;
   if (zlib_ctx->bits_buffered < n) image_zlib_fill_bits(zlib_ctx);
-  k = zlib_ctx->bits_buffer & ((1 << n) - 1);
+  k = zlib_ctx->bits_buffer & (u32) ((1 << n) - 1);
   zlib_ctx->bits_buffer >>= n;
   zlib_ctx->bits_buffered -= n;
   return k;
@@ -179,21 +179,21 @@ static void
 image_zlib_huffman_build(ImageHuffman* huffman, const u8* code_lengths, u32 code_lengths_size,
                          Error* err)
 {
-  u32 sizes[17] = {};
+  u32 sizes[17] = {0};
   for (u32 i = 0; i < code_lengths_size; ++i) ++sizes[code_lengths[i]];
   sizes[0] = 0;
-  for (u32 i = 1; i < 16; ++i) ERROR_ASSERT(sizes[i] <= (1 << i), *err, ERROR_PNG_BAD_SIZES,);
+  for (u32 i = 1; i < 16; ++i) ERROR_ASSERT(sizes[i] <= (u32) (1 << i), *err, ERROR_PNG_BAD_SIZES,);
 
   u32 k = 0;
   u32 code = 0;
-  u32 next_code[16] = {};
+  u32 next_code[16] = {0};
   for (u32 i = 1; i < 16; ++i)
   {
     next_code[i] = code;
     huffman->first_code[i] = (u16) code;
     huffman->first_symbol[i] = (u16) k;
     code += sizes[i];
-    if (sizes[i]) ERROR_ASSERT(code - 1 < (1 << i), *err, ERROR_PNG_BAD_CODE_LENGTHS,);
+    if (sizes[i]) ERROR_ASSERT(code - 1 < (u32) (1 << i), *err, ERROR_PNG_BAD_CODE_LENGTHS,);
     huffman->max_code[i] = code << (16 - i);
     code <<= 1;
     k += sizes[i];
@@ -251,7 +251,7 @@ image_zlib_huffman_decode(ImageZlibContext* zlib_ctx, ImageHuffman* huffman, Err
     u16 code_length = fast_value >> 9;
     zlib_ctx->bits_buffer >>= code_length;
     zlib_ctx->bits_buffered -= code_length;
-    return fast_value & 0b111111111;
+    return fast_value & 511;
   }
 
   // NOTE(szulf): lookup table failed, doing it the slow way
@@ -286,8 +286,8 @@ image_zlib_huffman_compute_codes(ImageZlibContext* zlib_ctx, Error* err)
   u32 hclen = image_zlib_read_bits(zlib_ctx, 4) + 4;
   u32 total_iterations = hlit + hdist;
 
-  u8 code_length_sizes[19] = {};
-  ImageHuffman code_length_tree = {};
+  u8 code_length_sizes[19] = {0};
+  ImageHuffman code_length_tree = {0};
   for (u32 i = 0; i < hclen; ++i)
   {
     u8 code_length = (u8) image_zlib_read_bits(zlib_ctx, 3);
@@ -297,12 +297,12 @@ image_zlib_huffman_compute_codes(ImageZlibContext* zlib_ctx, Error* err)
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   u32 iteration_idx = 0;
-  u8 code_lengths[286 + 32 + 137] = {};
+  u8 code_lengths[286 + 32 + 137] = {0};
   while (iteration_idx < total_iterations)
   {
     u32 decoded_value = image_zlib_huffman_decode(zlib_ctx, &code_length_tree, &error);
-    ERROR_ASSERT(decoded_value < 19, *err, ERROR_PNG_BAD_CODE_LENGTHS,);
     ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+    ERROR_ASSERT(decoded_value < 19, *err, ERROR_PNG_BAD_CODE_LENGTHS,);
     if (decoded_value < 16)
     {
       code_lengths[iteration_idx++] = (u8) decoded_value;
@@ -323,7 +323,6 @@ image_zlib_huffman_compute_codes(ImageZlibContext* zlib_ctx, Error* err)
       }
       else
       {
-        ERROR_ASSERT(decoded_value == 18, *err, ERROR_PNG_BAD_CODE_LENGTHS,);
         repeat_times = image_zlib_read_bits(zlib_ctx, 7) + 11;
       }
       ERROR_ASSERT(total_iterations - iteration_idx >= repeat_times,
@@ -400,14 +399,10 @@ image_zlib_huffman_parse_block(ImageZlibContext* zlib_ctx, Error* err)
       {
         dist += image_zlib_read_bits(zlib_ctx, distance_code_to_extra_bits[decoded_value]);
       }
-      ERROR_ASSERT(out - zlib_ctx->out_start >= dist, *err, ERROR_PNG_BAD_DIST,);
+      ERROR_ASSERT(out - zlib_ctx->out_start >= dist, *err, ERROR_PNG_BAD_DISTANCE,);
 
       u8* p = out - dist;
-      if (dist == 1) while (len--)
-      {
-        *out++ = *p;
-      }
-      else while (len--)
+      while (len--)
       {
         *out++ = *p++;
       }
@@ -425,7 +420,7 @@ typedef enum ImagePngFilterMethod
   IMAGE_PNG_FILTER_METHOD_AVERAGE_FIRST_LINE,
 } ImagePngFilterMethod;
 
-u8 first_line_filter_method[] =
+u8 first_line_filter_method[5] =
 {
   IMAGE_PNG_FILTER_METHOD_NONE,
   IMAGE_PNG_FILTER_METHOD_SUB,
@@ -437,13 +432,13 @@ u8 first_line_filter_method[] =
 #define RGBA_CHANNELS 4
 #define RGBA8_BYTES_PER_PIXEL 4
 
-static u32
-image_png_paeth_predictor(u32 a, u32 b, u32 c)
+static i32
+image_png_paeth_predictor(i32 a, i32 b, i32 c)
 {
-  u32 p = a + b - c;
-  u32 pa = (u32) sabs(p - a);
-  u32 pb = (u32) sabs(p - b);
-  u32 pc = (u32) sabs(p - c);
+  i32 p = a + b - c;
+  i32 pa = (i32) iabs(p - a);
+  i32 pb = (i32) iabs(p - b);
+  i32 pc = (i32) iabs(p - c);
   if (pa <= pb && pa <= pc) return a;
   else if (pb <= pc) return b;
   else return c;
@@ -451,7 +446,7 @@ image_png_paeth_predictor(u32 a, u32 b, u32 c)
 
 static void
 image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
-                      Arena* temp_arena, Arena* perm_arena, Error* err)
+                       Arena* temp_arena, Arena* perm_arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
   u8 channels = color_format_to_number_of_channels[ctx->color_format];
@@ -463,7 +458,7 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   // NOTE(szulf): (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
-  usize bytes_per_scanline = ((img->width * channels * ctx->bit_depth) + 0b111) >> 3;
+  usize bytes_per_scanline = ((img->width * channels * ctx->bit_depth) + 7) >> 3;
   u8* filter_buffer = arena_alloc(temp_arena, bytes_per_scanline * 2, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
@@ -475,14 +470,14 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
   }
 
   u8* curr = filter_buffer;
-  u8* prev = filter_buffer + (img->width * data_bytes_per_pixel);
+  u8* prev = filter_buffer + bytes_per_scanline;
   for (u32 line_idx = 0; line_idx < img->height; ++line_idx)
   {
     u8 filter_method = *data++;
     ERROR_ASSERT(filter_method < 5, *err, ERROR_PNG_INVALID_FILTER,);
     if (line_idx == 0) filter_method = first_line_filter_method[filter_method];
     usize data_bytes_per_line = data_bytes_per_pixel * width;
-    u8* dest = img->data + (stride * line_idx);
+    u8* dest = ((u8*) img->data) + (stride * line_idx);
 
     switch (filter_method)
     {
@@ -513,7 +508,7 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
         }
         for (u32 i = data_bytes_per_pixel; i < data_bytes_per_line; ++i)
         {
-          curr[i] = (data[i] + ((prev[i] + curr[i - data_bytes_per_pixel]) / 2)) & 255;
+          curr[i] = (u8) ((data[i] + ((prev[i] + curr[i - data_bytes_per_pixel]) / 2)) & 255);
         }
       } break;
       case IMAGE_PNG_FILTER_METHOD_PAETH:
@@ -524,7 +519,7 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
         }
         for (u32 i = data_bytes_per_pixel; i < data_bytes_per_line; ++i)
         {
-          curr[i] = (
+          curr[i] = (u8) (
               data[i] +
               image_png_paeth_predictor(curr[i - data_bytes_per_pixel],
                                         prev[i], prev[i - data_bytes_per_pixel])
@@ -544,13 +539,14 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
 
     if (ctx->bit_depth < 8)
     {
-      ASSERT(false, "dont support smaller depths yet");
+      TODO("support smaller depths");
     }
     else if (ctx->bit_depth == 8)
     {
       if (channels == RGBA_CHANNELS) mem_copy(dest, curr, width * RGBA_CHANNELS);
       else if (channels == 1)
       {
+        TODO("support grayscale");
       }
       else
       {
@@ -566,7 +562,7 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
     }
     else if (ctx->bit_depth == 16)
     {
-      ASSERT(false, "dont support 16 bit depth yet");
+      TODO("support 16 bit depth");
     }
 
     u8* temp = curr;
@@ -579,21 +575,17 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
 static Image
 image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_arena, Error* err)
 {
-  Image img = {};
+  Image img = {0};
   Error error = ERROR_SUCCESS;
-  ImageContext ctx = {};
+  ImageContext ctx = {0};
   ctx.data = data;
-  ctx.data_end = data + data_size;
+  ctx.data_end = ((u8*) data) + data_size;
 
   // NOTE(szulf): check png header
   static const u8 png_header[] = {137, 80, 78, 71, 13, 10, 26, 10};
   for (u32 i = 0; i < 8; ++i)
   {
-    if (image_get8(&ctx) != png_header[i])
-    {
-      *err = ERROR_INVALID_PARAMETER;
-      return img;
-    }
+    ERROR_ASSERT(image_get8(&ctx) == png_header[i], *err, ERROR_PNG_INVALID_HEADER, img);
   }
 
   b32 first = true;
@@ -603,7 +595,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
   usize combined_idat_chunks_size_limit = 0;
   while (running && ctx.data != ctx.data_end)
   {
-    ImagePngChunk chunk = {};
+    ImagePngChunk chunk = {0};
     chunk.length = image_get32be(&ctx);
     chunk.type = image_get32be(&ctx);
 
@@ -639,7 +631,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
 
       case IMAGE_PNG_TYPE('P', 'L', 'T', 'E'):
       {
-        ASSERT(false, "dont support palettes yet");
+        TODO("support palettes");
       } break;
 
       case IMAGE_PNG_TYPE('I', 'D', 'A', 'T'):
@@ -662,7 +654,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, img);
 
         // NOTE(szulf): zlib parsing
-        ImageZlibContext zlib_ctx = {};
+        ImageZlibContext zlib_ctx = {0};
         zlib_ctx.data = combined_idat_chunks;
         zlib_ctx.data_end = combined_idat_chunks + combined_idat_chunks_size;
 
@@ -690,19 +682,18 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
           {
             case IMAGE_PNG_COMPRESSION_TYPE_UNCOMPRESSED:
             {
-              if (zlib_ctx.bits_buffered & 0b111)
+              if (zlib_ctx.bits_buffered & 7)
               {
-                image_zlib_read_bits(&zlib_ctx, zlib_ctx.bits_buffered & 0b111);
+                image_zlib_read_bits(&zlib_ctx, zlib_ctx.bits_buffered & 7);
               }
               u8 header[4];
               u32 k = 0;
               while (zlib_ctx.bits_buffered > 0)
               {
-                header[k++] = (u8) (zlib_ctx.bits_buffer & 0b11111111);
+                header[k++] = (u8) (zlib_ctx.bits_buffer & 255);
                 zlib_ctx.bits_buffer >>= 8;
                 zlib_ctx.bits_buffered -= 8;
               }
-              ERROR_ASSERT(zlib_ctx.bits_buffered >= 0, *err, ERROR_PNG_CORRUPT_ZLIB, img);
 
               while (k < 4)
               {
@@ -756,7 +747,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
         }
         else
         {
-          ASSERT(false, "dont support interlaced pngs yet");
+          TODO("support interlaced pngs");
         }
 
         image_get32be(&ctx);

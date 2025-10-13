@@ -5,13 +5,13 @@
 #include <stddef.h>
 
 typedef uint8_t  u8;
-typedef int8_t   s8;
+typedef int8_t   i8;
 typedef uint16_t u16;
-typedef int16_t  s16;
+typedef int16_t  i16;
 typedef uint32_t u32;
-typedef int32_t  s32;
+typedef int32_t  i32;
 typedef uint64_t u64;
-typedef int64_t  s64;
+typedef int64_t  i64;
 
 typedef u32       b32;
 typedef size_t    usize;
@@ -25,8 +25,8 @@ typedef double f64;
 
 #define PI32 3.141592653f
 
-#define S16_MAX  32767
-#define S16_MIN -32768
+#define I16_MAX  32767
+#define I16_MIN -32768
 
 #define FPS  60
 #define MSPF (1000 / FPS)
@@ -36,18 +36,18 @@ typedef double f64;
 
 #define KILOBYTES(n) ((n) * 1024)
 #define MEGABYTES(n) (KILOBYTES(n) * 1024)
-#define GIGBAYTES(n) (MEGABYTES(n) * 1024)
+#define GIGABYTES(n) (MEGABYTES(n) * 1024)
 
-#define ARRAY_LENGTH(arr) (sizeof((arr)) / sizeof(*(arr)))
-
-#define LOG(msg, ...) log_(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define LOG(...) log_(__FILE__, __LINE__, __func__, __VA_ARGS__)
+#define UNUSED(var) (void) (var)
+#define TODO(...) ASSERT(false, __VA_ARGS__)
 
 #ifdef GAME_DEBUG
-#  define ASSERT(expr, msg, ...) do \
+#  define ASSERT(expr, ...) do \
 { \
   if (!(expr)) \
   { \
-    LOG(msg, ##__VA_ARGS__); \
+    LOG(__VA_ARGS__); \
     __asm__("int3"); \
   } \
 } while (0)
@@ -59,39 +59,36 @@ typedef double f64;
 static void log_(const char* file, usize line, const char* func, const char* fmt, ...);
 
 #include "math.c"
-#include "error.c"
+#include "error.h"
 #include "memory.c"
 #include "array.h"
 #include "string.c"
 
-static void* platform_read_entire_file(Arena* arena, const char* path, Error* err);
-static void* platform_read_entire_file_bytes_read(Arena* arena, const char* path,
-                                                  usize* bytes_read, Error* err);
+static void* os_read_entire_file(const char* path, Arena* arena, Error* err);
+static void* os_read_entire_file_bytes_read(const char* path, usize* bytes_read, Arena* arena,
+                                            Error* err);
 
-static void platform_print(const char* msg, ...);
-// TODO(szulf): change to platform_get_ms?
-static u64 get_ms();
+static void os_print(const char* msg);
+static u64 os_get_ms(void);
 
-// TODO(szulf): change to PlatformWindowDimensions?
 typedef struct WindowDimensions
 {
-  s32 width;
-  s32 height;
+  i32 width;
+  i32 height;
 } WindowDimensions;
 
-// TODO(szulf): change to platform_get_window_dimensions?
-static WindowDimensions get_window_dimensions();
+static WindowDimensions os_get_window_dimensions(void);
 
 #include "image.c"
 #include "renderer.c"
 
-typedef struct GameSoundBuffer
+typedef struct SoundBuffer
 {
-  s16* memory;
+  i16* memory;
   usize size;
   u32 sample_count;
   u32 samples_per_second;
-} GameSoundBuffer;
+} SoundBuffer;
 
 typedef struct SceneArray
 {
@@ -106,7 +103,6 @@ typedef enum Key
   KEY_SPACE,
 } Key;
 
-// TODO(szulf): change to GameInputEvent?
 typedef struct InputEvent
 {
   Key key;
@@ -119,7 +115,6 @@ typedef struct InputEventArray
   InputEvent* items;
 } InputEventArray;
 
-// TODO(szulf): change to GameAction?
 typedef enum Action
 {
   ACTION_CHANGE_SCENE,
@@ -132,24 +127,24 @@ static Action keybind_map[] =
   [KEY_SPACE] = ACTION_MOVE,
 };
 
-typedef struct GameInput
+typedef struct Input
 {
   InputEventArray input_events;
-} GameInput;
+} Input;
 
-typedef struct GameState
+typedef struct State
 {
   usize current_scene_idx;
   SceneArray scenes;
-} GameState;
+} State;
 
-static void game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state);
+static void setup(State* state, Arena* temp_arena, Arena* perm_arena);
 
 // TODO(szulf): need to interpolate the positions so the updates are not so sudden
-static void game_update(GameState* state, GameInput* input);
+static void update(State* state, Input* input);
 
-static void game_render(GameState* state);
+static void render(State* state);
 
-static void game_get_sound(GameSoundBuffer* sound_buffer);
+static void get_sound(SoundBuffer* sound_buffer);
 
 #endif

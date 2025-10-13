@@ -1,21 +1,21 @@
 #include "ogl_renderer.h"
 
-#include "glad/src/glad.c"
+#ifdef GAME_SDL
+#include "ogl_functions.h"
+#endif
 
 static void
-setup_renderer()
+setup_renderer(void)
 {
   glEnable(GL_DEPTH_TEST);
 }
 
 static void
-clear_screen()
+clear_screen(void)
 {
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
-#include <stdio.h>
 
 static Mesh
 mesh_make(VertexArray* vertices, U32Array* indices, Material* material)
@@ -79,7 +79,7 @@ obj_vertex_from_index_part(String* part, Vec3Array* vertices, Vec3Array* normals
   Error error = ERROR_SUCCESS;
   Vertex vertex = {0};
 
-  StringArray index = string_split(part, temp_arena, '/', &error);
+  StringArray index = string_split(part, '/', temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, vertex);
   ERROR_ASSERT(index.len == 3, *err, ERROR_OBJ_INVALID_DATA, vertex);
 
@@ -130,13 +130,13 @@ obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length,
                         Arena* temp_arena, Arena* perm_arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  String mtl_file = string_make_cstr_len(temp_arena, mtl_file_cstr, mtl_file_cstr_length, &error);
+  String mtl_file = string_make_cstr_len(mtl_file_cstr, mtl_file_cstr_length);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-  StringArray lines = string_split(&mtl_file, temp_arena, '\n', &error);
+  StringArray lines = string_split(&mtl_file, '\n', temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   b32 parsing_flag = false;
-  Material mat = {};
+  Material mat = {0};
   for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
   {
     if (mem_compare(lines.items[line_idx].data, OBJ_MTL_NEW_HEADER, OBJ_MTL_NEW_HEADER_SIZE))
@@ -147,13 +147,13 @@ obj_parse_material_file(const char* mtl_file_cstr, usize mtl_file_cstr_length,
     {
       if (!parsing_flag) continue;
 
-      StringArray parts = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray parts = string_split(&lines.items[line_idx], ' ', temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
       String texture_file_path = string_prepend(&parts.items[1], "assets/", temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
       usize img_file_size;
-      void* img_file = platform_read_entire_file_bytes_read(temp_arena, texture_file_path.data,
-                                                            &img_file_size, &error);
+      void* img_file = os_read_entire_file_bytes_read(texture_file_path.data, &img_file_size,
+                                                            temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
       // TODO(szulf): probably need some asset manager to not lose this image variable
@@ -172,9 +172,9 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
 {
   Error error = ERROR_SUCCESS;
 
-  String file = string_make_cstr_len(temp_arena, data, data_len, &error);
+  String file = string_make_cstr_len(data, data_len);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
-  StringArray lines = string_split(&file, temp_arena, '\n', &error);
+  StringArray lines = string_split(&file, '\n', temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
 
   usize vert_count = string_count_substrings(&file, OBJ_VERTEX_HEADER);
@@ -183,32 +183,31 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
   usize index_count = string_count_substrings(&file, OBJ_INDEX_HEADER) * 3;
 
   Vec3Array positions = {0};
-  ARRAY_INIT(&positions, temp_arena, vert_count, &error);
+  ARRAY_INIT(&positions, vert_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
   U32Array position_indices = {0};
-  ARRAY_INIT(&position_indices, temp_arena, index_count, &error);
+  ARRAY_INIT(&position_indices, index_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
 
   Vec3Array normals = {0};
-  ARRAY_INIT(&normals, temp_arena, normal_count, &error);
+  ARRAY_INIT(&normals, normal_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
   U32Array normal_indices = {0};
-  ARRAY_INIT(&normal_indices, temp_arena, index_count, &error);
+  ARRAY_INIT(&normal_indices, index_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
 
   Vec2Array uvs = {0};
-  ARRAY_INIT(&uvs, temp_arena, uv_count, &error);
+  ARRAY_INIT(&uvs, uv_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
   U32Array uv_indices = {0};
-  ARRAY_INIT(&uv_indices, temp_arena, index_count, &error);
+  ARRAY_INIT(&uv_indices, index_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
 
-  // TODO(szulf): change this size to something else than a 10000
   VertexArray vertices = {0};
-  ARRAY_INIT(&vertices, perm_arena, 10000, &error);
+  ARRAY_INIT(&vertices, index_count, perm_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
   U32Array indices = {0};
-  ARRAY_INIT(&indices, perm_arena, 10000, &error);
+  ARRAY_INIT(&indices, index_count, perm_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
 
   for (usize line_idx = 0; line_idx < lines.len; ++line_idx)
@@ -216,19 +215,19 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
     if (mem_compare(lines.items[line_idx].data,
                     OBJ_MATERIAL_FILE_HEADER, OBJ_MATERIAL_FILE_HEADER_SIZE))
     {
-      StringArray splits = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray splits = string_split(&lines.items[line_idx], ' ', temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       String material_file_path = string_prepend(&splits.items[1], "assets/", temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       usize material_file_size;
       void* material_file =
-        platform_read_entire_file_bytes_read(temp_arena, material_file_path.data,
-                                             &material_file_size, &error);
+        os_read_entire_file_bytes_read(material_file_path.data, &material_file_size,
+                                             temp_arena, &error);
       obj_parse_material_file(material_file, material_file_size, temp_arena, perm_arena, &error);
     }
     else if (mem_compare(lines.items[line_idx].data, OBJ_VERTEX_HEADER, OBJ_VERTEX_HEADER_SIZE))
     {
-      StringArray splits = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray splits = string_split(&lines.items[line_idx], ' ', temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       ERROR_ASSERT(splits.len == 4, *err, ERROR_OBJ_INVALID_DATA, (Mesh) {0});
 
@@ -243,7 +242,7 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
     }
     else if (mem_compare(lines.items[line_idx].data, OBJ_NORMAL_HEADER, OBJ_NORMAL_HEADER_SIZE))
     {
-      StringArray splits = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray splits = string_split(&lines.items[line_idx], ' ', temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       ERROR_ASSERT(splits.len == 4, *err, ERROR_OBJ_INVALID_DATA, (Mesh) {0});
 
@@ -259,7 +258,7 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
     else if (mem_compare(lines.items[line_idx].data,
                          OBJ_UV_HEADER, OBJ_UV_HEADER_SIZE))
     {
-      StringArray splits = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray splits = string_split(&lines.items[line_idx], ' ', temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       ERROR_ASSERT(splits.len == 3, *err, ERROR_OBJ_INVALID_DATA, (Mesh) {0});
 
@@ -272,7 +271,7 @@ mesh_from_obj(void* data, usize data_len, Arena* temp_arena, Arena* perm_arena, 
     }
     else if (mem_compare(lines.items[line_idx].data, OBJ_INDEX_HEADER, OBJ_INDEX_HEADER_SIZE))
     {
-      StringArray parts = string_split(&lines.items[line_idx], temp_arena, ' ', &error);
+      StringArray parts = string_split(&lines.items[line_idx], ' ', temp_arena, &error);
       ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (Mesh) {0});
       ERROR_ASSERT(parts.len == 4, *err, ERROR_OBJ_INVALID_DATA, (Mesh) {0});
 
@@ -317,18 +316,18 @@ model_rotate(Model* model, f32 deg, const Vec3* axis)
 static void
 scene_draw(const Scene* scene)
 {
-  for (usize drawable_idx = 0; drawable_idx < scene->drawables.len; ++drawable_idx)
+  for (usize renderable_idx = 0; renderable_idx < scene->renderables.len; ++renderable_idx)
   {
-    Drawable* drawable = &scene->drawables.items[drawable_idx];
+    Renderable* renderable = &scene->renderables.items[renderable_idx];
 
-    glUseProgram(shader_map[drawable->shader]);
-    glUniformMatrix4fv(glGetUniformLocation(shader_map[drawable->shader], "view"),
+    glUseProgram(shader_map[renderable->shader]);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable->shader], "view"),
                        1, false, scene->view.data);
-    glUniformMatrix4fv(glGetUniformLocation(shader_map[drawable->shader], "proj"),
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable->shader], "proj"),
                        1, false, scene->proj.data);
 
-    model_draw(&scene->drawables.items[drawable_idx].model,
-               scene->drawables.items[drawable_idx].shader);
+    model_draw(&scene->renderables.items[renderable_idx].model,
+               scene->renderables.items[renderable_idx].shader);
   }
 }
 
@@ -336,8 +335,8 @@ static u32
 setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  const char* shader_src = platform_read_entire_file(arena, path, &error);
-  ASSERT(error == ERROR_SUCCESS, "cannot read shader file");
+  const char* shader_src = os_read_entire_file(path, arena, &error);
+  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (u32) -1);
 
   u32 shader;
   switch (shader_type)
@@ -417,13 +416,13 @@ setup_shaders(Arena* arena, Error* err)
 
   {
     u32 v_shader = setup_shader(arena, "src/shader.vert", SHADER_TYPE_VERTEX, &error);
-    ASSERT(error == ERROR_SUCCESS, "couldnt setup vertex shader");
+    ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
     u32 f_shader = setup_shader(arena, "src/shader.frag", SHADER_TYPE_FRAGMENT, &error);
-    ASSERT(error == ERROR_SUCCESS, "couldnt setup fragment shader");
+    ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
     u32 shader = link_shaders(v_shader, f_shader, &error);
-    ASSERT(error == ERROR_SUCCESS, "couldnt link shader");
+    ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
     shader_map[SHADER_DEFAULT] = shader;
   }

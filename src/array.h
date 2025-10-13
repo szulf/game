@@ -19,7 +19,7 @@ if ((arr)->len >= (arr)->cap) \
 ++(arr)->len; \
 } while (0)
 
-#define ARRAY_INIT(arr, arena, capacity, err) do { \
+#define ARRAY_INIT(arr, capacity, arena, err) do { \
 (arr)->cap = (capacity); \
 (arr)->len = 0; \
 (arr)->items = arena_alloc((arena), (capacity) * sizeof(*(arr)->items), (err)); \

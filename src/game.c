@@ -16,28 +16,28 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
   Error error = ERROR_SUCCESS;
 
   usize obj_file_size = 0;
-  void* obj_file_data = platform_read_entire_file_bytes_read(temp_arena, obj_path, &obj_file_size,
+  void* obj_file_data = os_read_entire_file_bytes_read(obj_path, &obj_file_size, temp_arena,
                                                              &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt read obj file");
 
   Mesh mesh = mesh_from_obj(obj_file_data, obj_file_size, temp_arena, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
 
-  MeshArray meshes = {};
-  ARRAY_INIT(&meshes, perm_arena, 1, &error);
+  MeshArray meshes = {0};
+  ARRAY_INIT(&meshes, 1, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init meshes array");
   ARRAY_PUSH(&meshes, mesh);
 
-  Model model = {};
+  Model model = {0};
   model.meshes = meshes;
   model.model = mat4_make(1.0f);
-  DrawableArray drawables = {};
-  ARRAY_INIT(&drawables, perm_arena, 1, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt init drawables array");
-  ARRAY_PUSH(&drawables, ((Drawable) {model, SHADER_DEFAULT}));
+  RenderableArray renderables = {0};
+  ARRAY_INIT(&renderables, 1, perm_arena, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt init renderables array");
+  ARRAY_PUSH(&renderables, ((Renderable) {model, SHADER_DEFAULT}));
 
-  Scene scene = {};
-  scene.drawables = drawables;
+  Scene scene = {0};
+  scene.renderables = renderables;
   scene.view = mat4_make(1.0f);
   scene.proj = mat4_make(1.0f);
 
@@ -45,7 +45,7 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
 }
 
 static void
-game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
+setup(State* state, Arena* temp_arena, Arena* perm_arena)
 {
   Error error = ERROR_SUCCESS;
 
@@ -57,13 +57,15 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
   setup_global_materials(perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize global materials");
 
+  Scene backpack_scene = setup_simple_scene("assets/backpack.obj", perm_arena, temp_arena);
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
   Scene cube_scene = setup_simple_scene("assets/cube.obj", perm_arena, temp_arena);
   Scene cone_scene = setup_simple_scene("assets/cone.obj", perm_arena, temp_arena);
 
   state->current_scene_idx = 0;
-  ARRAY_INIT(&state->scenes, perm_arena, 3, &error);
+  ARRAY_INIT(&state->scenes, 4, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init scenes array");
+  ARRAY_PUSH(&state->scenes, backpack_scene);
   ARRAY_PUSH(&state->scenes, sphere_scene);
   ARRAY_PUSH(&state->scenes, cube_scene);
   ARRAY_PUSH(&state->scenes, cone_scene);
@@ -72,7 +74,7 @@ game_setup(Arena* perm_arena, Arena* temp_arena, GameState* state)
 }
 
 static void
-game_update(GameState* state, GameInput* input)
+update(State* state, Input* input)
 {
   static f32 degree = 0.0f;
   static f32 move = -3.0f;
@@ -99,19 +101,19 @@ game_update(GameState* state, GameInput* input)
   Vec3 translation_vec = {0.0f, 0.0f, move};
   mat4_translate(&scene->view, &translation_vec);
 
-  WindowDimensions dimensions = get_window_dimensions();
-  scene->proj = perspective(radians(45.0f), (f32) dimensions.width / (f32) dimensions.height,
+  WindowDimensions dimensions = os_get_window_dimensions();
+  scene->proj = mat4_perspective(radians(45.0f), (f32) dimensions.width / (f32) dimensions.height,
                             0.1f, 100.0f);
 
   Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
-  model_rotate(&scene->drawables.items[0].model, degree, &rotate_vec);
+  model_rotate(&scene->renderables.items[0].model, degree, &rotate_vec);
 
 
   degree += 1.0f;
 }
 
 static void
-game_render(GameState* state)
+render(State* state)
 {
   Scene* curr_scene = &state->scenes.items[state->current_scene_idx];
 
@@ -121,7 +123,7 @@ game_render(GameState* state)
 }
 
 static void
-game_get_sound(GameSoundBuffer* sound_buffer)
+get_sound(SoundBuffer* sound_buffer)
 {
   static u32 sample_index = 0;
 
@@ -130,13 +132,13 @@ game_get_sound(GameSoundBuffer* sound_buffer)
     f32 t = (f32) sample_index / (f32) sound_buffer->samples_per_second;
     f32 frequency = 440.0f;
     f32 amplitude = 0.25f;
-    s16 sine_value = (s16) (sin(2.0f * PI32 * t * frequency) * S16_MAX * amplitude);
+    i16 sine_value = (i16) (sin(2.0f * PI32 * t * frequency) * I16_MAX * amplitude);
     (void) sine_value;
 
     ++sample_index;
 
-    s16* left  = sound_buffer->memory + i;
-    s16* right = sound_buffer->memory + i + 1;
+    i16* left  = sound_buffer->memory + i;
+    i16* right = sound_buffer->memory + i + 1;
 
     // *left  = sine_value;
     // *right = sine_value;

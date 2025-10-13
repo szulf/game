@@ -6,8 +6,8 @@ umin(u64 a, u64 b)
   return a < b ? a : b;
 }
 
-static s64
-smin(s64 a, s64 b)
+static i64
+imin(i64 a, i64 b)
 {
   return a < b ? a : b;
 }
@@ -24,8 +24,8 @@ umax(u64 a, u64 b)
   return a > b ? a : b;
 }
 
-static s64
-imax(s64 a, s64 b)
+static i64
+imax(i64 a, i64 b)
 {
   return a > b ? a : b;
 }
@@ -48,8 +48,8 @@ radians(f32 deg)
   return deg * 0.01745329251994329576923690768489f;
 }
 
-static s64
-sabs(s64 v)
+static i64
+iabs(i64 v)
 {
   if (v >= 0) return v;
   return -v;
@@ -137,25 +137,12 @@ vec4_divide(const Vec4* vec, f32 scalar)
 static Mat4
 mat4_make(f32 val)
 {
-  Mat4 mat = {};
+  Mat4 mat = {0};
   mat.data[0] = val;
   mat.data[5] = val;
   mat.data[10] = val;
   mat.data[15] = val;
   return mat;
-}
-
-static Vec4
-mat4_col(Mat4* mat, usize idx)
-{
-  ASSERT(idx < 4, "index out of bounds");
-  // TODO(szulf): is this even correct??
-  return (Vec4) {
-    mat->data[idx * 4],
-    mat->data[idx * 4 + 1],
-    mat->data[idx * 4 + 2],
-    mat->data[idx * 4 + 3],
-  };
 }
 
 static void
@@ -189,12 +176,12 @@ mat4_translate(Mat4* mat, const Vec3* vec)
 }
 
 static Mat4
-perspective(f32 fov, f32 aspect, f32 near, f32 far)
+mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far)
 {
   f32 right = near * tan(fov / 2.0f);
   f32 top = right / aspect;
 
-  Mat4 mat = {};
+  Mat4 mat = {0};
   mat.data[0] = near / right;
   mat.data[5] = near / top;
   mat.data[10] = -(far + near) / (far - near);

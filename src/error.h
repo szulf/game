@@ -6,6 +6,7 @@ typedef enum Error
   ERROR_OUT_OF_MEMORY,
   ERROR_INVALID_PARAMETER,
   ERROR_FILE_READING,
+  ERROR_NOT_FOUND,
 
   ERROR_SHADER_COMPILATION,
   ERROR_SHADER_LINKING,
@@ -34,6 +35,7 @@ const char* error_to_error_string[ERROR_SUCCESS + 1] =
   [ERROR_OUT_OF_MEMORY] = "out of memory",
   [ERROR_INVALID_PARAMETER] = "invalid parameter",
   [ERROR_FILE_READING] = "file reading",
+  [ERROR_NOT_FOUND] = "not found",
 
   [ERROR_SHADER_COMPILATION] = "[SHADER] compilation",
   [ERROR_SHADER_LINKING] = "[SHADER] linking",

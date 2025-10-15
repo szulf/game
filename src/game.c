@@ -15,22 +15,9 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
 {
   Error error = ERROR_SUCCESS;
 
-  usize obj_file_size = 0;
-  void* obj_file_data = os_read_entire_file_bytes_read(obj_path, &obj_file_size, temp_arena,
-                                                             &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt read obj file");
+  Model model = obj_parse(obj_path, temp_arena, perm_arena, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt load obj model");
 
-  Mesh mesh = mesh_from_obj(obj_file_data, obj_file_size, temp_arena, perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt load sphere mesh");
-
-  MeshArray meshes = {0};
-  ARRAY_INIT(&meshes, 1, perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt init meshes array");
-  ARRAY_PUSH(&meshes, mesh);
-
-  Model model = {0};
-  model.meshes = meshes;
-  model.model = mat4_make(1.0f);
   RenderableArray renderables = {0};
   ARRAY_INIT(&renderables, 1, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init renderables array");
@@ -54,8 +41,8 @@ setup(State* state, Arena* temp_arena, Arena* perm_arena)
   setup_shaders(temp_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
 
-  setup_global_materials(perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt initialize global materials");
+  setup_assets(perm_arena, &error);
+  ASSERT(error == ERROR_SUCCESS, "couldnt initialize assets");
 
   Scene backpack_scene = setup_simple_scene("assets/backpack.obj", perm_arena, temp_arena);
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);

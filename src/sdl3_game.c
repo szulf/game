@@ -3,10 +3,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
 
-#ifdef GAME_SDL
-#  include "ogl_functions_sdl3.c"
-#endif
-
+#include "sdl3_ogl_functions.c"
 #include "sdl3_game.h"
 
 // TODO(szulf): set better starting dimensions
@@ -333,7 +330,6 @@ main(void)
 
       last_tick = update_tick;
     }
-    return 0;
   }
 
   return 0;

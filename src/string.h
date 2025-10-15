@@ -14,7 +14,6 @@ static String string_make_cstr_len(const char* cstr, usize len);
 
 static usize string_count_chars(String* str, char c);
 static usize string_find_char(String* str, char c, usize start_idx);
-static usize string_count_substrings(String* str, const char* substr);
 
 static String string_prepend(String* str, const char* cstr, Arena* arena, Error* err);
 
@@ -31,7 +30,6 @@ static f32 string_parse_f32(String* str, Error* err);
 static u32 string_parse_u32(String* str, Error* err);
 
 static usize cstr_len(const char* c_str);
-static void cstr_copy(char* dest, const char* src);
 
 #endif
 

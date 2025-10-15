@@ -41,18 +41,6 @@ string_find_char(String* str, char c, usize start_idx)
   return (usize) -1;
 }
 
-static usize
-string_count_substrings(String* str, const char* substr)
-{
-  usize count = 0;
-  usize substr_len = cstr_len(substr);
-  for (usize i = 0; i < str->len - substr_len + 1; ++i)
-  {
-    if (mem_compare(str->data + i, substr, substr_len)) ++count;
-  }
-  return count;
-}
-
 static String
 string_prepend(String* str, const char* cstr, Arena* arena, Error* err)
 {
@@ -169,11 +157,3 @@ cstr_len(const char* cstr)
   return (usize) (s - cstr);
 }
 
-static void
-cstr_copy(char* dest, const char* src)
-{
-  while (*src)
-  {
-    *dest++ = *src++;
-  }
-}

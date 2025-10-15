@@ -22,6 +22,13 @@ static void setup_shaders(Arena* arena, Error* err);
 
 typedef struct Texture Texture;
 
+typedef struct TextureArray
+{
+  usize cap;
+  usize len;
+  Texture* items;
+} TextureArray;
+
 static Texture texture_make(Image* img);
 
 typedef struct Material Material;
@@ -32,10 +39,6 @@ typedef struct MaterialArray
   usize len;
   Material* items;
 } MaterialArray;
-
-static MaterialArray g_materials;
-
-inline static void setup_global_materials(Arena* perm_arena, Error* err);
 
 typedef struct Mesh Mesh;
 
@@ -77,8 +80,6 @@ typedef struct U32Array
 static Mesh mesh_make(VertexArray* vertices, U32Array* indices, Material* material);
 // TODO(szulf): probably switch to some sort of a queue later on
 static void mesh_draw(const Mesh* mesh, Shader shader);
-static Mesh mesh_from_obj(void* data, usize data_len,
-                          Arena* temp_arena, Arena* perm_arena, Error* err);
 
 typedef struct MeshArray
 {

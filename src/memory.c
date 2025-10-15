@@ -30,10 +30,6 @@ arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
   void* next_addr = curr_addr + padding;
   arena->offset += size;
 
-#ifdef GAME_DEBUG
-  mem_zero(next_addr, size);
-#endif
-
   *err = ERROR_SUCCESS;
   return next_addr;
 }
@@ -118,6 +114,17 @@ mem_compare(const void* v1, const void* v2, usize bytes)
   {
     if (((const u8*)v1)[i] != ((const u8*)v2)[i]) return false;
   }
-
   return true;
+}
+
+static u64
+mem_hash_fnv_1a(const void* data, usize size)
+{
+  u64 hash = FNV_OFFSET;
+  for (usize i = 0; i < size; ++i)
+  {
+    hash ^= ((u8*) data)[i];
+    hash *= FNV_PRIME;
+  }
+  return hash;
 }

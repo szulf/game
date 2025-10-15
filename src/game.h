@@ -35,8 +35,8 @@ typedef double f64;
 #define MSPT (1000 / TPS)
 
 #define KILOBYTES(n) ((n) * 1024)
-#define MEGABYTES(n) (KILOBYTES(n) * 1024)
-#define GIGABYTES(n) (MEGABYTES(n) * 1024)
+#define MEGABYTES(n) (KILOBYTES(n) * 1024ll)
+#define GIGABYTES(n) (MEGABYTES(n) * 1024ll)
 
 #define LOG(...) log_(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define UNUSED(var) (void) (var)
@@ -67,7 +67,6 @@ static void log_(const char* file, usize line, const char* func, const char* fmt
 static void* os_read_entire_file(const char* path, Arena* arena, Error* err);
 static void* os_read_entire_file_bytes_read(const char* path, usize* bytes_read, Arena* arena,
                                             Error* err);
-
 static void os_print(const char* msg);
 static u64 os_get_ms(void);
 
@@ -76,11 +75,12 @@ typedef struct WindowDimensions
   i32 width;
   i32 height;
 } WindowDimensions;
-
 static WindowDimensions os_get_window_dimensions(void);
 
 #include "image.c"
 #include "renderer.c"
+#include "assets.c"
+#include "obj.c"
 
 typedef struct SoundBuffer
 {

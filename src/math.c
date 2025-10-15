@@ -51,8 +51,7 @@ radians(f32 deg)
 static i64
 iabs(i64 v)
 {
-  if (v >= 0) return v;
-  return -v;
+  return v * ((v > 0) - (v < 0));
 }
 
 static f32

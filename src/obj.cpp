@@ -19,7 +19,8 @@ obj_vertex_hash_map_make(usize cap, Arena* arena, Error* err)
   Error error = ERROR_SUCCESS;
   ObjVertexHashMap hash_map;
   hash_map.cap = cap;
-  hash_map.entries = arena_alloc(arena, cap * sizeof(ObjVertexHashMapEntry), &error);
+  hash_map.entries = (ObjVertexHashMapEntry*)
+    arena_alloc(arena, cap * sizeof(ObjVertexHashMapEntry), &error);
   mem_zero(hash_map.entries, cap * sizeof(ObjVertexHashMapEntry));
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, hash_map);
   return hash_map;
@@ -90,60 +91,60 @@ obj_vertex_hash_map_set(ObjVertexHashMap* map, Vertex* key, u32 value, Error* er
   }
 }
 
-typedef struct ObjContext
+struct ObjContext
 {
-  StringArray lines;
-  Vec3Array positions;
-  Vec3Array normals;
-  Vec2Array uvs;
+  Array<String> lines;
+  Array<Vec3> positions;
+  Array<Vec3> normals;
+  Array<Vec2> uvs;
   usize mesh_count;
   usize idx;
-} ObjContext;
+};
 
 static void
 obj_parse_mtl_file(String* mtl_file, Arena* temp_arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  StringArray lines = string_split(mtl_file, '\n', temp_arena, &error);
+  Array<String> lines = string_split(mtl_file, '\n', temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   b32 parsing = false;
   String* material_name = {0};
   for (usize i = 0; i < lines.len; ++i)
   {
-    String* curr_line = &lines.items[i];
+    String* curr_line = &lines[i];
     switch (curr_line->data[0])
     {
       case 'n':
       {
-        StringArray parts = string_split(curr_line, ' ', temp_arena, &error);
+        Array<String> parts = string_split(curr_line, ' ', temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-        if (parts.items[0].len != 6) continue;
-        if (!mem_compare(parts.items[0].data, "newmtl", 6)) continue;
+        if (parts[0].len != 6) continue;
+        if (!mem_compare(parts[0].data, "newmtl", 6)) continue;
         if (parts.len != 2) continue;
-        if (!assets_material_exists(&parts.items[1]))
+        if (!assets_material_exists(&parts[1]))
         {
           parsing = true;
-          material_name = &parts.items[1];
+          material_name = &parts[1];
         }
       } break;
 
       case 'm':
       {
         if (!parsing) continue;
-        StringArray parts = string_split(curr_line, ' ', temp_arena, &error);
+        Array<String> parts = string_split(curr_line, ' ', temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-        if (parts.items[0].len != 6) continue;
-        if (!mem_compare(parts.items[0].data, "map_Kd", 6)) continue;
+        if (parts[0].len != 6) continue;
+        if (!mem_compare(parts[0].data, "map_Kd", 6)) continue;
         if (parts.len != 2) continue;
-        String texture_file_path = string_prepend(&parts.items[1], "assets/", temp_arena, &error);
+        String texture_file_path = string_prepend(&parts[1], "assets/", temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
         Material mat = {0};
         if (!assets_texture_exists(&texture_file_path))
         {
           usize img_file_size;
-          void* img_file = os_read_entire_file_bytes_read(texture_file_path.data, &img_file_size,
-                                                          temp_arena, &error);
+          void* img_file = os_read_entire_file(texture_file_path.data, temp_arena, &error,
+                                               &img_file_size);
           ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
           Image img = image_decode_png(img_file, img_file_size, temp_arena, temp_arena, &error);
           ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
@@ -166,12 +167,12 @@ static void
 obj_parse_vertex(f32* points, u8 point_count, String* line, Arena* temp_arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  StringArray splits = string_split(line, ' ', temp_arena, &error);
+  Array<String> splits = string_split(line, ' ', temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
   ERROR_ASSERT(splits.len == point_count + 1u, *err, ERROR_OBJ_INVALID_DATA,);
   for (usize i = 0; i < point_count; ++i)
   {
-    f32 point = string_parse_f32(&splits.items[i + 1], &error);
+    f32 point = string_parse_f32(&splits[i + 1], &error);
     ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
     points[i] = point;
   }
@@ -181,11 +182,11 @@ static Mesh
 obj_parse_object(ObjContext* ctx, Arena* temp_arena, Arena* perm_arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  Mesh mesh = {0};
+  Mesh mesh = {};
   b32 parsing = true;
   for (usize i = ctx->idx; parsing && i < ctx->lines.len; ++i)
   {
-    String* curr_line = &ctx->lines.items[i];
+    String* curr_line = &ctx->lines[i];
     switch (curr_line->data[0])
     {
       case 'f':
@@ -203,47 +204,48 @@ obj_parse_object(ObjContext* ctx, Arena* temp_arena, Arena* perm_arena, Error* e
   ObjVertexHashMap vertex_hash_map = obj_vertex_hash_map_make(mesh.indices.cap * 2, temp_arena,
                                                               &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-  ARRAY_INIT(&mesh.vertices, mesh.indices.cap, perm_arena, &error);
+  // TODO(szulf): wasting a bunch of memory here i think
+  mesh.vertices = array_make<Vertex>(mesh.indices.cap, perm_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-  ARRAY_INIT(&mesh.indices, mesh.indices.cap, perm_arena, &error);
+  mesh.indices = array_make<u32>(mesh.indices.cap, perm_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
 
   parsing = true;
   for (; parsing && ctx->idx < ctx->lines.len; ++ctx->idx)
   {
-    String* curr_line = &ctx->lines.items[ctx->idx];
+    String* curr_line = &ctx->lines[ctx->idx];
     switch (curr_line->data[0])
     {
       case 'f':
       {
         Error error = ERROR_SUCCESS;
-        StringArray splits = string_split(curr_line, ' ', temp_arena, &error);
+        Array<String> splits = string_split(curr_line, ' ', temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
         ERROR_ASSERT(splits.len == 4u, *err, ERROR_OBJ_INVALID_DATA, mesh);
         for (usize i = 0; i < 3; ++i)
         {
-          StringArray parts = string_split(&splits.items[i + 1], '/', temp_arena, &error);
+          Array<String> parts = string_split(&splits[i + 1], '/', temp_arena, &error);
           ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
           ERROR_ASSERT(parts.len == 3u, *err, ERROR_OBJ_INVALID_DATA, mesh);
           u32 indices[3];
           for (usize j = 0; j < 3; ++j)
           {
-            u32 idx = string_parse_u32(&parts.items[j], &error);
+            u32 idx = string_parse_u32(&parts[j], &error);
             ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
             indices[j] = idx - 1;
           }
           Vertex vertex;
-          vertex.pos = ctx->positions.items[indices[0]];
-          vertex.uv = ctx->uvs.items[indices[1]];
-          vertex.normal = ctx->normals.items[indices[2]];
+          vertex.pos = ctx->positions[indices[0]];
+          vertex.uv = ctx->uvs[indices[1]];
+          vertex.normal = ctx->normals[indices[2]];
           u32 idx = obj_vertex_hash_map_get(&vertex_hash_map, &vertex, &error);
-          if (error == ERROR_SUCCESS) ARRAY_PUSH(&mesh.indices, idx);
+          if (error == ERROR_SUCCESS) array_push(&mesh.indices, idx);
           else
           {
             obj_vertex_hash_map_set(&vertex_hash_map, &vertex, (u32) mesh.vertices.len, &error);
             ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-            ARRAY_PUSH(&mesh.indices, ((u32) mesh.vertices.len));
-            ARRAY_PUSH(&mesh.vertices, vertex);
+            array_push(&mesh.indices, ((u32) mesh.vertices.len));
+            array_push(&mesh.vertices, vertex);
           }
         }
       } break;
@@ -257,7 +259,7 @@ obj_parse_object(ObjContext* ctx, Arena* temp_arena, Arena* perm_arena, Error* e
             f32 points[3];
             obj_parse_vertex(points, 3, curr_line, temp_arena, &error);
             ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-            ARRAY_PUSH(&ctx->positions, ((Vec3) {points[0], points[1], points[2]}));
+            array_push(&ctx->positions, (Vec3{points[0], points[1], points[2]}));
           } break;
 
           case 'n':
@@ -265,7 +267,7 @@ obj_parse_object(ObjContext* ctx, Arena* temp_arena, Arena* perm_arena, Error* e
             f32 points[3];
             obj_parse_vertex(points, 3, curr_line, temp_arena, &error);
             ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-            ARRAY_PUSH(&ctx->normals, ((Vec3) {points[0], points[1], points[2]}));
+            array_push(&ctx->normals, (Vec3{points[0], points[1], points[2]}));
           } break;
 
           case 't':
@@ -273,19 +275,19 @@ obj_parse_object(ObjContext* ctx, Arena* temp_arena, Arena* perm_arena, Error* e
             f32 points[2];
             obj_parse_vertex(points, 2, curr_line, temp_arena, &error);
             ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-            ARRAY_PUSH(&ctx->uvs, ((Vec2) {points[0], points[1]}));
+            array_push(&ctx->uvs, (Vec2{points[0], points[1]}));
           } break;
         }
       } break;
 
       case 'u':
       {
-        StringArray parts = string_split(curr_line, ' ', temp_arena, &error);
+        Array<String> parts = string_split(curr_line, ' ', temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
-        ERROR_ASSERT(parts.items[0].len == 6, *err, error, mesh);
-        ERROR_ASSERT(mem_compare(parts.items[0].data, "usemtl", 6), *err, ERROR_OBJ_INVALID_DATA,
+        ERROR_ASSERT(parts[0].len == 6, *err, error, mesh);
+        ERROR_ASSERT(mem_compare(parts[0].data, "usemtl", 6), *err, ERROR_OBJ_INVALID_DATA,
                      mesh);
-        Material* mat = assets_material_get(&parts.items[1], &error);
+        Material* mat = assets_material_get(&parts[1], &error);
         // ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, mesh);
         if (mat)
         {
@@ -309,19 +311,19 @@ static Model
 obj_parse(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  Model model = {0};
+  Model model = {};
   model.model = mat4_make(1.0f);
   usize obj_file_size;
-  char* obj_file_data = os_read_entire_file_bytes_read(path, &obj_file_size, temp_arena, &error);
+  char* obj_file_data = (char*) os_read_entire_file(path, temp_arena, &error, &obj_file_size);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
   String obj_file = string_make_cstr_len(obj_file_data, obj_file_size);
-  ObjContext ctx = {0};
+  ObjContext ctx = {};
   ctx.lines = string_split(&obj_file, '\n', temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
 
   for (usize i = 0; i < ctx.lines.len; ++i)
   {
-    String* curr_line = &ctx.lines.items[i];
+    String* curr_line = &ctx.lines[i];
     if (curr_line->len < 4) continue;
     switch (curr_line->data[0])
     {
@@ -351,18 +353,18 @@ obj_parse(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err)
     }
   }
 
-  ARRAY_INIT(&model.meshes, ctx.mesh_count, temp_arena, &error);
+  model.meshes = array_make<Mesh>(ctx.mesh_count, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
-  ARRAY_INIT(&ctx.positions, ctx.positions.cap, temp_arena, &error);
+  ctx.positions = array_make<Vec3>(ctx.positions.cap, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
-  ARRAY_INIT(&ctx.normals, ctx.normals.cap, temp_arena, &error);
+  ctx.normals = array_make<Vec3>(ctx.normals.cap, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
-  ARRAY_INIT(&ctx.uvs, ctx.uvs.cap, temp_arena, &error);
+  ctx.uvs = array_make<Vec2>(ctx.uvs.cap, temp_arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
 
   for (; ctx.idx < ctx.lines.len; ++ctx.idx)
   {
-    String* curr_line = &ctx.lines.items[ctx.idx];
+    String* curr_line = &ctx.lines[ctx.idx];
     switch (curr_line->data[0])
     {
       case 'o':
@@ -371,24 +373,24 @@ obj_parse(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err)
         ++ctx.idx;
         Mesh mesh = obj_parse_object(&ctx, temp_arena, perm_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
-        ARRAY_PUSH(&model.meshes, mesh);
+        array_push(&model.meshes, mesh);
       } break;
 
       case 'm':
       {
-        StringArray parts = string_split(curr_line, ' ', temp_arena, &error);
+        Array<String> parts = string_split(curr_line, ' ', temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
         ERROR_ASSERT(parts.len == 2, *err, ERROR_OBJ_INVALID_DATA, model);
-        ERROR_ASSERT(parts.items[0].len == 6, *err, ERROR_OBJ_INVALID_DATA, model);
-        ERROR_ASSERT(mem_compare(parts.items[0].data, "mtllib", 6), *err, ERROR_OBJ_INVALID_DATA,
+        ERROR_ASSERT(parts[0].len == 6, *err, ERROR_OBJ_INVALID_DATA, model);
+        ERROR_ASSERT(mem_compare(parts[0].data, "mtllib", 6), *err, ERROR_OBJ_INVALID_DATA,
                      model);
-        String mtl_file_path = string_prepend(&parts.items[1], "assets/", temp_arena, &error);
+        String mtl_file_path = string_prepend(&parts[1], "assets/", temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
         usize mtl_file_size;
-        void* mtl_file_data = os_read_entire_file_bytes_read(mtl_file_path.data, &mtl_file_size,
-                                                             temp_arena, &error);
+        void* mtl_file_data = os_read_entire_file(mtl_file_path.data, temp_arena, &error,
+                                                  &mtl_file_size);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
-        String mtl_file = string_make_cstr_len(mtl_file_data, mtl_file_size);
+        String mtl_file = string_make_cstr_len((const char*) mtl_file_data, mtl_file_size);
         obj_parse_mtl_file(&mtl_file, temp_arena, &error);
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, model);
       } break;

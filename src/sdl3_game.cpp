@@ -1,22 +1,16 @@
-#include "game.c"
+#include "game.cpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
 
-#include "sdl3_ogl_functions.c"
+#include "sdl3_ogl_functions.cpp"
 #include "sdl3_game.h"
 
 // TODO(szulf): set better starting dimensions
 WindowDimensions dimensions = {640, 480};
 
 static void*
-os_read_entire_file(const char* path, Arena* arena, Error* err)
-{
-  return os_read_entire_file_bytes_read(path, 0, arena, err);
-}
-
-static void*
-os_read_entire_file_bytes_read(const char* path, usize* bytes_read, Arena* arena, Error* err)
+os_read_entire_file(const char* path, Arena* arena, Error* err, usize* bytes_read)
 {
   Error error = ERROR_SUCCESS;
 
@@ -29,10 +23,7 @@ os_read_entire_file_bytes_read(const char* path, usize* bytes_read, Arena* arena
 
   mem_copy(file_data, file, read);
   SDL_free(file);
-  if (bytes_read)
-  {
-    *bytes_read = read;
-  }
+  if (bytes_read) *bytes_read = read;
 
   *err = ERROR_SUCCESS;
   return file_data;
@@ -163,7 +154,7 @@ main(void)
     return 1;
   }
 
-  SDL3AudioBuffer audio_buffer = {0};
+  SDL3AudioBuffer audio_buffer = {};
   audio_buffer.spec.format   = SDL_AUDIO_S16;
   audio_buffer.spec.channels = 2;
   audio_buffer.spec.freq     = 48000;
@@ -199,137 +190,106 @@ main(void)
   glDebugMessageCallback(debug_callback, 0);
 #endif
 
-  Arena perm_arena = {0};
+  Arena perm_arena = {};
   perm_arena.buffer_size = GIGABYTES(1);
   perm_arena.buffer = SDL_malloc(perm_arena.buffer_size);
 
-  Arena temp_arena = {0};
+  Arena temp_arena = {};
   temp_arena.buffer_size = GIGABYTES(1);
   temp_arena.buffer = SDL_malloc(temp_arena.buffer_size);
 
-  State state = {0};
+  State state = {};
 
-  InputEventArray input_events = {0};
+  Array<InputEvent> input_events = {};
   {
     Error error = ERROR_SUCCESS;
-    ARRAY_INIT(&input_events, 128, &perm_arena, &error);
+    input_events = array_make<InputEvent>(128, &perm_arena, &error);
     ASSERT(error == ERROR_SUCCESS, "couldnt init inputs array");
   }
   Input input = {input_events};
 
   setup(&state, &temp_arena, &perm_arena);
+  SDL_ResumeAudioStreamDevice(audio_stream);
 
   SDL_Event e;
   b32 running = true;
-
-  i8  update_tick = 0;
-  i8  last_tick   = 0;
-  u32 last_second = 0;
+  u8  update_tick = 0;
+  u8  last_tick   = 0;
   u64 starter_ms  = SDL_GetTicks();
-
-  SDL_ResumeAudioStreamDevice(audio_stream);
-
   while (running)
   {
-    u64 ms;
+    u64 ms = SDL_GetTicks() - starter_ms;
+    u32 current_second_ms = (u32) ms % 1000;
+    update_tick = (u8) current_second_ms / MSPT;
+    u8 safe_update_tick = update_tick;
+    if (last_tick > update_tick) safe_update_tick += 20;
+
+    while (SDL_PollEvent(&e))
     {
-      ms = SDL_GetTicks() - starter_ms;
-      u32 current_second_ms = (u32) ms % 1000;
-      u32 current_second = (u32) (ms / 1000);
-
-      if (current_second != last_second)
+      switch (e.type)
       {
-        update_tick = 0;
-      }
-
-      update_tick = (i8) current_second_ms / MSPT;
-
-      last_second = current_second;
-    }
-
-    {
-      while (SDL_PollEvent(&e))
-      {
-        switch (e.type)
+        case SDL_EVENT_QUIT:
         {
-          case SDL_EVENT_QUIT:
-          {
-            running = false;
-          } break;
-          case SDL_EVENT_WINDOW_RESIZED:
-          {
-            dimensions = (WindowDimensions) {e.window.data1, e.window.data2};
-            glViewport(0, 0, dimensions.width, dimensions.height);
-          } break;
-          case SDL_EVENT_MOUSE_BUTTON_DOWN:
-          {
-            if (e.button.button == 1)
-            {
-              ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_LMB}));
-            }
-          } break;
-          case SDL_EVENT_KEY_DOWN:
-          {
-            switch (e.key.key)
-            {
-              case SDLK_SPACE:
-              {
-                ARRAY_PUSH(&input.input_events, ((InputEvent) {.key = KEY_SPACE}));
-              } break;
-            }
-          } break;
-        }
-      }
-    }
-
-    {
-      i8 safe_update_tick = update_tick;
-      if (last_tick > update_tick)
-      {
-        safe_update_tick += 20;
-      }
-
-      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
-      {
-        // NOTE(szulf): to really get the current tick you have to do tick % 20
-
-        SoundBuffer sound_buffer = {0};
-        sound_buffer.memory = audio_buffer.memory;
-        sound_buffer.size = audio_buffer.size;
-        sound_buffer.sample_count = audio_buffer.sample_count;
-        sound_buffer.samples_per_second = (u32) audio_buffer.spec.freq;
-
-        get_sound(&sound_buffer);
-        if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory, (i32) sound_buffer.size))
+          running = false;
+        } break;
+        case SDL_EVENT_WINDOW_RESIZED:
         {
-          SDL_Log("Error putting audio stream data: %s\n", SDL_GetError());
-          return 1;
-        }
-      }
-
-      for (i8 tick = last_tick; tick < safe_update_tick; ++tick)
-      {
-        update(&state, &input);
+          dimensions = WindowDimensions{e.window.data1, e.window.data2};
+          glViewport(0, 0, dimensions.width, dimensions.height);
+        } break;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        {
+          if (e.button.button == 1)
+          {
+            array_push(&input.input_events, (InputEvent{KEY_LMB}));
+          }
+        } break;
+        case SDL_EVENT_KEY_DOWN:
+        {
+          switch (e.key.key)
+          {
+            case SDLK_SPACE:
+            {
+              array_push(&input.input_events, (InputEvent{KEY_SPACE}));
+            } break;
+          }
+        } break;
       }
     }
 
+    for (u8 tick = last_tick; tick < safe_update_tick; ++tick)
     {
-      render(&state);
+      // NOTE(szulf): to really get the current tick you have to do tick % 20
 
-      SDL_GL_SwapWindow(window);
-    }
+      SoundBuffer sound_buffer = {};
+      sound_buffer.memory = audio_buffer.memory;
+      sound_buffer.size = audio_buffer.size;
+      sound_buffer.sample_count = audio_buffer.sample_count;
+      sound_buffer.samples_per_second = (u32) audio_buffer.spec.freq;
 
-    {
-      u64 new_ms = SDL_GetTicks() - starter_ms;
-      u64 ms_in_frame = new_ms - ms;
-
-      if (ms_in_frame < MSPF)
+      get_sound(&sound_buffer);
+      if (!SDL_PutAudioStreamData(audio_stream, sound_buffer.memory, (i32) sound_buffer.size))
       {
-        SDL_Delay((u32) (MSPF - ms_in_frame));
+        SDL_Log("Error putting audio stream data: %s\n", SDL_GetError());
+        return 1;
       }
-
-      last_tick = update_tick;
     }
+
+    for (u8 tick = last_tick; tick < safe_update_tick; ++tick)
+    {
+      update(&state, &input);
+    }
+
+    render(&state);
+    SDL_GL_SwapWindow(window);
+
+    u64 new_ms = SDL_GetTicks() - starter_ms;
+    u64 ms_in_frame = new_ms - ms;
+    if (ms_in_frame < MSPF)
+    {
+      SDL_Delay((u32) (MSPF - ms_in_frame));
+    }
+    last_tick = update_tick;
   }
 
   return 0;

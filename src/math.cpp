@@ -72,25 +72,25 @@ vec3_normalize(Vec3* vec)
 static Vec3
 vec3_add(const Vec3* vec1, const Vec3* vec2)
 {
-  return (Vec3) {vec1->x + vec2->x, vec1->y + vec2->y, vec1->z + vec2->z};
+  return Vec3{vec1->x + vec2->x, vec1->y + vec2->y, vec1->z + vec2->z};
 }
 
 static Vec3
 vec3_subtract(const Vec3* vec1, const Vec3* vec2)
 {
-  return (Vec3) {vec1->x - vec2->x, vec1->y - vec2->y, vec1->z - vec2->z};
+  return Vec3{vec1->x - vec2->x, vec1->y - vec2->y, vec1->z - vec2->z};
 }
 
 static Vec3
 vec3_multiply(const Vec3* vec, f32 scalar)
 {
-  return (Vec3) {vec->x * scalar, vec->y * scalar, vec->z * scalar};
+  return Vec3{vec->x * scalar, vec->y * scalar, vec->z * scalar};
 }
 
 static Vec3
 vec3_divide(const Vec3* vec, f32 scalar)
 {
-  return (Vec3) {vec->x / scalar, vec->y / scalar, vec->z / scalar};
+  return Vec3{vec->x / scalar, vec->y / scalar, vec->z / scalar};
 }
 
 static f32
@@ -112,25 +112,25 @@ vec4_normalize(Vec4* vec)
 static Vec4
 vec4_add(const Vec4* vec1, const Vec4* vec2)
 {
-  return (Vec4) {vec1->x + vec2->x, vec1->y + vec2->y, vec1->z + vec2->z, vec1->w + vec2->w};
+  return Vec4{vec1->x + vec2->x, vec1->y + vec2->y, vec1->z + vec2->z, vec1->w + vec2->w};
 }
 
 static Vec4
 vec4_subtract(const Vec4* vec1, const Vec4* vec2)
 {
-  return (Vec4) {vec1->x - vec2->x, vec1->y - vec2->y, vec1->z - vec2->z, vec1->w - vec2->w};
+  return Vec4{vec1->x - vec2->x, vec1->y - vec2->y, vec1->z - vec2->z, vec1->w - vec2->w};
 }
 
 static Vec4
 vec4_multiply(const Vec4* vec, f32 scalar)
 {
-  return (Vec4) {vec->x * scalar, vec->y * scalar, vec->z * scalar, vec->w * scalar};
+  return Vec4{vec->x * scalar, vec->y * scalar, vec->z * scalar, vec->w * scalar};
 }
 
 static Vec4
 vec4_divide(const Vec4* vec, f32 scalar)
 {
-  return (Vec4) {vec->x / scalar, vec->y / scalar, vec->z / scalar, vec->w / scalar};
+  return Vec4{vec->x / scalar, vec->y / scalar, vec->z / scalar, vec->w / scalar};
 }
 
 static Mat4

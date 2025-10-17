@@ -2,42 +2,35 @@
 
 #define IMAGE_PNG_MAX_IDAT_CHUNK_SIZE (1u << 30)
 
-typedef enum ImagePngColorFormat
+enum ImagePngColorFormat
 {
   IMAGE_COLOR_FORMAT_GRAYSCALE,
   IMAGE_COLOR_FORMAT_RGB,
   IMAGE_COLOR_FORMAT_PALETTE,
   IMAGE_COLOR_FORMAT_GRAYSCALE_ALPHA,
   IMAGE_COLOR_FORMAT_RGBA,
-} ImagePngColorFormat;
+};
 
 u32 color_to_color_format[7] =
 {
-  [0] = IMAGE_COLOR_FORMAT_GRAYSCALE,
-  [1] = (u32) -1,
-  [2] = IMAGE_COLOR_FORMAT_RGB,
-  [3] = IMAGE_COLOR_FORMAT_PALETTE,
-  [4] = IMAGE_COLOR_FORMAT_GRAYSCALE_ALPHA,
-  [5] = (u32) -1,
-  [6] = IMAGE_COLOR_FORMAT_RGBA,
+  IMAGE_COLOR_FORMAT_GRAYSCALE,
+  (u32) -1,
+  IMAGE_COLOR_FORMAT_RGB,
+  IMAGE_COLOR_FORMAT_PALETTE,
+  IMAGE_COLOR_FORMAT_GRAYSCALE_ALPHA,
+  (u32) -1,
+  IMAGE_COLOR_FORMAT_RGBA,
 };
 
-u8 color_format_to_number_of_channels[5] =
-{
-  [IMAGE_COLOR_FORMAT_GRAYSCALE] = 1,
-  [IMAGE_COLOR_FORMAT_RGB] = 3,
-  [IMAGE_COLOR_FORMAT_PALETTE] = 1,
-  [IMAGE_COLOR_FORMAT_GRAYSCALE_ALPHA] = 2,
-  [IMAGE_COLOR_FORMAT_RGBA] = 4,
-};
+u8 color_format_to_number_of_channels[5];
 
-typedef struct ImageContext {
+struct ImageContext {
   u8* data;
   u8* data_end;
   b32 interlaced;
   ImagePngColorFormat color_format;
   u8 bit_depth;
-} ImageContext;
+};
 
 inline static u8
 image_get8(ImageContext* ctx)
@@ -286,8 +279,8 @@ image_zlib_huffman_compute_codes(ImageZlibContext* zlib_ctx, Error* err)
   u32 hclen = image_zlib_read_bits(zlib_ctx, 4) + 4;
   u32 total_iterations = hlit + hdist;
 
-  u8 code_length_sizes[19] = {0};
-  ImageHuffman code_length_tree = {0};
+  u8 code_length_sizes[19] = {};
+  ImageHuffman code_length_tree = {};
   for (u32 i = 0; i < hclen; ++i)
   {
     u8 code_length = (u8) image_zlib_read_bits(zlib_ctx, 3);
@@ -448,6 +441,13 @@ static void
 image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
                        Arena* temp_arena, Arena* perm_arena, Error* err)
 {
+  // TODO(szulf): can i get rid of this?
+  color_format_to_number_of_channels[IMAGE_COLOR_FORMAT_GRAYSCALE] = 1;
+  color_format_to_number_of_channels[IMAGE_COLOR_FORMAT_RGB] = 3;
+  color_format_to_number_of_channels[IMAGE_COLOR_FORMAT_PALETTE] = 1;
+  color_format_to_number_of_channels[IMAGE_COLOR_FORMAT_GRAYSCALE_ALPHA] = 2;
+  color_format_to_number_of_channels[IMAGE_COLOR_FORMAT_RGBA] = 4;
+
   Error error = ERROR_SUCCESS;
   u8 channels = color_format_to_number_of_channels[ctx->color_format];
   u8 byte_depth = ctx->bit_depth == 16 ? 2 : 1;
@@ -459,7 +459,7 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
 
   // NOTE(szulf): (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
   usize bytes_per_scanline = ((img->width * channels * ctx->bit_depth) + 7) >> 3;
-  u8* filter_buffer = arena_alloc(temp_arena, bytes_per_scanline * 2, &error);
+  u8* filter_buffer = (u8*) arena_alloc(temp_arena, bytes_per_scanline * 2, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
   usize width = img->width;
@@ -575,10 +575,10 @@ image_png_create_rgba8(Image* img, ImageContext* ctx, u8* data,
 static Image
 image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_arena, Error* err)
 {
-  Image img = {0};
+  Image img = {};
   Error error = ERROR_SUCCESS;
-  ImageContext ctx = {0};
-  ctx.data = data;
+  ImageContext ctx = {};
+  ctx.data = (u8*) data;
   ctx.data_end = ((u8*) data) + data_size;
 
   // NOTE(szulf): check png header
@@ -595,7 +595,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
   usize combined_idat_chunks_size_limit = 0;
   while (running && ctx.data != ctx.data_end)
   {
-    ImagePngChunk chunk = {0};
+    ImagePngChunk chunk = {};
     chunk.length = image_get32be(&ctx);
     chunk.type = image_get32be(&ctx);
 
@@ -618,14 +618,14 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
         u8 color = image_get8(&ctx);
         ERROR_ASSERT(color == 0 || color == 2 || color == 3 || color == 4 || color == 6,
                      *err, ERROR_PNG_INVALID_IHDR, img);
-        ctx.color_format = color_to_color_format[color];
+        ctx.color_format = (ImagePngColorFormat) color_to_color_format[color];
 
         u8 compression = image_get8(&ctx);
         ERROR_ASSERT(compression == 0, *err, ERROR_PNG_INVALID_IHDR, img);
         u8 filter = image_get8(&ctx);
         ERROR_ASSERT(filter == 0, *err, ERROR_PNG_INVALID_IHDR, img);
         ctx.interlaced = image_get8(&ctx);
-        combined_idat_chunks = arena_alloc_start(temp_arena);
+        combined_idat_chunks = (u8*) arena_alloc_start(temp_arena);
         combined_idat_chunks_size_limit = temp_arena->buffer_size - temp_arena->offset;
       } break;
 
@@ -654,7 +654,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
         ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, img);
 
         // NOTE(szulf): zlib parsing
-        ImageZlibContext zlib_ctx = {0};
+        ImageZlibContext zlib_ctx = {};
         zlib_ctx.data = combined_idat_chunks;
         zlib_ctx.data_end = combined_idat_chunks + combined_idat_chunks_size;
 
@@ -669,7 +669,7 @@ image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_are
         }
 
         // NOTE(szulf): data
-        zlib_ctx.out = zlib_ctx.out_start = arena_alloc_start(temp_arena);
+        zlib_ctx.out = zlib_ctx.out_start = (u8*) arena_alloc_start(temp_arena);
         zlib_ctx.bits_buffered = 0;
         zlib_ctx.bits_buffer = 0;
         b32 final = false;

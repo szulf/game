@@ -5,14 +5,14 @@ setup_assets(Arena* arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
 
-  ARRAY_INIT(&g_texture_names, 10, arena, &error);
+  g_texture_names = array_make<String>(10, arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-  ARRAY_INIT(&g_textures, 10, arena, &error);
+  g_textures  = array_make<Texture>(10, arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 
-  ARRAY_INIT(&g_material_names, 10, arena, &error);
+  g_material_names = array_make<String>(10, arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-  ARRAY_INIT(&g_materials, 10, arena, &error);
+  g_materials = array_make<Material>(10, arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
 }
 
@@ -22,8 +22,8 @@ assets_texture_exists(String* name)
   ASSERT(g_texture_names.len == g_textures.len, "the name and texture array have to be in sync");
   for (usize i = 0; i < g_texture_names.len; ++i)
   {
-    if (mem_compare(name->data, g_texture_names.items[i].data,
-                    umin(name->len, g_texture_names.items[i].len)))
+    if (mem_compare(name->data, g_texture_names[i].data,
+                    umin(name->len, g_texture_names[i].len)))
     {
       return true;
     }
@@ -35,8 +35,8 @@ static void
 assets_texture_set(String* name, Texture* texture)
 {
   ASSERT(g_texture_names.len == g_textures.len, "the name and texture array have to be in sync");
-  ARRAY_PUSH(&g_texture_names, *name);
-  ARRAY_PUSH(&g_textures, *texture);
+  array_push(&g_texture_names, *name);
+  array_push(&g_textures, *texture);
 }
 
 static Texture*
@@ -45,10 +45,10 @@ assets_texture_get(String* name, Error* err)
   ASSERT(g_texture_names.len == g_textures.len, "the name and texture array have to be in sync");
   for (usize i = 0; i < g_texture_names.len; ++i)
   {
-    if (mem_compare(name->data, g_texture_names.items[i].data,
-                    umin(name->len, g_texture_names.items[i].len)))
+    if (mem_compare(name->data, g_texture_names[i].data,
+                    umin(name->len, g_texture_names[i].len)))
     {
-      return &g_textures.items[i];
+      return &g_textures[i];
     }
   }
   *err = ERROR_NOT_FOUND;
@@ -61,8 +61,8 @@ assets_material_exists(String* name)
   ASSERT(g_material_names.len == g_materials.len, "the name and material array have to be in sync");
   for (usize i = 0; i < g_material_names.len; ++i)
   {
-    if (mem_compare(name->data, g_material_names.items[i].data,
-                    umin(name->len, g_material_names.items[i].len)))
+    if (mem_compare(name->data, g_material_names[i].data,
+                    umin(name->len, g_material_names[i].len)))
     {
       return true;
     }
@@ -74,8 +74,8 @@ static void
 assets_material_set(String* name, Material* material)
 {
   ASSERT(g_material_names.len == g_materials.len, "the name and material array have to be in sync");
-  ARRAY_PUSH(&g_material_names, *name);
-  ARRAY_PUSH(&g_materials, *material);
+  array_push(&g_material_names, *name);
+  array_push(&g_materials, *material);
 }
 
 static Material*
@@ -84,10 +84,10 @@ assets_material_get(String* name, Error* err)
   ASSERT(g_material_names.len == g_materials.len, "the name and material array have to be in sync");
   for (usize i = 0; i < g_material_names.len; ++i)
   {
-    if (mem_compare(name->data, g_material_names.items[i].data,
-                    umin(name->len, g_material_names.items[i].len)))
+    if (mem_compare(name->data, g_material_names[i].data,
+                    umin(name->len, g_material_names[i].len)))
     {
-      return &g_materials.items[i];
+      return &g_materials[i];
     }
   }
   *err = ERROR_NOT_FOUND;

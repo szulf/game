@@ -20,9 +20,6 @@ typedef uintptr_t ptrsize;
 typedef float f32;
 typedef double f64;
 
-#define false 0
-#define true 1
-
 #define PI32 3.141592653f
 
 #define I16_MAX  32767
@@ -56,87 +53,71 @@ typedef double f64;
 #endif
 
 // TODO(szulf): need to implement this
-static void log_(const char* file, usize line, const char* func, const char* fmt, ...);
+template <typename... Args>
+static void log_(const char* file, usize line, const char* func, const char* fmt, Args... args);
 
-#include "math.c"
+#include "math.cpp"
 #include "error.h"
-#include "memory.c"
-#include "array.h"
-#include "string.c"
+#include "memory.cpp"
+#include "array.cpp"
+#include "string.cpp"
 
-static void* os_read_entire_file(const char* path, Arena* arena, Error* err);
-static void* os_read_entire_file_bytes_read(const char* path, usize* bytes_read, Arena* arena,
-                                            Error* err);
+static void* os_read_entire_file(const char* path, Arena* arena, Error* err,
+                                 usize* bytes_read = 0);
 static void os_print(const char* msg);
 static u64 os_get_ms(void);
 
-typedef struct WindowDimensions
+struct WindowDimensions
 {
   i32 width;
   i32 height;
-} WindowDimensions;
+};
 static WindowDimensions os_get_window_dimensions(void);
 
-#include "image.c"
-#include "renderer.c"
-#include "assets.c"
-#include "obj.c"
+#include "image.cpp"
+#include "renderer.cpp"
+#include "assets.cpp"
+#include "obj.cpp"
 
-typedef struct SoundBuffer
+struct SoundBuffer
 {
   i16* memory;
   usize size;
   u32 sample_count;
   u32 samples_per_second;
-} SoundBuffer;
+};
 
-typedef struct SceneArray
-{
-  usize cap;
-  usize len;
-  Scene* items;
-} SceneArray;
-
-typedef enum Key
+enum Key
 {
   KEY_LMB,
   KEY_SPACE,
-} Key;
-
-typedef struct InputEvent
-{
-  Key key;
-} InputEvent;
-
-typedef struct InputEventArray
-{
-  usize cap;
-  usize len;
-  InputEvent* items;
-} InputEventArray;
-
-typedef enum Action
-{
-  ACTION_CHANGE_SCENE,
-  ACTION_MOVE,
-} Action;
-
-static Action keybind_map[] =
-{
-  [KEY_LMB] = ACTION_CHANGE_SCENE,
-  [KEY_SPACE] = ACTION_MOVE,
 };
 
-typedef struct Input
+struct InputEvent
 {
-  InputEventArray input_events;
-} Input;
+  Key key;
+};
 
-typedef struct State
+enum Action
+{
+  ACTION_CHANGE_SCENE,
+  // NOTE(szulf): depending on this being last
+  ACTION_MOVE,
+};
+
+static Action keybind_map[ACTION_MOVE + 1];
+static void setup_default_keybinds();
+
+struct Input
+{
+  Array<InputEvent> input_events;
+};
+
+struct State
 {
   usize current_scene_idx;
-  SceneArray scenes;
-} State;
+  Array<Scene> scenes;
+};
 
 static void setup(State* state, Arena* temp_arena, Arena* perm_arena);
 

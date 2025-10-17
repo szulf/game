@@ -16,7 +16,7 @@ clear_screen(void)
 }
 
 static Mesh
-mesh_make(VertexArray* vertices, U32Array* indices, Material* material)
+mesh_make(Array<Vertex>* vertices, Array<u32>* indices, Material* material)
 {
   Mesh mesh;
   mesh.vertices = *vertices;
@@ -67,7 +67,7 @@ model_draw(const Model* model, Shader shader)
 
   for (usize mesh_idx = 0; mesh_idx < model->meshes.len; ++mesh_idx)
   {
-    mesh_draw(&model->meshes.items[mesh_idx], shader);
+    mesh_draw(&model->meshes[mesh_idx], shader);
   }
 }
 
@@ -82,7 +82,7 @@ scene_draw(const Scene* scene)
 {
   for (usize renderable_idx = 0; renderable_idx < scene->renderables.len; ++renderable_idx)
   {
-    Renderable* renderable = &scene->renderables.items[renderable_idx];
+    const Renderable* renderable = &scene->renderables[renderable_idx];
 
     glUseProgram(shader_map[renderable->shader]);
     glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable->shader], "view"),
@@ -90,8 +90,8 @@ scene_draw(const Scene* scene)
     glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable->shader], "proj"),
                        1, false, scene->proj.data);
 
-    model_draw(&scene->renderables.items[renderable_idx].model,
-               scene->renderables.items[renderable_idx].shader);
+    model_draw(&scene->renderables[renderable_idx].model,
+               scene->renderables[renderable_idx].shader);
   }
 }
 
@@ -99,7 +99,7 @@ static u32
 setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err)
 {
   Error error = ERROR_SUCCESS;
-  const char* shader_src = os_read_entire_file(path, arena, &error);
+  const char* shader_src = (const char*) os_read_entire_file(path, arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (u32) -1);
 
   u32 shader;

@@ -1,12 +1,12 @@
 #include "game.h"
 
-static void
-log_(const char* file, usize line, const char* func, const char* fmt, ...)
+template <typename... Args> static void
+log_(const char* file, usize line, const char* func, const char* fmt, Args...)
 {
-  (void) file;
-  (void) line;
-  (void) func;
-  (void) fmt;
+  UNUSED(file);
+  UNUSED(line);
+  UNUSED(func);
+  UNUSED(fmt);
 }
 
 // TODO(szulf): delete this later
@@ -18,12 +18,11 @@ setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
   Model model = obj_parse(obj_path, temp_arena, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt load obj model");
 
-  RenderableArray renderables = {0};
-  ARRAY_INIT(&renderables, 1, perm_arena, &error);
+  Array<Renderable> renderables = array_make<Renderable>(1, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init renderables array");
-  ARRAY_PUSH(&renderables, ((Renderable) {model, SHADER_DEFAULT}));
+  array_push(&renderables, (Renderable{model, SHADER_DEFAULT}));
 
-  Scene scene = {0};
+  Scene scene = {};
   scene.renderables = renderables;
   scene.view = mat4_make(1.0f);
   scene.proj = mat4_make(1.0f);
@@ -36,13 +35,14 @@ setup(State* state, Arena* temp_arena, Arena* perm_arena)
 {
   Error error = ERROR_SUCCESS;
 
+  // TODO(szulf): do i want all these setup functions?
   setup_renderer();
-
   setup_shaders(temp_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
-
   setup_assets(perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt initialize assets");
+  setup_default_keybinds();
+  setup_error_to_error_string();
 
   Scene backpack_scene = setup_simple_scene("assets/backpack.obj", perm_arena, temp_arena);
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
@@ -50,14 +50,12 @@ setup(State* state, Arena* temp_arena, Arena* perm_arena)
   Scene cone_scene = setup_simple_scene("assets/cone.obj", perm_arena, temp_arena);
 
   state->current_scene_idx = 0;
-  ARRAY_INIT(&state->scenes, 4, perm_arena, &error);
+  state->scenes = array_make<Scene>(4, perm_arena, &error);
   ASSERT(error == ERROR_SUCCESS, "couldnt init scenes array");
-  ARRAY_PUSH(&state->scenes, backpack_scene);
-  ARRAY_PUSH(&state->scenes, sphere_scene);
-  ARRAY_PUSH(&state->scenes, cube_scene);
-  ARRAY_PUSH(&state->scenes, cone_scene);
-
-  arena_free_all(temp_arena);
+  array_push(&state->scenes, backpack_scene);
+  array_push(&state->scenes, sphere_scene);
+  array_push(&state->scenes, cube_scene);
+  array_push(&state->scenes, cone_scene);
 }
 
 static void
@@ -68,7 +66,7 @@ update(State* state, Input* input)
 
   for (usize i = 0; i < input->input_events.len; ++i)
   {
-    switch (keybind_map[input->input_events.items[i].key])
+    switch (keybind_map[input->input_events[i].key])
     {
       case ACTION_CHANGE_SCENE:
       {
@@ -83,7 +81,7 @@ update(State* state, Input* input)
   }
   input->input_events.len = 0;
 
-  Scene* scene = &state->scenes.items[state->current_scene_idx];
+  Scene* scene = &state->scenes[state->current_scene_idx];
 
   Vec3 translation_vec = {0.0f, 0.0f, move};
   mat4_translate(&scene->view, &translation_vec);
@@ -93,7 +91,7 @@ update(State* state, Input* input)
                             0.1f, 100.0f);
 
   Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
-  model_rotate(&scene->renderables.items[0].model, degree, &rotate_vec);
+  model_rotate(&scene->renderables[0].model, degree, &rotate_vec);
 
 
   degree += 1.0f;
@@ -102,7 +100,7 @@ update(State* state, Input* input)
 static void
 render(State* state)
 {
-  Scene* curr_scene = &state->scenes.items[state->current_scene_idx];
+  Scene* curr_scene = &state->scenes[state->current_scene_idx];
 
   clear_screen();
 
@@ -132,4 +130,41 @@ get_sound(SoundBuffer* sound_buffer)
     *left  = 0;
     *right = 0;
   }
+}
+
+static void
+setup_default_keybinds()
+{
+  keybind_map[KEY_LMB] = ACTION_CHANGE_SCENE;
+  keybind_map[KEY_SPACE] = ACTION_MOVE;
+}
+
+static void
+setup_error_to_error_string()
+{
+  error_to_error_string[ERROR_OUT_OF_MEMORY] = "out of memory";
+  error_to_error_string[ERROR_INVALID_PARAMETER] = "invalid parameter";
+  error_to_error_string[ERROR_FILE_READING] = "file reading";
+  error_to_error_string[ERROR_NOT_FOUND] = "not found";
+
+  error_to_error_string[ERROR_SHADER_COMPILATION] = "[SHADER] compilation";
+  error_to_error_string[ERROR_SHADER_LINKING] = "[SHADER] linking";
+
+  error_to_error_string[ERROR_PNG_INVALID_HEADER] = "[PNG] invalid header";
+  error_to_error_string[ERROR_PNG_IHDR_NOT_FIRST] = "[PNG] ihdr chunk is not first";
+  error_to_error_string[ERROR_PNG_INVALID_IHDR] = "[PNG] invalid ihdr chunk";
+  error_to_error_string[ERROR_PNG_INVALID_IDAT] = "[PNG] invalid idat chunk";
+  error_to_error_string[ERROR_PNG_BAD_SIZES] = "[PNG] bad sizes";
+  error_to_error_string[ERROR_PNG_BAD_CODE_LENGTHS] = "[PNG] bad code length";
+  error_to_error_string[ERROR_PNG_BAD_HUFFMAN_CODE] = "[PNG] bad huffman code";
+  error_to_error_string[ERROR_PNG_BAD_DISTANCE] = "[PNG] bad distance";
+  error_to_error_string[ERROR_PNG_UNEXPECTED_END] = "[PNG] unexpected end";
+  error_to_error_string[ERROR_PNG_CORRUPT_ZLIB] = "[PNG] corrupt zlib";
+  error_to_error_string[ERROR_PNG_READ_PAST_BUFFER] = "[PNG] read past buffer";
+  error_to_error_string[ERROR_PNG_INVALID_FILTER] = "[PNG] invalid filter";
+  error_to_error_string[ERROR_PNG_ILLEGAL_COMPRESION_TYPE] = "[PNG] illegal compression type";
+
+  error_to_error_string[ERROR_OBJ_INVALID_DATA] = "[OBJ] invalid data";
+
+  error_to_error_string[ERROR_SUCCESS] = "success";
 }

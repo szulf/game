@@ -13,8 +13,8 @@ struct Material
 
 struct Mesh
 {
-  VertexArray vertices;
-  U32Array indices;
+  Array<Vertex> vertices;
+  Array<u32> indices;
   Material material;
 
   u32 vao;

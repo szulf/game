@@ -22,23 +22,9 @@ static void setup_shaders(Arena* arena, Error* err);
 
 typedef struct Texture Texture;
 
-typedef struct TextureArray
-{
-  usize cap;
-  usize len;
-  Texture* items;
-} TextureArray;
-
 static Texture texture_make(Image* img);
 
 typedef struct Material Material;
-
-typedef struct MaterialArray
-{
-  usize cap;
-  usize len;
-  Material* items;
-} MaterialArray;
 
 typedef struct Mesh Mesh;
 
@@ -49,48 +35,13 @@ typedef struct Vertex
   Vec2 uv;
 } Vertex;
 
-typedef struct VertexArray
-{
-  usize cap;
-  usize len;
-  Vertex* items;
-} VertexArray;
-
-typedef struct Vec3Array
-{
-  usize cap;
-  usize len;
-  Vec3* items;
-} Vec3Array;
-
-typedef struct Vec2Array
-{
-  usize cap;
-  usize len;
-  Vec2* items;
-} Vec2Array;
-
-typedef struct U32Array
-{
-  usize cap;
-  usize len;
-  u32* items;
-} U32Array;
-
-static Mesh mesh_make(VertexArray* vertices, U32Array* indices, Material* material);
+static Mesh mesh_make(Array<Vertex>* vertices, Array<u32>* indices, Material* material);
 // TODO(szulf): probably switch to some sort of a queue later on
 static void mesh_draw(const Mesh* mesh, Shader shader);
 
-typedef struct MeshArray
-{
-  usize cap;
-  usize len;
-  Mesh* items;
-} MeshArray;
-
 typedef struct Model
 {
-  MeshArray meshes;
+  Array<Mesh> meshes;
   Mat4 model;
 } Model;
 
@@ -104,16 +55,9 @@ typedef struct Renderable
   Shader shader;
 } Renderable;
 
-typedef struct RenderableArray
-{
-  usize cap;
-  usize len;
-  Renderable* items;
-} RenderableArray;
-
 typedef struct Scene
 {
-  RenderableArray renderables;
+  Array<Renderable> renderables;
   Mat4 view;
   Mat4 proj;
 } Scene;
@@ -122,7 +66,7 @@ typedef struct Scene
 static void scene_draw(const Scene* scene);
 
 #ifdef GAME_OPENGL
-#include "ogl_renderer.c"
+#include "ogl_renderer.cpp"
 #endif
 
 #endif

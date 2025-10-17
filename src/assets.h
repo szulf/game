@@ -2,11 +2,11 @@
 #define ASSETS_H
 
 // TODO(szulf): if it turns out i will store a bunch of textures/materials switch this to a hashmap
-static StringArray g_texture_names;
-static TextureArray g_textures;
+static Array<String> g_texture_names;
+static Array<Texture> g_textures;
 
-static StringArray g_material_names;
-static MaterialArray g_materials;
+static Array<String> g_material_names;
+static Array<Material> g_materials;
 
 static void setup_assets(Arena* arena, Error* err);
 

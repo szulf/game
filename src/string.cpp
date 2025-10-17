@@ -1,5 +1,12 @@
 #include "string.h"
 
+const char&
+String::operator[](usize idx) const
+{
+  ASSERT(idx < len, "string bounds exceeded");
+  return data[idx];
+}
+
 static String
 string_make_cstr(const char* cstr)
 {
@@ -48,7 +55,7 @@ string_prepend(String* str, const char* cstr, Arena* arena, Error* err)
   usize cstr_length = cstr_len(cstr);
   String s;
   s.len = str->len + cstr_length;
-  char* c = arena_alloc(arena, s.len, &error);
+  char* c = (char*) arena_alloc(arena, s.len, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, s);
   mem_copy(c, cstr, cstr_length);
   mem_copy(c + cstr_length, str->data, str->len);
@@ -57,13 +64,12 @@ string_prepend(String* str, const char* cstr, Arena* arena, Error* err)
 }
 
 // TODO(szulf): this whole implementation is kinda whacky but idc for now
-static StringArray
+static Array<String>
 string_split(String* str, char c, Arena* arena, Error* err)
 {
   Error error = ERROR_SUCCESS;
   usize splits_count = string_count_chars(str, c) + 1;
-  StringArray splits = {0};
-  ARRAY_INIT(&splits, splits_count, arena, &error);
+  Array<String> splits = array_make<String>(splits_count, arena, &error);
   ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, splits);
 
   usize start_idx = 0;
@@ -75,7 +81,7 @@ string_split(String* str, char c, Arena* arena, Error* err)
   {
     String s = string_make_cstr_len(str->data + start_idx, found_idx - start_idx);
     start_idx = found_idx + 1;
-    ARRAY_PUSH(&splits, s);
+    array_push(&splits, s);
     if (start_idx >= str->len) break;
   }
 
@@ -83,7 +89,7 @@ string_split(String* str, char c, Arena* arena, Error* err)
   {
     String s = string_make_cstr_len(str->data + start_idx, str->len - start_idx);
     ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, splits);
-    ARRAY_PUSH(&splits, s);
+    array_push(&splits, s);
   }
 
   *err = ERROR_SUCCESS;

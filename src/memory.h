@@ -13,13 +13,12 @@ typedef struct Arena
 #endif
 } Arena;
 
-static void* arena_alloc(Arena* arena, usize size, Error* err);
-static void* arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err);
+static void* arena_alloc(Arena* arena, usize size, Error* err,
+                         ptrsize alignment = DEFAULT_ALIGNMENT);
 static void arena_free_all(Arena* arena);
 // NOTE(szulf): this is for allocations that i know are at the top, and i have to do some work before knowing the end size
 // TODO(szulf): think of a better name
-static void* arena_alloc_start(Arena* arena);
-static void* arena_alloc_align_start(Arena* arena, ptrsize alignment);
+static void* arena_alloc_start(Arena* arena, ptrsize alignment = DEFAULT_ALIGNMENT);
 static void arena_alloc_finish(Arena* arena, usize size, Error* err);
 
 static void mem_zero(void* dest, usize bytes);

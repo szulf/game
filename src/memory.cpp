@@ -12,13 +12,7 @@ calc_padding(void* ptr, ptrsize alignment)
 }
 
 static void*
-arena_alloc(Arena* arena, usize size, Error* err)
-{
-  return arena_alloc_align(arena, size, DEFAULT_ALIGNMENT, err);
-}
-
-static void*
-arena_alloc_align(Arena* arena, usize size, ptrsize alignment, Error* err)
+arena_alloc(Arena* arena, usize size, Error* err, ptrsize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
   ASSERT(!arena->allocation_active, "cannot allocate memory when an allocation is active");
@@ -41,13 +35,7 @@ arena_free_all(Arena* arena)
 }
 
 static void*
-arena_alloc_start(Arena* arena)
-{
-  return arena_alloc_align_start(arena, DEFAULT_ALIGNMENT);
-}
-
-static void*
-arena_alloc_align_start(Arena* arena, ptrsize alignment)
+arena_alloc_start(Arena* arena, ptrsize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
   ASSERT(!arena->allocation_active, "cannot start a new allocation when an old one is stil active");
@@ -79,7 +67,7 @@ arena_alloc_finish(Arena* arena, usize size, Error* err)
 static void
 mem_zero(void* dest, usize bytes)
 {
-  u8* d = dest;
+  u8* d = (u8*) dest;
   while (bytes--)
   {
     *d++ = 0;
@@ -89,7 +77,7 @@ mem_zero(void* dest, usize bytes)
 static void
 mem_set(void* dest, usize bytes, u8 val)
 {
-  u8* d = dest;
+  u8* d = (u8*) dest;
   while (bytes--)
   {
     *d++ = val;
@@ -99,8 +87,8 @@ mem_set(void* dest, usize bytes, u8 val)
 static void
 mem_copy(void* dest, const void* src, usize bytes)
 {
-  u8* d = dest;
-  const u8* s = src;
+  u8* d = (u8*) dest;
+  const u8* s = (const u8*) src;
   while (bytes--)
   {
     *d++ = *s++;

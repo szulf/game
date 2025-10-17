@@ -54,6 +54,17 @@ iabs(i64 v)
   return v * ((v > 0) - (v < 0));
 }
 
+static u64
+upow(u64 a, u64 b)
+{
+  u64 p = 1;
+  while (b--)
+  {
+    p *= a;
+  }
+  return p;
+}
+
 static f32
 vec3_length(const Vec3* vec)
 {

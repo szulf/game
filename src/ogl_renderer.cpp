@@ -129,13 +129,13 @@ setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err)
     {
       case SHADER_TYPE_VERTEX:
       {
-        LOG("Error compiling vertex shader:\n%s\n", message);
+        LOG("Error compiling vertex shader:\n{}", message);
         *err = ERROR_SHADER_COMPILATION;
         return (u32) -1;
       } break;
       case SHADER_TYPE_FRAGMENT:
       {
-        LOG("Error compiling fragment shader:\n%s\n", message);
+        LOG("Error compiling fragment shader:\n{}", message);
         *err = ERROR_SHADER_COMPILATION;
         return (u32) -1;
       } break;
@@ -164,7 +164,7 @@ link_shaders(u32 vertex_shader, u32 fragment_shader, Error* err)
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
-    LOG("Error compiling fragment shader:\n%s\n", message);
+    LOG("Error compiling fragment shader:\n{}", message);
     *err = ERROR_SHADER_LINKING;
     return (u32) -1;
   }

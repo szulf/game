@@ -11,6 +11,7 @@ static f32 fmax(f32 a, f32 b);
 static b32 is_power_of_two(usize val);
 static f32 radians(f32 deg);
 static i64 iabs(i64 v);
+static u64 upow(u64 a, u64 b);
 
 // TODO(szulf): implement these myself, and stop relying on SDL
 static f32 sin(f32 rad);

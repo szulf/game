@@ -1,12 +1,17 @@
 #include "game.h"
 
 template <typename... Args> static void
-log_(const char* file, usize line, const char* func, const char* fmt, Args...)
+log_(const char* file, usize line, const char* func, const char* fmt, Args... args)
 {
-  UNUSED(file);
-  UNUSED(line);
-  UNUSED(func);
-  UNUSED(fmt);
+  u8 buffer[4096] = {};
+
+  Arena arena = {};
+  arena.buffer = buffer;
+  arena.buffer_size = 4096;
+
+  String formatted = string_format(&arena, fmt, args...);
+  String final = string_format(&arena, "[({}) {}:{}] {}", func, file, line, formatted);
+  os_print(final.data);
 }
 
 // TODO(szulf): delete this later

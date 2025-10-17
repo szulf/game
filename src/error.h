@@ -33,7 +33,6 @@ typedef enum Error
 const char* error_to_error_string[ERROR_SUCCESS + 1];
 static void setup_error_to_error_string();
 
-// TODO(szulf): get rid of this(change write to my logging)
 #ifdef GAME_DEBUG
 #  include <unistd.h>
 #  define ERROR_ASSERT(expr, err_var, err_val, ret_val) ERROR_ASSERT_1(expr, err_var, err_val, ret_val, __LINE__, __FILE__)
@@ -41,7 +40,7 @@ static void setup_error_to_error_string();
 #  define ERROR_ASSERT_2(expr, err_var, err_val, ret_val, line, file) do { \
 if (!(expr)) \
 { \
-  write(0, #expr " " #line " " #file "\n", sizeof(#expr " " #line " " #file "\n")); \
+  LOG(#expr); \
   (err_var) = (err_val); \
   return ret_val; \
 } \

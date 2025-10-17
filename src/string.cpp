@@ -63,6 +63,59 @@ string_prepend(String* str, const char* cstr, Arena* arena, Error* err)
   return s;
 }
 
+static void
+string_format_(Arena*, Error*, char* out, usize* out_idx, String* fmt, usize* fmt_idx)
+{
+  while (*fmt_idx < fmt->len) out[(*out_idx)++] = (*fmt)[(*fmt_idx)++];
+}
+
+template <typename T, typename... Args> static void
+string_format_(Arena* arena, Error* err, char* out, usize* out_idx, String* fmt, usize* fmt_idx,
+               const T& first, const Args&... args)
+{
+  while (*fmt_idx < fmt->len && (*fmt)[*fmt_idx] != '{')
+  {
+    out[(*out_idx)++] = (*fmt)[(*fmt_idx)++];
+  }
+
+  if ((*fmt)[*fmt_idx] == '{')
+  {
+    if (*fmt_idx + 1 < fmt->len && (*fmt)[++(*fmt_idx)] == '{')
+    {
+      out[*out_idx++] = '{';
+      ++(*fmt_idx);
+    }
+    else
+    {
+      ERROR_ASSERT((*fmt)[*fmt_idx] == '}', *err, ERROR_INVALID_PARAMETER,);
+      String formatted = to_string(first, arena);
+      mem_copy(out + *out_idx, formatted.data, formatted.len);
+      ++(*fmt_idx);
+      *out_idx += formatted.len;
+    }
+  }
+
+  string_format_(arena, err, out, out_idx, fmt, fmt_idx, args...);
+}
+
+template <typename... Args> static String
+string_format(Arena* arena, const char* fmt_, const Args&... args)
+{
+  static u8 depth = 0;
+  ++depth;
+  if (depth > 3) return {};
+  Error error = ERROR_SUCCESS;
+  char* out = (char*) arena_alloc(arena, 1024, &error);
+  if (error != ERROR_SUCCESS) return {};
+  String fmt = string_make_cstr(fmt_);
+  usize out_idx = 0;
+  usize fmt_idx = 0;
+  string_format_(arena, &error, out, &out_idx, &fmt, &fmt_idx, args...);
+  if (error != ERROR_SUCCESS) return {};
+  --depth;
+  return string_make_cstr_len(out, out_idx);
+}
+
 // TODO(szulf): this whole implementation is kinda whacky but idc for now
 static Array<String>
 string_split(String* str, char c, Arena* arena, Error* err)
@@ -161,5 +214,77 @@ cstr_len(const char* cstr)
   const char* s;
   for (s = cstr; *s; ++s) {}
   return (usize) (s - cstr);
+}
+
+static String
+to_string(usize v, Arena* arena)
+{
+  Error error = ERROR_SUCCESS;
+  usize v_ = v;
+  usize v_length = 0;
+  while (v_)
+  {
+    v_ /= 10;
+    ++v_length;
+  }
+  usize out_idx = 0;
+  char* out = (char*) arena_alloc(arena, v_length, &error);
+  usize pow = upow(10, v_length - 1);
+  for (usize i = 0; i < v_length; ++i)
+  {
+    out[out_idx++] = ((v / pow) % 10) + '0';
+    pow /= 10;
+  }
+  return string_make_cstr_len(out, out_idx);
+}
+
+static String
+to_string(u32 v, Arena* arena)
+{
+  return to_string((usize) v, arena);
+}
+
+static String
+to_string(i32 v, Arena* arena)
+{
+  Error error = ERROR_SUCCESS;
+  i32 v_ = v;
+  usize v_length = 0;
+  if (v < 0)
+  {
+    ++v_length;
+    v_ = -v_;
+  }
+  while (v_)
+  {
+    v_ /= 10;
+    ++v_length;
+  }
+  usize out_idx = 0;
+  char* out = (char*) arena_alloc(arena, v_length, &error);
+  i32 pow = (i32) upow(10, v_length - 1);
+  if (v < 0)
+  {
+    out[out_idx++] = '-';
+    --v_length;
+  }
+  for (usize i = 0; i < v_length; ++i)
+  {
+    out[out_idx++] = ((v / pow) % 10) + '0';
+    pow /= 10;
+  }
+  return string_make_cstr_len(out, out_idx);
+}
+
+static String
+to_string(const char* v, Arena*)
+{
+  return string_make_cstr(v);
+}
+
+static String
+to_string(const String& v, Arena*)
+{
+  return v;
 }
 

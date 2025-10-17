@@ -52,7 +52,6 @@ typedef double f64;
 #  define ASSERT(expr, msg)
 #endif
 
-// TODO(szulf): need to implement this
 template <typename... Args>
 static void log_(const char* file, usize line, const char* func, const char* fmt, Args... args);
 

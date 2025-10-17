@@ -3,7 +3,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
 
-#include "sdl3_ogl_functions.cpp"
+#ifdef GAME_OPENGL
+#  include "sdl3_ogl_functions.cpp"
+#endif
 #include "sdl3_game.h"
 
 // TODO(szulf): set better starting dimensions
@@ -80,18 +82,14 @@ f32 tan(f32 val)
 }
 
 #ifdef GAME_DEBUG
-// TODO(szulf): change this to use the LOG macro
 static void APIENTRY debug_callback(
     GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar* message, const void* user)
 {
-  (void) length;
-  (void) user;
+  UNUSED(length);
+  UNUSED(user);
 
-  // Ignore non-significant notification messages
-  if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
-      return;
-
+  if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
   const char* source_str;
   switch (source) {
       case GL_DEBUG_SOURCE_API:             source_str = "API"; break;
@@ -126,8 +124,8 @@ static void APIENTRY debug_callback(
       default:                             severity_str = "UNKNOWN"; break;
   }
 
-  SDL_Log("[OpenGL Debug] Source: %s | Type: %s | Severity: %s | ID: %u\n    Message: %s",
-          source_str, type_str, severity_str, id, message);
+  LOG("[OpenGL Debug] Source: {} | Type: {} | Severity: {} | ID: {}\n    Message: {}",
+      source_str, type_str, severity_str, id, message);
 }
 #endif
 

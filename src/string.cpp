@@ -101,9 +101,6 @@ string_format_(Arena* arena, Error* err, char* out, usize* out_idx, String* fmt,
 template <typename... Args> static String
 string_format(Arena* arena, const char* fmt_, const Args&... args)
 {
-  static u8 depth = 0;
-  ++depth;
-  if (depth > 3) return {};
   Error error = ERROR_SUCCESS;
   char* out = (char*) arena_alloc(arena, 1024, &error);
   if (error != ERROR_SUCCESS) return {};
@@ -112,7 +109,6 @@ string_format(Arena* arena, const char* fmt_, const Args&... args)
   usize fmt_idx = 0;
   string_format_(arena, &error, out, &out_idx, &fmt, &fmt_idx, args...);
   if (error != ERROR_SUCCESS) return {};
-  --depth;
   return string_make_cstr_len(out, out_idx);
 }
 

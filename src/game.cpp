@@ -3,6 +3,10 @@
 template <typename... Args> static void
 log_(const char* file, usize line, const char* func, const char* fmt, Args... args)
 {
+  static u8 depth = 0;
+  ++depth;
+  if (depth > 3) return;
+
   u8 buffer[4096] = {};
 
   Arena arena = {};
@@ -12,6 +16,7 @@ log_(const char* file, usize line, const char* func, const char* fmt, Args... ar
   String formatted = string_format(&arena, fmt, args...);
   String final = string_format(&arena, "[({}) {}:{}] {}", func, file, line, formatted);
   os_print(final.data);
+  --depth;
 }
 
 // TODO(szulf): delete this later

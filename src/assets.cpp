@@ -1,29 +1,31 @@
 #include "assets.h"
 
+namespace assets {
+
 static void
-setup_assets(Arena* arena, Error* err)
+setup(mem::Arena& arena, Error* err)
 {
-  Error error = ERROR_SUCCESS;
+  Error error = Error::SUCCESS;
 
-  g_texture_names = array_make<String>(10, arena, &error);
-  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-  g_textures  = array_make<Texture>(10, arena, &error);
-  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+  g_texture_names = Array<String>::make(10, arena, &error);
+  ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
+  g_textures  = Array<Texture>::make(10, arena, &error);
+  ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
 
-  g_material_names = array_make<String>(10, arena, &error);
-  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
-  g_materials = array_make<Material>(10, arena, &error);
-  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+  g_material_names = Array<String>::make(10, arena, &error);
+  ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
+  g_materials = Array<Material>::make(10, arena, &error);
+  ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
 }
 
 static b32
-assets_texture_exists(String* name)
+texture_exists(const String& name)
 {
   ASSERT(g_texture_names.len == g_textures.len, "the name and texture array have to be in sync");
-  for (usize i = 0; i < g_texture_names.len; ++i)
+  for (const auto& texture_name : g_texture_names)
   {
-    if (mem_compare(name->data, g_texture_names[i].data,
-                    umin(name->len, g_texture_names[i].len)))
+    if (mem::compare(name.data, texture_name.data,
+                     umin(name.len, texture_name.len)))
     {
       return true;
     }
@@ -32,37 +34,37 @@ assets_texture_exists(String* name)
 }
 
 static void
-assets_texture_set(String* name, Texture* texture)
+texture_set(const String& name, const Texture& texture)
 {
   ASSERT(g_texture_names.len == g_textures.len, "the name and texture array have to be in sync");
-  array_push(&g_texture_names, *name);
-  array_push(&g_textures, *texture);
+  g_texture_names.push(name);
+  g_textures.push(texture);
 }
 
 static Texture*
-assets_texture_get(String* name, Error* err)
+texture_get(const String& name, Error* err)
 {
   ASSERT(g_texture_names.len == g_textures.len, "the name and texture array have to be in sync");
   for (usize i = 0; i < g_texture_names.len; ++i)
   {
-    if (mem_compare(name->data, g_texture_names[i].data,
-                    umin(name->len, g_texture_names[i].len)))
+    if (mem::compare(name.data, g_texture_names[i].data,
+                     umin(name.len, g_texture_names[i].len)))
     {
       return &g_textures[i];
     }
   }
-  *err = ERROR_NOT_FOUND;
+  *err = Error::NOT_FOUND;
   return 0;
 }
 
 static b32
-assets_material_exists(String* name)
+material_exists(const String& name)
 {
   ASSERT(g_material_names.len == g_materials.len, "the name and material array have to be in sync");
-  for (usize i = 0; i < g_material_names.len; ++i)
+  for (const auto& material_name : g_material_names)
   {
-    if (mem_compare(name->data, g_material_names[i].data,
-                    umin(name->len, g_material_names[i].len)))
+    if (mem::compare(name.data, material_name.data,
+                     umin(name.len, material_name.len)))
     {
       return true;
     }
@@ -71,25 +73,28 @@ assets_material_exists(String* name)
 }
 
 static void
-assets_material_set(String* name, Material* material)
+material_set(const String& name, const Material& material)
 {
   ASSERT(g_material_names.len == g_materials.len, "the name and material array have to be in sync");
-  array_push(&g_material_names, *name);
-  array_push(&g_materials, *material);
+  g_material_names.push(name);
+  g_materials.push(material);
 }
 
 static Material*
-assets_material_get(String* name, Error* err)
+material_get(const String& name, Error* err)
 {
   ASSERT(g_material_names.len == g_materials.len, "the name and material array have to be in sync");
   for (usize i = 0; i < g_material_names.len; ++i)
   {
-    if (mem_compare(name->data, g_material_names[i].data,
-                    umin(name->len, g_material_names[i].len)))
+    if (mem::compare(name.data, g_material_names[i].data,
+                     umin(name.len, g_material_names[i].len)))
     {
       return &g_materials[i];
     }
   }
-  *err = ERROR_NOT_FOUND;
+  *err = Error::NOT_FOUND;
   return 0;
 }
+
+}
+

@@ -3,25 +3,25 @@
 #include "ogl_functions.h"
 
 static void
-setup_renderer(void)
+setup_renderer()
 {
   glEnable(GL_DEPTH_TEST);
 }
 
 static void
-clear_screen(void)
+clear_screen()
 {
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-static Mesh
-mesh_make(Array<Vertex>* vertices, Array<u32>* indices, Material* material)
+Mesh
+Mesh::make(const Array<Vertex>& vertices, const Array<u32>& indices, const Material& mat)
 {
   Mesh mesh;
-  mesh.vertices = *vertices;
-  mesh.indices = *indices;
-  mesh.material = *material;
+  mesh.vertices = vertices;
+  mesh.indices = indices;
+  mesh.material = mat;
 
   glGenVertexArrays(1, &mesh.vao);
   glBindVertexArray(mesh.vao);
@@ -47,76 +47,72 @@ mesh_make(Array<Vertex>* vertices, Array<u32>* indices, Material* material)
   return mesh;
 }
 
-static void
-mesh_draw(const Mesh* mesh, Shader shader)
+void
+Mesh::draw(Shader shader) const
 {
   // TODO(szulf): this should not happen for every mesh,
   // should also check how many textures should be made active
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, mesh->material.texture.id);
-  glUniform1i(glGetUniformLocation(shader_map[shader], "sampler"), 0);
-  glBindVertexArray(mesh->vao);
-  glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.len, GL_UNSIGNED_INT, 0);
+  glBindTexture(GL_TEXTURE_2D, material.texture.id);
+  glUniform1i(glGetUniformLocation(shader_map[(usize) shader], "sampler"), 0);
+  glBindVertexArray(vao);
+  glDrawElements(GL_TRIANGLES, (GLsizei) indices.len, GL_UNSIGNED_INT, 0);
 }
 
-static void
-model_draw(const Model* model, Shader shader)
+void
+Model::draw(Shader shader) const
 {
-  glUniformMatrix4fv(glGetUniformLocation(shader_map[shader], "model"),
-                     1, false, model->model.data);
+  glUniformMatrix4fv(glGetUniformLocation(shader_map[(usize) shader], "model"), 1, false, mat.data);
 
-  for (usize mesh_idx = 0; mesh_idx < model->meshes.len; ++mesh_idx)
+  for (const auto& mesh : meshes)
   {
-    mesh_draw(&model->meshes[mesh_idx], shader);
+    mesh.draw(shader);
   }
 }
 
-static void
-model_rotate(Model* model, f32 deg, const Vec3* axis)
+void
+Model::rotate(f32 deg, const Vec3& axis)
 {
-  mat4_rotate(&model->model, radians(deg), axis);
+  mat.rotate(radians(deg), axis);
 }
 
-static void
-scene_draw(const Scene* scene)
+void
+Scene::draw() const
 {
-  for (usize renderable_idx = 0; renderable_idx < scene->renderables.len; ++renderable_idx)
+  for (const auto& renderable : renderables)
   {
-    const Renderable* renderable = &scene->renderables[renderable_idx];
+    glUseProgram(shader_map[(usize) renderable.shader]);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[(usize) renderable.shader], "view"),
+                       1, false, view.data);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[(usize) renderable.shader], "proj"),
+                       1, false, proj.data);
 
-    glUseProgram(shader_map[renderable->shader]);
-    glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable->shader], "view"),
-                       1, false, scene->view.data);
-    glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable->shader], "proj"),
-                       1, false, scene->proj.data);
-
-    model_draw(&scene->renderables[renderable_idx].model,
-               scene->renderables[renderable_idx].shader);
+    renderable.model.draw(renderable.shader);
   }
 }
 
 static u32
-setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err)
+setup_shader(mem::Arena& arena, const char* path, ShaderType shader_type, Error* err)
 {
-  Error error = ERROR_SUCCESS;
-  const char* shader_src = (const char*) os_read_entire_file(path, arena, &error);
-  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, (u32) -1);
+  Error error = Error::SUCCESS;
+  void* shader_src = os::read_entire_file(path, arena, &error);
+  ERROR_ASSERT(error == Error::SUCCESS, *err, error, (u32) -1);
 
   u32 shader;
   switch (shader_type)
   {
-    case SHADER_TYPE_VERTEX:
+    case ShaderType::VERTEX:
     {
       shader = glCreateShader(GL_VERTEX_SHADER);
     } break;
 
-    case SHADER_TYPE_FRAGMENT:
+    case ShaderType::FRAGMENT:
     {
       shader = glCreateShader(GL_FRAGMENT_SHADER);
     } break;
   }
 
-  glShaderSource(shader, 1, &shader_src, 0);
+  glShaderSource(shader, 1, (const char* const*) &shader_src, 0);
   glCompileShader(shader);
   GLint compiled;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
@@ -127,22 +123,22 @@ setup_shader(Arena* arena, const char* path, ShaderType shader_type, Error* err)
     glGetShaderInfoLog(shader, 1024, &log_length, message);
     switch (shader_type)
     {
-      case SHADER_TYPE_VERTEX:
+      case ShaderType::VERTEX:
       {
         LOG("Error compiling vertex shader:\n{}", message);
-        *err = ERROR_SHADER_COMPILATION;
+        *err = Error::SHADER_COMPILATION;
         return (u32) -1;
       } break;
-      case SHADER_TYPE_FRAGMENT:
+      case ShaderType::FRAGMENT:
       {
         LOG("Error compiling fragment shader:\n{}", message);
-        *err = ERROR_SHADER_COMPILATION;
+        *err = Error::SHADER_COMPILATION;
         return (u32) -1;
       } break;
     }
   }
 
-  *err = ERROR_SUCCESS;
+  *err = Error::SUCCESS;
   return shader;
 }
 
@@ -165,37 +161,37 @@ link_shaders(u32 vertex_shader, u32 fragment_shader, Error* err)
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
     LOG("Error compiling fragment shader:\n{}", message);
-    *err = ERROR_SHADER_LINKING;
+    *err = Error::SHADER_LINKING;
     return (u32) -1;
   }
 
-  *err = ERROR_SUCCESS;
+  *err = Error::SUCCESS;
   return program;
 }
 
 static void
-setup_shaders(Arena* arena, Error* err)
+setup_shaders(mem::Arena& arena, Error* err)
 {
-  Error error = ERROR_SUCCESS;
+  Error error = Error::SUCCESS;
 
   {
-    u32 v_shader = setup_shader(arena, "src/shader.vert", SHADER_TYPE_VERTEX, &error);
-    ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+    u32 v_shader = setup_shader(arena, "src/shader.vert", ShaderType::VERTEX, &error);
+    ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
 
-    u32 f_shader = setup_shader(arena, "src/shader.frag", SHADER_TYPE_FRAGMENT, &error);
-    ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+    u32 f_shader = setup_shader(arena, "src/shader.frag", ShaderType::FRAGMENT, &error);
+    ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
 
     u32 shader = link_shaders(v_shader, f_shader, &error);
-    ERROR_ASSERT(error == ERROR_SUCCESS, *err, error,);
+    ERROR_ASSERT(error == Error::SUCCESS, *err, error,);
 
-    shader_map[SHADER_DEFAULT] = shader;
+    shader_map[(usize) Shader::DEFAULT] = shader;
   }
 
-  *err = ERROR_SUCCESS;
+  *err = Error::SUCCESS;
 }
 
-static Texture
-texture_make(Image* img)
+Texture
+Texture::make(const png::Image& img)
 {
   Texture texture = {0};
 
@@ -208,8 +204,8 @@ texture_make(Image* img)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei) img->width, (GLsizei) img->height, 0,
-               GL_RGBA, GL_UNSIGNED_BYTE, img->data);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei) img.width, (GLsizei) img.height, 0,
+               GL_RGBA, GL_UNSIGNED_BYTE, img.data);
   glGenerateMipmap(GL_TEXTURE_2D);
 
   return texture;

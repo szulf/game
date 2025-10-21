@@ -1,7 +1,7 @@
 #ifndef SDL_GAME_H
 #define SDL_GAME_H
 
-typedef struct SDL3AudioBuffer
+struct SDL3AudioBuffer
 {
   SDL_AudioSpec spec;
   i16* memory;
@@ -9,6 +9,6 @@ typedef struct SDL3AudioBuffer
             //              (another reason to write my own loader)(would want it to be a usize)
   u32 sample_count;
   u32 sample_index;
-} SDL3AudioBuffer;
+};
 
 #endif

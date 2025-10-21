@@ -27,4 +27,4 @@ PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
 PFNGLGENERATEMIPMAPPROC glGenerateMipmap;
 PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
 
-static void setup_ogl_functions(void);
+static void setup_ogl_functions();

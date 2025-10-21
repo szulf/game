@@ -1,6 +1,11 @@
 #ifndef OBJ_H
 #define OBJ_H
 
-static Model obj_parse(const char* path, Arena* temp_arena, Arena* perm_arena, Error* err);
+namespace obj
+{
+
+static Model parse(const char* path, mem::Arena& temp_arena, mem::Arena& perm_arena, Error* err);
+
+}
 
 #endif

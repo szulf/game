@@ -20,16 +20,16 @@ typedef uintptr_t ptrsize;
 typedef float f32;
 typedef double f64;
 
-#define PI32 3.141592653f
+constexpr f32 PI32 = 3.141592653f;
 
-#define I16_MAX  32767
-#define I16_MIN -32768
+constexpr i16 I16_MAX = 0x7FFF;
+constexpr i16 I16_MIN = -0x8000;
 
-#define FPS  60
-#define MSPF (1000 / FPS)
+constexpr u8 FPS = 60;
+constexpr u8 MSPF = 1000 / FPS;
 
-#define TPS  20
-#define MSPT (1000 / TPS)
+constexpr u8 TPS = 20;
+constexpr u8 MSPT = 1000 / 20;
 
 #define KILOBYTES(n) ((n) * 1024)
 #define MEGABYTES(n) (KILOBYTES(n) * 1024ll)
@@ -44,6 +44,7 @@ typedef double f64;
 { \
   if (!(expr)) \
   { \
+    LOG("Assertion failed on expression: '{}' with message:", #expr); \
     LOG(__VA_ARGS__); \
     __asm__("int3"); \
   } \
@@ -53,7 +54,8 @@ typedef double f64;
 #endif
 
 template <typename... Args>
-static void log_(const char* file, usize line, const char* func, const char* fmt, Args... args);
+static void log_(const char* file, usize line, const char* func, const char* fmt,
+                 const Args&... args);
 
 #include "math.cpp"
 #include "error.h"
@@ -61,22 +63,30 @@ static void log_(const char* file, usize line, const char* func, const char* fmt
 #include "array.cpp"
 #include "string.cpp"
 
-static void* os_read_entire_file(const char* path, Arena* arena, Error* err,
-                                 usize* bytes_read = 0);
-static void os_print(const char* msg);
-static u64 os_get_ms(void);
+namespace os
+{
+
+static void* read_entire_file(const char* path, mem::Arena& arena, Error* err,
+                              usize* bytes_read = nullptr);
+static void print(const char* msg);
+static u64 get_ms();
 
 struct WindowDimensions
 {
   i32 width;
   i32 height;
 };
-static WindowDimensions os_get_window_dimensions(void);
+static WindowDimensions get_window_dimensions();
 
-#include "image.cpp"
+}
+
+#include "png.cpp"
 #include "renderer.cpp"
 #include "assets.cpp"
 #include "obj.cpp"
+
+namespace game
+{
 
 struct SoundBuffer
 {
@@ -86,10 +96,10 @@ struct SoundBuffer
   u32 samples_per_second;
 };
 
-enum Key
+enum class Key : u8
 {
-  KEY_LMB,
-  KEY_SPACE,
+  LMB,
+  SPACE,
 };
 
 struct InputEvent
@@ -97,14 +107,14 @@ struct InputEvent
   Key key;
 };
 
-enum Action
+enum class Action : u8
 {
-  ACTION_CHANGE_SCENE,
+  CHANGE_SCENE,
   // NOTE(szulf): depending on this being last
-  ACTION_MOVE,
+  MOVE,
 };
 
-static Action keybind_map[ACTION_MOVE + 1];
+static Action keybind_map[(usize) Action::MOVE + 1];
 static void setup_default_keybinds();
 
 struct Input
@@ -118,13 +128,15 @@ struct State
   Array<Scene> scenes;
 };
 
-static void setup(State* state, Arena* temp_arena, Arena* perm_arena);
+static void setup(State& state, mem::Arena& temp_arena, mem::Arena& perm_arena);
 
 // TODO(szulf): need to interpolate the positions so the updates are not so sudden
-static void update(State* state, Input* input);
+static void update(State& state, Input& input);
 
-static void render(State* state);
+static void render(State& state);
 
-static void get_sound(SoundBuffer* sound_buffer);
+static void get_sound(SoundBuffer& sound_buffer);
+
+}
 
 #endif

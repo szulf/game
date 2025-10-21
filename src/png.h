@@ -3,18 +3,22 @@
 
 // NOTE(szulf): shoutout to stb_image since i pretty much just copied their implementation of this decoder
 
-#define IMAGE_MAX_SIZE (1 << 24)
+namespace png
+{
 
-typedef struct Image
+constexpr u32 MAX_SIZE = 1 << 24;
+
+struct Image
 {
   void* data;
   usize size;
   usize width;
   usize height;
   usize channels;
-} Image;
+};
 
-static Image image_decode_png(void* data, usize data_size, Arena* temp_arena, Arena* perm_arena,
-                              Error* err);
+static Image decode(const char* path, mem::Arena& temp_arena, mem::Arena& perm_arena, Error* err);
+
+}
 
 #endif

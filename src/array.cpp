@@ -1,5 +1,24 @@
 #include "array.h"
 
+template <typename T> Array<T>
+Array<T>::make(usize cap, mem::Arena& arena, Error* err)
+{
+  Error error = Error::SUCCESS;
+  Array<T> arr;
+  arr.cap = cap;
+  arr.len = 0;
+  arr.items = (T*) arena.alloc(sizeof(T) * cap, &error);
+  ERROR_ASSERT(error == Error::SUCCESS, *err, error, arr);
+  return arr;
+}
+
+template <typename T> void
+Array<T>::push(const T& val)
+{
+  ASSERT(len < cap, "array cap exceeded");
+  items[len++] = val;
+}
+
 template <typename T> T&
 Array<T>::operator[](usize idx)
 {
@@ -15,21 +34,13 @@ Array<T>::operator[](usize idx) const
 }
 
 template <typename T>
-static Array<T>
-array_make(usize cap, Arena* arena, Error* err)
+const T* Array<T>::begin() const
 {
-  Error error = ERROR_SUCCESS;
-  Array<T> arr;
-  arr.cap = cap;
-  arr.len = 0;
-  arr.items = (T*) arena_alloc(arena, sizeof(T) * cap, &error);
-  ERROR_ASSERT(error == ERROR_SUCCESS, *err, error, arr);
-  return arr;
+  return items;
 }
 
 template <typename T>
-static void array_push(Array<T>* arr, T val)
+const T* Array<T>::end() const
 {
-  ASSERT(arr->len < arr->cap, "array cap exceeded");
-  arr->items[arr->len++] = val;
+  return items + len;
 }

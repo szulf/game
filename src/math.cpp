@@ -65,87 +65,87 @@ upow(u64 a, u64 b)
   return p;
 }
 
-static f32
-vec3_length(const Vec3* vec)
+f32
+Vec3::length() const
 {
-  return sqrt((vec->x * vec->x) + (vec->y * vec->y) + (vec->z * vec->z));
+  return sqrt((x * x) + (y * y) + (z * z));
 }
 
-static void
-vec3_normalize(Vec3* vec)
+void
+Vec3::normalize()
 {
-  f32 len = vec3_length(vec);
-  vec->x = vec->x / len;
-  vec->y = vec->y / len;
-  vec->z = vec->z / len;
+  f32 len = length();
+  x = x / len;
+  y = y / len;
+  z = z / len;
 }
 
-static Vec3
-vec3_add(const Vec3* vec1, const Vec3* vec2)
+Vec3
+Vec3::operator+(const Vec3& other) const
 {
-  return Vec3{vec1->x + vec2->x, vec1->y + vec2->y, vec1->z + vec2->z};
+  return Vec3{x + other.x, y + other.y, z + other.z};
 }
 
-static Vec3
-vec3_subtract(const Vec3* vec1, const Vec3* vec2)
+Vec3
+Vec3::operator-(const Vec3& other) const
 {
-  return Vec3{vec1->x - vec2->x, vec1->y - vec2->y, vec1->z - vec2->z};
+  return Vec3{x - other.x, y - other.y, z - other.z};
 }
 
-static Vec3
-vec3_multiply(const Vec3* vec, f32 scalar)
+Vec3
+Vec3::multiply(f32 scalar) const
 {
-  return Vec3{vec->x * scalar, vec->y * scalar, vec->z * scalar};
+  return Vec3{x * scalar, y * scalar, z * scalar};
 }
 
-static Vec3
-vec3_divide(const Vec3* vec, f32 scalar)
+Vec3
+Vec3::divide(f32 scalar) const
 {
-  return Vec3{vec->x / scalar, vec->y / scalar, vec->z / scalar};
+  return Vec3{x / scalar, y / scalar, z / scalar};
 }
 
-static f32
-vec4_length(const Vec4* vec)
+f32
+Vec4::length() const
 {
-  return sqrt((vec->x * vec->x) + (vec->y * vec->y) + (vec->z * vec->z) + (vec->w * vec->w));
+  return sqrt((x * x) + (y * y) + (z * z) + (w * w));
 }
 
-static void
-vec4_normalize(Vec4* vec)
+void
+Vec4::normalize()
 {
-  f32 len = vec4_length(vec);
-  vec->x = vec->x / len;
-  vec->y = vec->y / len;
-  vec->z = vec->z / len;
-  vec->w = vec->w / len;
+  f32 len = length();
+  x = x / len;
+  y = y / len;
+  z = z / len;
+  w = w / len;
 }
 
-static Vec4
-vec4_add(const Vec4* vec1, const Vec4* vec2)
+Vec4
+Vec4::operator+(const Vec4& other) const
 {
-  return Vec4{vec1->x + vec2->x, vec1->y + vec2->y, vec1->z + vec2->z, vec1->w + vec2->w};
+  return Vec4{x + other.x, y + other.y, z + other.z, w + other.w};
 }
 
-static Vec4
-vec4_subtract(const Vec4* vec1, const Vec4* vec2)
+Vec4
+Vec4::operator-(const Vec4& other) const
 {
-  return Vec4{vec1->x - vec2->x, vec1->y - vec2->y, vec1->z - vec2->z, vec1->w - vec2->w};
+  return Vec4{x - other.x, y - other.y, z - other.z, w - other.w};
 }
 
-static Vec4
-vec4_multiply(const Vec4* vec, f32 scalar)
+Vec4
+Vec4::multiply(f32 scalar) const
 {
-  return Vec4{vec->x * scalar, vec->y * scalar, vec->z * scalar, vec->w * scalar};
+  return Vec4{x * scalar, y * scalar, z * scalar, w * scalar};
 }
 
-static Vec4
-vec4_divide(const Vec4* vec, f32 scalar)
+Vec4
+Vec4::divide(f32 scalar) const
 {
-  return Vec4{vec->x / scalar, vec->y / scalar, vec->z / scalar, vec->w / scalar};
+  return Vec4{x / scalar, y / scalar, z / scalar, w / scalar};
 }
 
-static Mat4
-mat4_make(f32 val)
+Mat4
+Mat4::make(f32 val)
 {
   Mat4 mat = {0};
   mat.data[0] = val;
@@ -155,38 +155,8 @@ mat4_make(f32 val)
   return mat;
 }
 
-static void
-mat4_rotate(Mat4* mat, f32 rad, const Vec3* axis)
-{
-  f32 s = sin(rad);
-  f32 c = cos(rad);
-  f32 t = 1.0f - c;
-  Vec3 u = *axis;
-  vec3_normalize(&u);
-
-  mat->data[0] = (u.x * u.x) * t + c;
-  mat->data[1] = (u.x * u.y) * t - u.z * s;
-  mat->data[2] = (u.x * u.z) * t + u.y * s;
-
-  mat->data[4] = (u.x * u.y) * t + u.z * s;
-  mat->data[5] = (u.y * u.y) * t + c;
-  mat->data[6] = (u.y * u.z) * t - u.x * s;
-
-  mat->data[8] = (u.x * u.z) * t - u.y * s;
-  mat->data[9] = (u.y * u.z) * t + u.x * s;
-  mat->data[10] = (u.z * u.z) * t + c;
-}
-
-static void
-mat4_translate(Mat4* mat, const Vec3* vec)
-{
-  mat->data[12] = vec->x;
-  mat->data[13] = vec->y;
-  mat->data[14] = vec->z;
-}
-
-static Mat4
-mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far)
+Mat4
+Mat4::perspective(f32 fov, f32 aspect, f32 near, f32 far)
 {
   f32 right = near * tan(fov / 2.0f);
   f32 top = right / aspect;
@@ -200,3 +170,33 @@ mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far)
   mat.data[15] = 0.0f;
   return mat;
 }
+
+void
+Mat4::rotate(f32 rad, Vec3 u)
+{
+  f32 s = sin(rad);
+  f32 c = cos(rad);
+  f32 t = 1.0f - c;
+  u.normalize();
+
+  data[0] = (u.x * u.x) * t + c;
+  data[1] = (u.x * u.y) * t - u.z * s;
+  data[2] = (u.x * u.z) * t + u.y * s;
+
+  data[4] = (u.x * u.y) * t + u.z * s;
+  data[5] = (u.y * u.y) * t + c;
+  data[6] = (u.y * u.z) * t - u.x * s;
+
+  data[8] = (u.x * u.z) * t - u.y * s;
+  data[9] = (u.y * u.z) * t + u.x * s;
+  data[10] = (u.z * u.z) * t + c;
+}
+
+void
+Mat4::translate(const Vec3& vec)
+{
+  data[12] = vec.x;
+  data[13] = vec.y;
+  data[14] = vec.z;
+}
+

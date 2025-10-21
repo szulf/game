@@ -8,14 +8,14 @@ struct Array
   usize len;
   T* items;
 
+  static Array<T> make(usize cap, mem::Arena& arena, Error* err);
+  void push(const T& val);
+
   T& operator[](usize idx);
   const T& operator[](usize idx) const;
+
+  const T* begin() const;
+  const T* end() const;
 };
-
-template <typename T>
-static Array<T> array_make(usize cap, Arena* arena, Error* err);
-
-template <typename T>
-static void array_push(Array<T>* arr, T val);
 
 #endif

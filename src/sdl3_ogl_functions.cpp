@@ -1,5 +1,5 @@
 static void
-setup_ogl_functions(void)
+setup_ogl_functions()
 {
   glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC) SDL_GL_GetProcAddress("glGenVertexArrays");
   glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC) SDL_GL_GetProcAddress("glBindVertexArray");

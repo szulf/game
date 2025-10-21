@@ -1,7 +1,7 @@
 #include "game.h"
 
 template <typename... Args> static void
-log_(const char* file, usize line, const char* func, const char* fmt, Args... args)
+log_(const char* file, usize line, const char* func, const char* fmt, const Args&... args)
 {
   static u8 depth = 0;
   ++depth;
@@ -9,131 +9,132 @@ log_(const char* file, usize line, const char* func, const char* fmt, Args... ar
 
   u8 buffer[4096] = {};
 
-  Arena arena = {};
+  mem::Arena arena = {};
   arena.buffer = buffer;
   arena.buffer_size = 4096;
 
-  String formatted = string_format(&arena, fmt, args...);
-  String final = string_format(&arena, "[({}) {}:{}] {}", func, file, line, formatted);
-  os_print(final.data);
+  String formatted = format(arena, fmt, args...);
+  String final = format(arena, "[({}) {}:{}] {}", func, file, line, formatted);
+  os::print(final.data);
   --depth;
 }
 
+namespace game
+{
+
 // TODO(szulf): delete this later
 static Scene
-setup_simple_scene(const char* obj_path, Arena* perm_arena, Arena* temp_arena)
+setup_simple_scene(const char* obj_path, mem::Arena& perm_arena, mem::Arena& temp_arena)
 {
-  Error error = ERROR_SUCCESS;
+  Error error = Error::SUCCESS;
 
-  Model model = obj_parse(obj_path, temp_arena, perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt load obj model");
+  Model model = obj::parse(obj_path, temp_arena, perm_arena, &error);
+  ASSERT(error == Error::SUCCESS, "couldnt load obj model");
 
-  Array<Renderable> renderables = array_make<Renderable>(1, perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt init renderables array");
-  array_push(&renderables, (Renderable{model, SHADER_DEFAULT}));
+  Array<Renderable> renderables = Array<Renderable>::make(1, perm_arena, &error);
+  ASSERT(error == Error::SUCCESS, "couldnt init renderables array");
+  renderables.push({model, Shader::DEFAULT});
 
   Scene scene = {};
   scene.renderables = renderables;
-  scene.view = mat4_make(1.0f);
-  scene.proj = mat4_make(1.0f);
+  scene.view = Mat4::make(1.0f);
+  scene.proj = Mat4::make(1.0f);
 
   return scene;
 }
 
 static void
-setup(State* state, Arena* temp_arena, Arena* perm_arena)
+setup(State& state, mem::Arena& temp_arena, mem::Arena& perm_arena)
 {
-  Error error = ERROR_SUCCESS;
+  Error error = Error::SUCCESS;
 
   // TODO(szulf): do i want all these setup functions?
   setup_renderer();
   setup_shaders(temp_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt initialize shaders");
-  setup_assets(perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt initialize assets");
+  ASSERT(error == Error::SUCCESS, "couldnt initialize shaders");
+  assets::setup(perm_arena, &error);
+  ASSERT(error == Error::SUCCESS, "couldnt initialize assets");
   setup_default_keybinds();
-  setup_error_to_error_string();
 
   Scene backpack_scene = setup_simple_scene("assets/backpack.obj", perm_arena, temp_arena);
   Scene sphere_scene = setup_simple_scene("assets/sphere.obj", perm_arena, temp_arena);
   Scene cube_scene = setup_simple_scene("assets/cube.obj", perm_arena, temp_arena);
   Scene cone_scene = setup_simple_scene("assets/cone.obj", perm_arena, temp_arena);
 
-  state->current_scene_idx = 0;
-  state->scenes = array_make<Scene>(4, perm_arena, &error);
-  ASSERT(error == ERROR_SUCCESS, "couldnt init scenes array");
-  array_push(&state->scenes, backpack_scene);
-  array_push(&state->scenes, sphere_scene);
-  array_push(&state->scenes, cube_scene);
-  array_push(&state->scenes, cone_scene);
+  state.current_scene_idx = 0;
+  state.scenes = Array<Scene>::make(4, perm_arena, &error);
+  ASSERT(error == Error::SUCCESS, "couldnt init scenes array");
+  state.scenes.push(backpack_scene);
+  state.scenes.push(sphere_scene);
+  state.scenes.push(cube_scene);
+  state.scenes.push(cone_scene);
 }
 
 static void
-update(State* state, Input* input)
+update(State& state, Input& input)
 {
   static f32 degree = 0.0f;
   static f32 move = -3.0f;
 
-  for (usize i = 0; i < input->input_events.len; ++i)
+  for (const auto& input_event : input.input_events)
   {
-    switch (keybind_map[input->input_events[i].key])
+    switch (keybind_map[(usize) input_event.key])
     {
-      case ACTION_CHANGE_SCENE:
+      case Action::CHANGE_SCENE:
       {
-        state->current_scene_idx += 1;
-        state->current_scene_idx %= state->scenes.len;
+        state.current_scene_idx += 1;
+        state.current_scene_idx %= state.scenes.len;
       } break;
-      case ACTION_MOVE:
+      case Action::MOVE:
       {
         move -= 1.0f;
       } break;
     };
   }
-  input->input_events.len = 0;
+  input.input_events.len = 0;
 
-  Scene* scene = &state->scenes[state->current_scene_idx];
+  Scene& scene = state.scenes[state.current_scene_idx];
 
   Vec3 translation_vec = {0.0f, 0.0f, move};
-  mat4_translate(&scene->view, &translation_vec);
+  scene.view.translate(translation_vec);
 
-  WindowDimensions dimensions = os_get_window_dimensions();
-  scene->proj = mat4_perspective(radians(45.0f), (f32) dimensions.width / (f32) dimensions.height,
-                            0.1f, 100.0f);
+  auto dimensions = os::get_window_dimensions();
+  scene.proj = Mat4::perspective(radians(45.0f), (f32) dimensions.width / (f32) dimensions.height,
+                                  0.1f, 100.0f);
 
   Vec3 rotate_vec = {1.0f, 1.0f, 0.0f};
-  model_rotate(&scene->renderables[0].model, degree, &rotate_vec);
-
+  scene.renderables[0].model.rotate(degree, rotate_vec);
 
   degree += 1.0f;
 }
 
 static void
-render(State* state)
+render(State& state)
 {
-  Scene* curr_scene = &state->scenes[state->current_scene_idx];
+  Scene& curr_scene = state.scenes[state.current_scene_idx];
 
   clear_screen();
 
-  scene_draw(curr_scene);
+  curr_scene.draw();
 }
 
 static void
-get_sound(SoundBuffer* sound_buffer)
+get_sound(SoundBuffer& sound_buffer)
 {
   static u32 sample_index = 0;
 
-  for (u32 i = 0; i < sound_buffer->sample_count; i += 2)
+  for (u32 i = 0; i < sound_buffer.sample_count; i += 2)
   {
-    f32 t = (f32) sample_index / (f32) sound_buffer->samples_per_second;
+    f32 t = (f32) sample_index / (f32) sound_buffer.samples_per_second;
     f32 frequency = 440.0f;
     f32 amplitude = 0.25f;
     i16 sine_value = (i16) (sin(2.0f * PI32 * t * frequency) * I16_MAX * amplitude);
-    (void) sine_value;
+    UNUSED(sine_value);
 
     ++sample_index;
 
-    i16* left  = sound_buffer->memory + i;
-    i16* right = sound_buffer->memory + i + 1;
+    i16* left  = sound_buffer.memory + i;
+    i16* right = sound_buffer.memory + i + 1;
 
     // *left  = sine_value;
     // *right = sine_value;
@@ -145,36 +146,9 @@ get_sound(SoundBuffer* sound_buffer)
 static void
 setup_default_keybinds()
 {
-  keybind_map[KEY_LMB] = ACTION_CHANGE_SCENE;
-  keybind_map[KEY_SPACE] = ACTION_MOVE;
+  keybind_map[(usize) Key::LMB] = Action::CHANGE_SCENE;
+  keybind_map[(usize) Key::SPACE] = Action::MOVE;
 }
 
-static void
-setup_error_to_error_string()
-{
-  error_to_error_string[ERROR_OUT_OF_MEMORY] = "out of memory";
-  error_to_error_string[ERROR_INVALID_PARAMETER] = "invalid parameter";
-  error_to_error_string[ERROR_FILE_READING] = "file reading";
-  error_to_error_string[ERROR_NOT_FOUND] = "not found";
-
-  error_to_error_string[ERROR_SHADER_COMPILATION] = "[SHADER] compilation";
-  error_to_error_string[ERROR_SHADER_LINKING] = "[SHADER] linking";
-
-  error_to_error_string[ERROR_PNG_INVALID_HEADER] = "[PNG] invalid header";
-  error_to_error_string[ERROR_PNG_IHDR_NOT_FIRST] = "[PNG] ihdr chunk is not first";
-  error_to_error_string[ERROR_PNG_INVALID_IHDR] = "[PNG] invalid ihdr chunk";
-  error_to_error_string[ERROR_PNG_INVALID_IDAT] = "[PNG] invalid idat chunk";
-  error_to_error_string[ERROR_PNG_BAD_SIZES] = "[PNG] bad sizes";
-  error_to_error_string[ERROR_PNG_BAD_CODE_LENGTHS] = "[PNG] bad code length";
-  error_to_error_string[ERROR_PNG_BAD_HUFFMAN_CODE] = "[PNG] bad huffman code";
-  error_to_error_string[ERROR_PNG_BAD_DISTANCE] = "[PNG] bad distance";
-  error_to_error_string[ERROR_PNG_UNEXPECTED_END] = "[PNG] unexpected end";
-  error_to_error_string[ERROR_PNG_CORRUPT_ZLIB] = "[PNG] corrupt zlib";
-  error_to_error_string[ERROR_PNG_READ_PAST_BUFFER] = "[PNG] read past buffer";
-  error_to_error_string[ERROR_PNG_INVALID_FILTER] = "[PNG] invalid filter";
-  error_to_error_string[ERROR_PNG_ILLEGAL_COMPRESION_TYPE] = "[PNG] illegal compression type";
-
-  error_to_error_string[ERROR_OBJ_INVALID_DATA] = "[OBJ] invalid data";
-
-  error_to_error_string[ERROR_SUCCESS] = "success";
 }
+

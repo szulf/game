@@ -1,5 +1,8 @@
 #include "memory.h"
 
+namespace mem
+{
+
 static ptrsize
 calc_padding(void* ptr, ptrsize alignment)
 {
@@ -11,61 +14,61 @@ calc_padding(void* ptr, ptrsize alignment)
   return 0;
 }
 
-static void*
-arena_alloc(Arena* arena, usize size, Error* err, ptrsize alignment)
+void*
+Arena::alloc(usize size, Error* err, ptrsize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-  ASSERT(!arena->allocation_active, "cannot allocate memory when an allocation is active");
+  ASSERT(!allocation_active, "cannot allocate memory when an allocation is active");
 
-  u8* curr_addr = (u8*) arena->buffer + arena->offset;
+  u8* curr_addr = (u8*) buffer + offset;
   ptrsize padding = calc_padding(curr_addr, alignment);
-  ERROR_ASSERT(arena->offset + padding + size <= arena->buffer_size, *err, ERROR_OUT_OF_MEMORY, 0);
-  arena->offset += padding;
+  ERROR_ASSERT(offset + padding + size <= buffer_size, *err, Error::OUT_OF_MEMORY, 0);
+  offset += padding;
   void* next_addr = curr_addr + padding;
-  arena->offset += size;
+  offset += size;
 
-  *err = ERROR_SUCCESS;
+  *err = Error::SUCCESS;
   return next_addr;
 }
 
-static void
-arena_free_all(Arena* arena)
+void
+Arena::free_all()
 {
-  arena->offset = 0;
+  offset = 0;
 }
 
-static void*
-arena_alloc_start(Arena* arena, ptrsize alignment)
+void*
+Arena::alloc_start(ptrsize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-  ASSERT(!arena->allocation_active, "cannot start a new allocation when an old one is stil active");
+  ASSERT(!allocation_active, "cannot start a new allocation when an old one is stil active");
 
-  u8* curr_addr = (u8*) arena->buffer + arena->offset;
+  u8* curr_addr = (u8*) buffer + offset;
   ptrsize padding = calc_padding(curr_addr, alignment);
-  arena->offset += padding;
+  offset += padding;
   void* next_addr = curr_addr + padding;
 
 #ifdef GAME_DEBUG
-  arena->allocation_active = true;
+  allocation_active = true;
 #endif
   return next_addr;
 }
 
-static void
-arena_alloc_finish(Arena* arena, usize size, Error* err)
+void
+Arena::alloc_finish(usize size, Error* err)
 {
-  ASSERT(arena->allocation_active, "cannot finish an allocation when it is active");
+  ASSERT(allocation_active, "cannot finish an allocation when it is active");
 #ifdef GAME_DEBUG
-  arena->allocation_active = false;
+  allocation_active = false;
 #endif
 
-  ERROR_ASSERT(arena->offset + size <= arena->buffer_size, *err, ERROR_OUT_OF_MEMORY,);
-  *err = ERROR_SUCCESS;
-  arena->offset += size;
+  ERROR_ASSERT(offset + size <= buffer_size, *err, Error::OUT_OF_MEMORY,);
+  *err = Error::SUCCESS;
+  offset += size;
 }
 
 static void
-mem_zero(void* dest, usize bytes)
+zero(void* dest, usize bytes)
 {
   u8* d = (u8*) dest;
   while (bytes--)
@@ -75,7 +78,7 @@ mem_zero(void* dest, usize bytes)
 }
 
 static void
-mem_set(void* dest, usize bytes, u8 val)
+set(void* dest, usize bytes, u8 val)
 {
   u8* d = (u8*) dest;
   while (bytes--)
@@ -85,7 +88,7 @@ mem_set(void* dest, usize bytes, u8 val)
 }
 
 static void
-mem_copy(void* dest, const void* src, usize bytes)
+copy(void* dest, const void* src, usize bytes)
 {
   u8* d = (u8*) dest;
   const u8* s = (const u8*) src;
@@ -96,7 +99,7 @@ mem_copy(void* dest, const void* src, usize bytes)
 }
 
 static b32
-mem_compare(const void* v1, const void* v2, usize bytes)
+compare(const void* v1, const void* v2, usize bytes)
 {
   for (usize i = 0; i < bytes; ++i)
   {
@@ -106,7 +109,7 @@ mem_compare(const void* v1, const void* v2, usize bytes)
 }
 
 static u64
-mem_hash_fnv_1a(const void* data, usize size)
+hash_fnv_1a(const void* data, usize size)
 {
   u64 hash = FNV_OFFSET;
   for (usize i = 0; i < size; ++i)
@@ -116,3 +119,6 @@ mem_hash_fnv_1a(const void* data, usize size)
   }
   return hash;
 }
+
+}
+

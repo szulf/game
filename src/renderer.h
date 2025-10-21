@@ -1,69 +1,66 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-static void setup_renderer(void);
-static void clear_screen(void);
+static void setup_renderer();
+static void clear_screen();
 
-typedef enum ShaderType
+enum class ShaderType : u8
 {
-  SHADER_TYPE_VERTEX,
-  SHADER_TYPE_FRAGMENT,
-} ShaderType;
+  VERTEX,
+  FRAGMENT,
+};
 
-typedef enum Shader
+enum class Shader : u8
 {
   // NOTE(szulf): this has to be last
-  SHADER_DEFAULT,
-} Shader;
+  DEFAULT,
+};
 
-u32 shader_map[SHADER_DEFAULT + 1];
+u32 shader_map[(usize) Shader::DEFAULT + 1];
 
-static void setup_shaders(Arena* arena, Error* err);
+static void setup_shaders(mem::Arena& arena, Error* err);
 
-typedef struct Texture Texture;
+struct Texture;
 
-static Texture texture_make(Image* img);
+struct Material;
 
-typedef struct Material Material;
+struct Mesh;
 
-typedef struct Mesh Mesh;
-
-typedef struct Vertex
+struct Vertex
 {
   Vec3 pos;
   Vec3 normal;
   Vec2 uv;
-} Vertex;
+};
 
-static Mesh mesh_make(Array<Vertex>* vertices, Array<u32>* indices, Material* material);
-// TODO(szulf): probably switch to some sort of a queue later on
-static void mesh_draw(const Mesh* mesh, Shader shader);
-
-typedef struct Model
+struct Model
 {
   Array<Mesh> meshes;
-  Mat4 model;
-} Model;
+  Mat4 mat;
 
-// TODO(szulf): probably switch to some sort of a queue later on
-static void model_draw(const Model* model, Shader shader);
-static void model_rotate(Model* model, f32 deg, const Vec3* axis);
+  // TODO(szulf): probably switch to some sort of a queue later on
+  void draw(Shader shader) const;
 
-typedef struct Renderable
+  void rotate(f32 deg, const Vec3& axis);
+};
+
+
+struct Renderable
 {
   Model model;
   Shader shader;
-} Renderable;
+};
 
-typedef struct Scene
+struct Scene
 {
   Array<Renderable> renderables;
   Mat4 view;
   Mat4 proj;
-} Scene;
 
-// TODO(szulf): probably switch to some sort of a queue later on
-static void scene_draw(const Scene* scene);
+  // TODO(szulf): probably switch to some sort of a queue later on
+  void draw() const;
+};
+
 
 #ifdef GAME_OPENGL
 #include "ogl_renderer.cpp"

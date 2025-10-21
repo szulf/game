@@ -8,25 +8,26 @@ struct String
   usize len;
   const char* data;
 
+  static String make(const char* cstr);
+  static String make(const char* cstr, usize len);
+
+  usize count_chars(char c) const;
+  usize find_char(char c, usize start_idx = 0) const;
+  String prepend(const char* cstr, mem::Arena& arena, Error* err) const;
+  Array<String> split(char c, mem::Arena& arena, Error* err) const;
+  template <typename T>
+  T parse(Error* err) const;
+
   const char& operator[](usize idx) const;
+
+  const char* begin() const;
+  const char* end() const;
 };
 
-static String string_make_cstr(const char* cstr);
-static String string_make_cstr_len(const char* cstr, usize len);
-
-static usize string_count_chars(String* str, char c);
-static usize string_find_char(String* str, char c, usize start_idx);
-
-static String string_prepend(String* str, const char* cstr, Arena* arena, Error* err);
-template <typename... Args>
-static String string_format(Arena* arena, const char* fmt_, const Args&... args);
-
-static Array<String> string_split(String* str, char c, Arena* arena, Error* err);
-
-static f32 string_parse_f32(String* str, Error* err);
-static u32 string_parse_u32(String* str, Error* err);
-
 static usize cstr_len(const char* c_str);
+
+template <typename... Args>
+static String format(const mem::Arena& arena, const char* fmt_, const Args&... args);
 
 #endif
 

@@ -24,6 +24,7 @@ find_package(OpenGL REQUIRED)
 add_executable(game
     game/main.cpp
     engine/sdl3_gl_engine.cpp engine/engine.hpp
+    engine/renderer.hpp engine/gl_renderer.cpp
 )
 
 target_compile_options(game

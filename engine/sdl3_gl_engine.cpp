@@ -5,7 +5,7 @@
 #include "gl_functions.hpp"
 #include <SDL3/SDL.h>
 
-// #include "renderer.hpp"
+#include "renderer.hpp"
 
 PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
@@ -85,7 +85,7 @@ struct Engine::PlatformData
 
 Engine::Engine(const AppSpec& spec) : m_running{true}
 {
-  m_platform_data = new PlatformData{};
+  m_platform_data = std::make_unique<PlatformData>();
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
   m_platform_data->window =
@@ -96,7 +96,7 @@ Engine::Engine(const AppSpec& spec) : m_running{true}
   ASSERT(gl_context, "failed to create sdl3 opengl context");
 
   setupGLFunctions();
-  // renderer::init();
+  renderer::init();
 }
 
 Engine::~Engine()
@@ -104,7 +104,6 @@ Engine::~Engine()
   SDL_GL_DestroyContext(m_platform_data->gl_context);
   SDL_DestroyWindow(m_platform_data->window);
   SDL_Quit();
-  delete m_platform_data;
 }
 
 auto Engine::run() -> void

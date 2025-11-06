@@ -51,7 +51,7 @@ private:
 
   // TODO(szulf): can i somehow avoid the dynamic allocation here?
   struct PlatformData;
-  PlatformData* m_platform_data;
+  std::unique_ptr<PlatformData> m_platform_data{};
 };
 
 }

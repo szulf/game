@@ -3,13 +3,33 @@
 #include <filesystem>
 
 #include "engine.hpp"
+#include "renderer.hpp"
+
+namespace utils
+{
+
+auto setupSimpleScene(const std::filesystem::path& obj_path) -> core::Scene
+{
+  (void) obj_path;
+  return {};
+}
+
+}
 
 namespace game
 {
 
 class AppLayer : public core::Layer
 {
-  virtual auto onRender() -> void override {}
+  virtual auto onRender() -> void override
+  {
+    core::renderer::clearScreen();
+    const auto scene{utils::setupSimpleScene("assets/cube.obj")};
+    core::renderer::render(scene);
+  }
+
+  // virtual auto onUpdate(float dt) -> void override {}
+  // virtual auto onEvent() -> void override {}
 };
 
 }

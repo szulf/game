@@ -20,8 +20,10 @@ FetchContent_MakeAvailable(SDL3)
 
 find_package(OpenGL REQUIRED)
 
+# TODO(szulf): move engine to its own cmakelists file
 add_executable(game
     game/main.cpp
+    engine/sdl3_gl_engine.cpp engine/engine.hpp
 )
 
 target_compile_options(game

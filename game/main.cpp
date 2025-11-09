@@ -1,14 +1,12 @@
-#include <print>
-#include <utility>
 #include <filesystem>
 
 #include "engine.hpp"
-#include "renderer.hpp"
+#include "renderer/renderer.hpp"
 
 namespace utils
 {
 
-auto setupSimpleScene(const std::filesystem::path& obj_path) -> core::Scene
+static auto setupSimpleScene(const std::filesystem::path& obj_path) -> core::Scene
 {
   (void) obj_path;
   return {};
@@ -27,9 +25,6 @@ class AppLayer : public core::Layer
     const auto scene{utils::setupSimpleScene("assets/cube.obj")};
     core::renderer::render(scene);
   }
-
-  // virtual auto onUpdate(float dt) -> void override {}
-  // virtual auto onEvent() -> void override {}
 };
 
 }

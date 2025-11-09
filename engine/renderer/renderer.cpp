@@ -5,31 +5,7 @@
 namespace core
 {
 
-ShaderMap::ShaderMap() {}
-
-struct Texture::BackendData
-{
-  GLuint id{};
-};
-
-Texture::Texture()
-{
-  m_backend_data = std::make_unique<BackendData>();
-}
-
-Texture::~Texture() = default;
-
-struct Mesh::BackendData
-{
-  GLuint vao{};
-};
-
-Mesh::Mesh()
-{
-  m_backend_data = std::make_unique<BackendData>();
-}
-
-Mesh::~Mesh() = default;
+#ifdef GAME_OPENGL
 
 auto renderer::init() -> void
 {
@@ -44,23 +20,13 @@ auto renderer::clearScreen() -> void
 
 auto renderer::render(const Scene& scene) -> void
 {
-  auto& shader_map{ShaderMap::getInstance()};
+  auto& shader_map{ShaderMap::instance()};
 
-  for (const auto& renderable : scene.getRenderables())
+  for (const auto& renderable : scene.renderables())
   {
     glUseProgram(shader_map[renderable.shader]);
-    glUniformMatrix4fv(
-      glGetUniformLocation(shader_map[renderable.shader], "view"),
-      1,
-      false,
-      scene.view().data
-    );
-    glUniformMatrix4fv(
-      glGetUniformLocation(shader_map[renderable.shader], "proj"),
-      1,
-      false,
-      scene.projection().data
-    );
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable.shader], "view"), 1, false, scene.view().data);
+    glUniformMatrix4fv(glGetUniformLocation(shader_map[renderable.shader], "proj"), 1, false, scene.projection().data);
     glUniformMatrix4fv(
       glGetUniformLocation(shader_map[renderable.shader], "model"),
       1,
@@ -74,9 +40,13 @@ auto renderer::render(const Scene& scene) -> void
       glBindTexture(GL_TEXTURE_2D, mesh.material().texture.backendData().id);
       glUniform1i(glGetUniformLocation(shader_map[renderable.shader], "sampler"), 0);
       glBindVertexArray(mesh.backendData().vao);
-      glDrawElements(GL_TRIANGLES, (GLsizei) mesh.indices().size(), GL_UNSIGNED_INT, 0);
+      glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh.indices().size()), GL_UNSIGNED_INT, nullptr);
     }
   }
 }
+
+#else
+#  error Unknown rendering backend
+#endif
 
 }

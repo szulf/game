@@ -70,7 +70,6 @@ public:
 }
 
 #ifdef GAME_OPENGL
-// TODO(szulf): move this another file and just include it here
 
 #  include "renderer/gl_functions.hpp"
 

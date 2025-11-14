@@ -4,15 +4,15 @@
 
 namespace math {
 
-[[nodiscard]] auto cross(const vec3& va, const vec3& vb) noexcept -> vec3 {
-  vec3 out;
-  out.x = (va.y * vb.z) - (va.z * vb.y);
-  out.y = (va.z * vb.x) - (va.x * vb.z);
-  out.z = (va.x * vb.y) - (va.y * vb.x);
-  return out;
+vec3 cross(const vec3& va, const vec3& vb) noexcept {
+  return {
+    (va.y * vb.z) - (va.z * vb.y),
+    (va.z * vb.x) - (va.x * vb.z),
+    (va.x * vb.y) - (va.y * vb.x),
+  };
 }
 
-auto mat4::rotate(float rad, const vec3& axis) noexcept -> void {
+void mat4::rotate(float rad, const vec3& axis) noexcept {
   float s = std::sin(rad);
   float c = std::cos(rad);
   float t = 1.0f - c;

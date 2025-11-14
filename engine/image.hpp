@@ -14,10 +14,6 @@ public:
   Image(const Image& other) = delete;
   Image& operator=(const Image& other) = delete;
 
-  // TODO(szulf): does this have to live here???
-  // createRGBA8 needs to set private members of the Image class,
-  // and even if i wanted to make it a friend i would need to define what Context is
-
   std::uint8_t* data{};
   std::size_t width{};
   std::size_t height{};

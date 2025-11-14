@@ -24,17 +24,13 @@ find_package(OpenGL REQUIRED)
 add_executable(game
     game/main.cpp
 
-    engine/math.cpp engine/math.hpp
-
-    engine/sdl3_gl_engine.cpp
     engine/engine.hpp
     engine/asset_manager.hpp
-
-    engine/image.hpp
-    engine/image.cpp
+    engine/math.cpp engine/math.hpp
+    engine/image.cpp engine/image.hpp
 
     engine/renderer/camera.cpp engine/renderer/camera.hpp
-    engine/renderer/gl_functions.hpp
+    engine/renderer/gl_functions.cpp engine/renderer/gl_functions.hpp
     engine/renderer/material.hpp
     engine/renderer/mesh.cpp engine/renderer/mesh.hpp
     engine/renderer/model.cpp engine/renderer/model.hpp

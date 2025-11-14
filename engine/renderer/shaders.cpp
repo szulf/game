@@ -11,7 +11,7 @@ namespace core {
 
 namespace shader_impl {
 
-static auto setup_shader(const std::filesystem::path& path, ShaderType shader_type) -> std::uint32_t {
+static std::uint32_t setup_shader(const std::filesystem::path& path, ShaderType shader_type) {
   std::ifstream shader_stream{path};
   std::stringstream ss{};
   ss << shader_stream.rdbuf();
@@ -49,7 +49,7 @@ static auto setup_shader(const std::filesystem::path& path, ShaderType shader_ty
   return shader;
 }
 
-static auto link_shaders(std::uint32_t vertex_shader, std::uint32_t fragment_shader) -> std::uint32_t {
+static std::uint32_t link_shaders(std::uint32_t vertex_shader, std::uint32_t fragment_shader) {
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex_shader);
   glAttachShader(program, fragment_shader);

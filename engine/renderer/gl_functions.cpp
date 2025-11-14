@@ -1,10 +1,10 @@
-// TODO(szulf): rename this file
-
 #include <print>
 
-#include <SDL3/SDL.h>
+#ifdef GAME_OPENGL
 
-#include "renderer/gl_functions.hpp"
+#  include <SDL3/SDL.h>
+
+#  include "renderer/gl_functions.hpp"
 
 PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
@@ -67,7 +67,7 @@ void setupGLFunctions() {
   glDeleteBuffers = reinterpret_cast<PFNGLDELETEBUFFERSPROC>(SDL_GL_GetProcAddress("glDeleteBuffers"));
 }
 
-#ifdef GAME_DEBUG
+#  ifdef GAME_DEBUG
 void APIENTRY debugCallback(
   GLenum source,
   GLenum type,
@@ -171,6 +171,8 @@ void APIENTRY debugCallback(
   );
 }
 
-#endif
+#  endif
 
 }
+
+#endif

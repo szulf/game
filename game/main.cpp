@@ -1,44 +1,59 @@
-#include <filesystem>
+#include <print>
 
 #include "engine.hpp"
+#include "event.hpp"
+#include "renderer/camera.hpp"
 #include "renderer/renderer.hpp"
+#include "renderer/scene.hpp"
+#include "utils/templates.hpp"
 
-namespace utils
-{
+namespace game {
 
-static auto setupSimpleScene(const std::filesystem::path& obj_path) -> core::Scene
-{
-  (void) obj_path;
-  return {};
-}
+struct Game {
+  using PrevStates = utils::type_list<>;
 
-}
+  Game()
+    : scene{
+        {"assets/backpack.obj"},
+        core::Camera{core::Camera::Type::Perspective, {0.0f, 0.0f, -5.0f}}
+  } {}
 
-namespace game
-{
-
-class AppLayer : public core::Layer
-{
-  virtual auto onRender() -> void override
-  {
+  void render() {
     core::renderer::clearScreen();
-    const auto scene{utils::setupSimpleScene("assets/cube.obj")};
     core::renderer::render(scene);
   }
+
+  void update(float) {
+    scene.camera.yaw += 1.0f;
+    scene.camera.updateCameraVectors();
+    std::println("{}", scene.camera.yaw);
+  }
+
+  void event(const core::Event& event) {
+    switch (event.type) {
+      using enum core::Event::Type;
+      case WindowResize: {
+        const auto e{static_cast<const core::WindowResizeEvent&>(event)};
+        scene.camera.viewport_width = e.width;
+        scene.camera.viewport_height = e.height;
+      } break;
+    }
+  }
+
+  core::Scene scene;
 };
 
 }
 
-auto main() -> std::int32_t
-{
+std::int32_t main() {
   core::AppSpec spec{
     .name = "game",
-    .width = 640,
-    .height = 480,
+    .width = 1280,
+    .height = 720,
   };
 
-  core::Engine engine{spec};
-  engine.pushLayer<game::AppLayer>();
+  core::Engine<game::Game> engine{spec};
   engine.run();
+
   return 0;
 }

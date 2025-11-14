@@ -3,48 +3,33 @@
 #include <vector>
 
 #include "renderer/vertex.hpp"
-#include "renderer/material.hpp"
 
-namespace core
-{
+namespace core {
 
-class Mesh
-{
-private:
+struct Mesh final {
 #ifdef GAME_OPENGL
-  struct BackendData
-  {
+  struct BackendData final {
     std::uint32_t vao{};
+    std::uint32_t vbo{};
+    std::uint32_t ebo{};
   };
 #else
 #  error Unknown rendering backend
 #endif
 
-public:
-  Mesh(std::vector<Vertex>&& vertices, std::vector<std::uint32_t>&& indices, Material&& material);
+  Mesh(std::vector<Vertex>&& vertices, std::vector<std::uint32_t>&& indices, std::string&& material_name) noexcept;
+  ~Mesh();
+  Mesh(const Mesh& other) = delete;
+  Mesh& operator=(const Mesh& other) = delete;
 
-  inline auto material() const noexcept -> const Material&
-  {
-    return m_material;
-  }
-  inline auto indices() const noexcept -> const std::vector<std::uint32_t>&
-  {
-    return m_indices;
-  }
-  inline auto vertices() const noexcept -> const std::vector<Vertex>&
-  {
-    return m_vertices;
-  }
-  inline auto backendData() const noexcept -> const BackendData&
-  {
-    return m_backend_data;
-  }
+  Mesh(Mesh&& other);
+  Mesh& operator=(Mesh&& other);
 
-private:
-  std::vector<Vertex> m_vertices;
-  std::vector<std::uint32_t> m_indices;
-  Material m_material;
-  BackendData m_backend_data{};
+  std::vector<Vertex> vertices{};
+  std::vector<std::uint32_t> indices{};
+  // NOTE(szulf): would prefer this to be a uuid but obj stores it as string so not much i can do ig
+  std::string material_name{};
+  BackendData backend_data{};
 };
 
 }

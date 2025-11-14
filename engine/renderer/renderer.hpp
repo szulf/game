@@ -1,22 +1,16 @@
 #pragma once
 
-#include <vector>
-#include <cstdint>
-#include <array>
-#include <memory>
-
-#include "math.hpp"
 #include "renderer/scene.hpp"
 
-namespace core
-{
+namespace core {
 
-namespace renderer
-{
+// TODO(szulf): this should be more general, it shouldnt know what a scene is
 
-void init();
-void clearScreen();
-void render(const Scene& scene);
+namespace renderer {
+
+void init() noexcept;
+void clearScreen() noexcept;
+void render(const Scene& scene) noexcept;
 
 }
 

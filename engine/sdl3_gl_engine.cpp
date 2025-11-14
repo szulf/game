@@ -1,11 +1,10 @@
-#include "engine.hpp"
+// TODO(szulf): rename this file
 
-#include <ranges>
+#include <print>
 
-#include "renderer/gl_functions.hpp"
 #include <SDL3/SDL.h>
 
-#include "renderer/renderer.hpp"
+#include "renderer/gl_functions.hpp"
 
 PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
@@ -31,12 +30,12 @@ PFNGLGETPROGRAMIVPROC glGetProgramiv;
 PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
 PFNGLGENERATEMIPMAPPROC glGenerateMipmap;
 PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
+PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
+PFNGLDELETEBUFFERSPROC glDeleteBuffers;
 
-namespace core
-{
+namespace core {
 
-static auto setupGLFunctions() -> void
-{
+void setupGLFunctions() {
   glGenVertexArrays = reinterpret_cast<PFNGLGENVERTEXARRAYSPROC>(SDL_GL_GetProcAddress("glGenVertexArrays"));
   glBindVertexArray = reinterpret_cast<PFNGLBINDVERTEXARRAYPROC>(SDL_GL_GetProcAddress("glBindVertexArray"));
   glGenBuffers = reinterpret_cast<PFNGLGENBUFFERSPROC>(SDL_GL_GetProcAddress("glGenBuffers"));
@@ -64,60 +63,114 @@ static auto setupGLFunctions() -> void
   glGenerateMipmap = reinterpret_cast<PFNGLGENERATEMIPMAPPROC>(SDL_GL_GetProcAddress("glGenerateMipmap"));
   glDebugMessageCallback =
     reinterpret_cast<PFNGLDEBUGMESSAGECALLBACKPROC>(SDL_GL_GetProcAddress("glDebugMessageCallback"));
+  glDeleteVertexArrays = reinterpret_cast<PFNGLDELETEVERTEXARRAYSPROC>(SDL_GL_GetProcAddress("glDeleteVertexArrays"));
+  glDeleteBuffers = reinterpret_cast<PFNGLDELETEBUFFERSPROC>(SDL_GL_GetProcAddress("glDeleteBuffers"));
 }
 
-struct Engine::PlatformData
-{
-  SDL_Window* window;
-  SDL_GLContext gl_context;
-};
+#ifdef GAME_DEBUG
+void APIENTRY debugCallback(
+  GLenum source,
+  GLenum type,
+  GLuint id,
+  GLenum severity,
+  GLsizei length,
+  const GLchar* message,
+  const void* user
+) {
+  (void) length;
+  (void) user;
 
-Engine::Engine(const AppSpec& spec) : m_running{true}
-{
-  m_platform_data = std::make_unique<PlatformData>();
-  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-
-  m_platform_data->window =
-    SDL_CreateWindow(spec.name, spec.width, spec.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-  ASSERT(window, "failed to create sdl3 window");
-
-  m_platform_data->gl_context = SDL_GL_CreateContext(m_platform_data->window);
-  ASSERT(gl_context, "failed to create sdl3 opengl context");
-
-  setupGLFunctions();
-  renderer::init();
-}
-
-Engine::~Engine()
-{
-  SDL_GL_DestroyContext(m_platform_data->gl_context);
-  SDL_DestroyWindow(m_platform_data->window);
-  SDL_Quit();
-}
-
-auto Engine::run() -> void
-{
-  SDL_Event e;
-  while (m_running)
-  {
-    while (SDL_PollEvent(&e))
-    {
-      switch (e.type)
-      {
-        case SDL_EVENT_QUIT:
-        {
-          m_running = false;
-        }
-        break;
-      }
-    }
-
-    for (const auto& layer : std::views::reverse(m_layers))
-    {
-      layer->onRender();
-      SDL_GL_SwapWindow(m_platform_data->window);
-    }
+  if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+    return;
   }
+  const char* source_str;
+  switch (source) {
+    case GL_DEBUG_SOURCE_API:
+      source_str = "API";
+      break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+      source_str = "Window System";
+      break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER:
+      source_str = "Shader Compiler";
+      break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY:
+      source_str = "Third Party";
+      break;
+    case GL_DEBUG_SOURCE_APPLICATION:
+      source_str = "Application";
+      break;
+    case GL_DEBUG_SOURCE_OTHER:
+      source_str = "Other";
+      break;
+    default:
+      source_str = "Unknown";
+      break;
+  }
+
+  const char* type_str;
+  switch (type) {
+    case GL_DEBUG_TYPE_ERROR:
+      type_str = "Error";
+      break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+      type_str = "Deprecated Behaviour";
+      break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+      type_str = "Undefined Behaviour";
+      break;
+    case GL_DEBUG_TYPE_PORTABILITY:
+      type_str = "Portability";
+      break;
+    case GL_DEBUG_TYPE_PERFORMANCE:
+      type_str = "Performance";
+      break;
+    case GL_DEBUG_TYPE_MARKER:
+      type_str = "Marker";
+      break;
+    case GL_DEBUG_TYPE_PUSH_GROUP:
+      type_str = "Push Group";
+      break;
+    case GL_DEBUG_TYPE_POP_GROUP:
+      type_str = "Pop Group";
+      break;
+    case GL_DEBUG_TYPE_OTHER:
+      type_str = "Other";
+      break;
+    default:
+      type_str = "Unknown";
+      break;
+  }
+
+  const char* severity_str;
+  switch (severity) {
+    case GL_DEBUG_SEVERITY_HIGH:
+      severity_str = "HIGH";
+      break;
+    case GL_DEBUG_SEVERITY_MEDIUM:
+      severity_str = "MEDIUM";
+      break;
+    case GL_DEBUG_SEVERITY_LOW:
+      severity_str = "LOW";
+      break;
+    case GL_DEBUG_SEVERITY_NOTIFICATION:
+      severity_str = "NOTIFICATION";
+      break;
+    default:
+      severity_str = "UNKNOWN";
+      break;
+  }
+
+  std::println(
+    "[OpenGL Debug] Source: {} | Type: {} | Severity: {} | ID: {}\n    Message: {}",
+    source_str,
+    type_str,
+    severity_str,
+    id,
+    message
+  );
 }
+
+#endif
 
 }

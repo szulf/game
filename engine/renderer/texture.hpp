@@ -2,31 +2,29 @@
 
 #include <cstdint>
 
-namespace core
-{
+#include "image.hpp"
 
-class Texture
-{
-private:
+namespace core {
+
+struct Texture final {
 #ifdef GAME_OPENGL
-  struct BackendData
-  {
+  struct BackendData final {
     std::uint32_t id{};
   };
 #else
 #  error Unknown rendering backend
 #endif
 
-public:
-  Texture();
+  // TODO(szulf): create placeholder texture
+  constexpr Texture() {}
+  Texture(const Image& img) noexcept;
+  ~Texture();
+  Texture(const Texture& other) = delete;
+  Texture& operator=(const Texture& other) = delete;
+  Texture(Texture&& other);
+  Texture& operator=(Texture&& other);
 
-  inline auto backendData() const noexcept -> const BackendData&
-  {
-    return m_backend_data;
-  }
-
-private:
-  BackendData m_backend_data{};
+  BackendData backend_data{};
 };
 
 }

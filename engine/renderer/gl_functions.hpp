@@ -27,3 +27,22 @@ extern PFNGLGETPROGRAMIVPROC glGetProgramiv;
 extern PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
 extern PFNGLGENERATEMIPMAPPROC glGenerateMipmap;
 extern PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
+extern PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
+extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+
+namespace core {
+
+void setupGLFunctions();
+#ifdef GAME_DEBUG
+void APIENTRY debugCallback(
+  GLenum source,
+  GLenum type,
+  GLuint id,
+  GLenum severity,
+  GLsizei length,
+  const GLchar* message,
+  const void* user
+);
+#endif
+
+}

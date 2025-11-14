@@ -3,31 +3,29 @@
 #include <cstdint>
 #include <array>
 
-namespace core
-{
+namespace core {
 
-enum class Shader : std::uint8_t
-{
+enum class ShaderType : std::uint8_t {
+  Vertex,
+  Fragment,
+};
+
+enum class Shader : std::uint8_t {
   // NOTE(szulf): this should be last
   Default,
 };
 
-class ShaderMap
-{
-public:
+struct ShaderMap final {
   ShaderMap();
 
-  inline auto operator[](Shader shader) const -> std::uint32_t
-  {
+  constexpr std::uint32_t operator[](Shader shader) const noexcept {
     return m_map[static_cast<std::size_t>(shader)];
   }
-  inline static auto instance() -> ShaderMap&
-  {
+  static constexpr ShaderMap& instance() noexcept {
     static ShaderMap map{};
     return map;
   }
 
-private:
   std::array<std::uint32_t, static_cast<std::size_t>(Shader::Default) + 1> m_map{};
 };
 

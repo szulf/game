@@ -24,31 +24,37 @@ find_package(OpenGL REQUIRED)
 add_executable(game
     game/main.cpp
 
+    engine/math.cpp engine/math.hpp
+
     engine/sdl3_gl_engine.cpp
     engine/engine.hpp
+    engine/asset_manager.hpp
 
     engine/image.hpp
     engine/image.cpp
 
+    engine/renderer/camera.cpp engine/renderer/camera.hpp
     engine/renderer/gl_functions.hpp
     engine/renderer/material.hpp
     engine/renderer/mesh.cpp engine/renderer/mesh.hpp
-    engine/renderer/model.hpp
+    engine/renderer/model.cpp engine/renderer/model.hpp
     engine/renderer/renderer.cpp engine/renderer/renderer.hpp
-    engine/renderer/scene.hpp
+    engine/renderer/scene.cpp engine/renderer/scene.hpp
     engine/renderer/shaders.cpp engine/renderer/shaders.hpp
     engine/renderer/texture.cpp engine/renderer/texture.hpp
     engine/renderer/vertex.hpp
 )
 
 add_compile_definitions(GAME_OPENGL)
+add_compile_definitions(GAME_DEBUG)
+add_compile_definitions(GAME_SDL3)
 
 target_compile_options(game
-   PRIVATE -g3 -Weverything -Werror -pedantic
+   PRIVATE -g3 -O0 -Weverything -Werror -pedantic
    -Wno-c++98-compat -Wno-c++98-compat-pedantic
    -Wno-padded -Wno-switch-default -Wno-unsafe-buffer-usage
    -Wno-unreachable-code-break -Wno-cast-function-type-strict
-   -Wno-weak-vtables)
+   -Wno-weak-vtables -Wno-exit-time-destructors -Wno-ctad-maybe-unsupported)
 
 target_include_directories(game PRIVATE engine)
 target_link_libraries(game PRIVATE SDL3 OpenGL)

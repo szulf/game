@@ -1,10 +1,10 @@
 #pragma once
 
-#include <thread>
 #ifdef GAME_SDL3
 #  include <SDL3/SDL.h>
 #endif
 
+#include <thread>
 #include <variant>
 #include <atomic>
 
@@ -18,13 +18,6 @@ struct AppSpec final {
   const char* name{};
   std::int32_t width{};
   std::int32_t height{};
-};
-
-struct NullStarterState {
-  using PrevStates = utils::type_list<>;
-  void render() {}
-  void update(float) {}
-  void event(const Event&) {}
 };
 
 template <typename... Ts>
@@ -49,14 +42,13 @@ public:
 
   void run();
 
-  template <typename State>
-  void updateThread(State& state);
+  void updateThread();
 
 public:
   std::atomic<bool> running{true};
 
   std::mutex state_mutex{};
-  std::variant<NullStarterState, Ts...> states{NullStarterState{}};
+  std::optional<std::variant<Ts...>> states{};
 
   std::mutex main_thread_queue_mutex{};
   std::vector<std::function<void()>> main_thread_queue{};
@@ -111,19 +103,25 @@ template <typename NewState>
 void Engine<Ts...>::setState() {
   std::visit([&](const auto& val) {
     using CurrentState = std::decay_t<decltype(val)>;
-    static_assert(
-      utils::type_list_contains<typename NewState::PrevStates, CurrentState>,
-      "NewState has to be in the CurrentStates PrevStates declaration"
+    // NOTE(szulf): i swear this used to work as a compile time check
+    ASSERT(
+      (utils::type_list_contains<typename NewState::PrevStates, CurrentState>),
+      std::format(
+        "CurrentState({}) has to be in the NewStates({}) PrevStates({}) declaration",
+        typeid(CurrentState).name(),
+        typeid(NewState).name(),
+        typeid(typename NewState::PrevStates).name()
+      )
     );
     states = NewState{};
-  }, states);
+  }, *states);
 }
 
 template <typename... Ts>
 void Engine<Ts...>::run() {
   std::visit([&](auto& state) {
     std::jthread update_thread{[&]() {
-      updateThread(state);
+      updateThread();
     }};
 
     while (running) {
@@ -141,47 +139,48 @@ void Engine<Ts...>::run() {
       }
       SDL_GL_SwapWindow(platform_data.window);
     }
-  }, states);
+  }, *states);
 }
 
 template <typename... Ts>
-template <typename State>
-void Engine<Ts...>::updateThread(State& state) {
-  SDL_Event e{};
-  while (running) {
-    const auto ms{std::chrono::high_resolution_clock::now()};
+void Engine<Ts...>::updateThread() {
+  std::visit([&](auto& state) {
+    SDL_Event e{};
+    while (running) {
+      const auto ms{std::chrono::high_resolution_clock::now()};
 
-    while (SDL_PollEvent(&e)) {
-      switch (e.type) {
-        case SDL_EVENT_QUIT: {
-          running = false;
-        } break;
-        case SDL_EVENT_WINDOW_RESIZED: {
-          {
-            std::lock_guard lock{main_thread_queue_mutex};
-            main_thread_queue.push_back([width = e.window.data1, height = e.window.data2]() {
-              glViewport(0, 0, width, height);
-            });
-          }
-          std::lock_guard lock{state_mutex};
-          state.event(
-            WindowResizeEvent{static_cast<std::uint32_t>(e.window.data1), static_cast<std::uint32_t>(e.window.data2)}
-          );
-        } break;
+      while (SDL_PollEvent(&e)) {
+        switch (e.type) {
+          case SDL_EVENT_QUIT: {
+            running = false;
+          } break;
+          case SDL_EVENT_WINDOW_RESIZED: {
+            {
+              std::lock_guard lock{main_thread_queue_mutex};
+              main_thread_queue.push_back([width = e.window.data1, height = e.window.data2]() {
+                glViewport(0, 0, width, height);
+              });
+            }
+            std::lock_guard lock{state_mutex};
+            state.event(
+              ResizeEvent{static_cast<std::uint32_t>(e.window.data1), static_cast<std::uint32_t>(e.window.data2)}
+            );
+          } break;
+        }
+      }
+
+      {
+        std::lock_guard lock{state_mutex};
+        state.update(0.0f);
+      }
+
+      const auto end_ms{std::chrono::high_resolution_clock::now()};
+      const auto ms_in_frame = end_ms - ms;
+      if (ms_in_frame < MSPT) {
+        std::this_thread::sleep_for(MSPT - ms_in_frame);
       }
     }
-
-    {
-      std::lock_guard lock{state_mutex};
-      state.update(0.0f);
-    }
-
-    const auto end_ms{std::chrono::high_resolution_clock::now()};
-    const auto ms_in_frame = end_ms - ms;
-    if (ms_in_frame < MSPT) {
-      std::this_thread::sleep_for(MSPT - ms_in_frame);
-    }
-  }
+  }, *states);
 }
 
 }

@@ -23,7 +23,7 @@ struct AppSpec final {
 
 template <typename... Ts>
 struct Engine final {
-  using StarterState = utils::get_first_type<Ts...>::type;
+  using StarterState = utils::type_list_first<Ts...>::type;
 
 public:
 #ifdef GAME_SDL3

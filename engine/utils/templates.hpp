@@ -4,12 +4,17 @@
 
 namespace utils {
 
-template <typename... Ts>
+template <typename... ListTypes>
 struct type_list {};
 
-template <typename First, typename... Ts>
-struct get_first_type {
-  using type = First;
+template <typename T, typename...>
+struct type_list_first {
+  using type = T;
+};
+
+template <typename T, typename... Ts>
+struct type_list_first<type_list<T, Ts...>> {
+  using type = T;
 };
 
 template <typename T, typename Ts>

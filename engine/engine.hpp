@@ -11,6 +11,7 @@
 #include "event.hpp"
 #include "renderer/renderer.hpp"
 #include "utils/templates.hpp"
+#include "utils/assert.hpp"
 
 namespace core {
 

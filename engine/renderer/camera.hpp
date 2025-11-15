@@ -3,7 +3,7 @@
 #include <utility>
 
 #include "math.hpp"
-#include "assert.hpp"
+#include "utils/assert.hpp"
 
 namespace core {
 

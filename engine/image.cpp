@@ -4,7 +4,7 @@
 #include <fstream>
 #include <vector>
 
-#include "assert.hpp"
+#include "utils/assert.hpp"
 
 namespace core {
 
@@ -176,7 +176,7 @@ struct Context final {
       } else if (bit_depth < 8) {
         ASSERT(false, "[TODO] support smaller depths");
       } else if (bit_depth == 16) {
-        ASSERT(false, "[TODO] support 16 bit depth")
+        ASSERT(false, "[TODO] support 16 bit depth");
       }
 
       std::swap(curr, prev);

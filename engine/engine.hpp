@@ -143,6 +143,15 @@ void Engine<Ts...>::run() {
   }, *states);
 }
 
+inline static Key keyFromSDLK(SDL_Keycode sdlk) {
+  switch (sdlk) {
+    case SDLK_E:
+      return Key::E;
+  }
+
+  return static_cast<Key>(-1);
+}
+
 template <typename... Ts>
 void Engine<Ts...>::updateThread() {
   std::visit([&](auto& state) {
@@ -164,7 +173,24 @@ void Engine<Ts...>::updateThread() {
             }
             std::lock_guard lock{state_mutex};
             state.event(
-              ResizeEvent{static_cast<std::uint32_t>(e.window.data1), static_cast<std::uint32_t>(e.window.data2)}
+              ResizeEvent{
+                .width = static_cast<std::uint32_t>(e.window.data1),
+                .height = static_cast<std::uint32_t>(e.window.data2)
+              }
+            );
+          } break;
+          case SDL_EVENT_KEY_DOWN: {
+            if (keyFromSDLK(e.key.key) == static_cast<Key>(-1)) {
+              continue;
+            }
+            state.event(KeydownEvent{.key = keyFromSDLK(e.key.key)});
+          } break;
+          case SDL_EVENT_MOUSE_MOTION: {
+            state.event(
+              MouseMoveEvent{
+                .x = static_cast<std::uint32_t>(e.motion.x),
+                .y = static_cast<std::uint32_t>(e.motion.y),
+              }
             );
           } break;
         }

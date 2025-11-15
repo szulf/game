@@ -9,14 +9,20 @@
 
 namespace game {
 
-struct Game {
+enum class Action {
+  Interact,
+};
+
+struct Game final {
   using PrevStates = utils::type_list<>;
 
   Game()
     : scene{
         {"assets/backpack.obj"},
         core::Camera{core::Camera::Type::Perspective, {0.0f, 0.0f, -5.0f}}
-  } {}
+  } {
+    core::KeyMap<Action>::instance().bind(core::Key::E, Action::Interact);
+  }
 
   void render() {
     core::renderer::clearScreen();
@@ -26,17 +32,25 @@ struct Game {
   void update(float) {
     scene.camera.yaw += 1.0f;
     scene.camera.updateCameraVectors();
-    std::println("{}", scene.camera.yaw);
+    // std::println("{}", scene.camera.yaw);
   }
 
+  // TODO(szulf): dont really like the ifs and the switch
   void event(const core::Event& event) {
-    switch (event.type) {
-      using enum core::Event::Type;
-      case WindowResize: {
-        const auto e{static_cast<const core::WindowResizeEvent&>(event)};
-        scene.camera.viewport_width = e.width;
-        scene.camera.viewport_height = e.height;
-      } break;
+    if (const auto* window_resize{std::get_if<core::ResizeEvent>(&event)}) {
+      scene.camera.viewport_width = window_resize->width;
+      scene.camera.viewport_height = window_resize->height;
+    }
+    if (const auto* keydown{std::get_if<core::KeydownEvent>(&event)}) {
+      const auto action{core::KeyMap<Action>::instance()[keydown->key]};
+      switch (action) {
+        case Action::Interact: {
+          std::println("interacted by pressing some key");
+        } break;
+      }
+    }
+    if (const auto* mouse_move{std::get_if<core::MouseMoveEvent>(&event)}) {
+      std::println("x: {} y: {}", mouse_move->x, mouse_move->y);
     }
   }
 

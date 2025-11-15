@@ -28,6 +28,7 @@ add_executable(game
     engine/asset_manager.hpp
     engine/math.cpp engine/math.hpp
     engine/image.cpp engine/image.hpp
+    engine/action.hpp
 
     engine/renderer/camera.cpp engine/renderer/camera.hpp
     engine/renderer/gl_functions.cpp engine/renderer/gl_functions.hpp

@@ -1,21 +1,20 @@
 #pragma once
 
-#include "renderer/camera.hpp"
-#include "renderer/model.hpp"
-#include "renderer/shaders.hpp"
+#include "engine/renderer/camera.hpp"
+#include "engine/renderer/model.hpp"
+#include "engine/renderer/shaders.hpp"
 
 namespace core {
 
-struct Renderable final {
+struct Renderable {
   Model model;
   Shader shader;
 };
 
-struct Scene final {
-public:
-  Scene(Model&& model, const Camera& camera);
+struct Scene {
+  static Scene make(const Model& model, const Camera& camera, btl::Allocator& allocator);
 
-  std::vector<Renderable> renderables{};
+  btl::List<Renderable> renderables;
   Camera camera;
 };
 

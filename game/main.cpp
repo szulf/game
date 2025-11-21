@@ -1,27 +1,30 @@
-#include <print>
-
-#include "engine.hpp"
-#include "event.hpp"
-#include "renderer/camera.hpp"
-#include "renderer/renderer.hpp"
-#include "renderer/scene.hpp"
-#include "utils/templates.hpp"
+#include "engine/asset_manager.hpp"
+#include "engine/engine.hpp"
+#include "engine/event.hpp"
+#include "engine/renderer/camera.hpp"
+#include "engine/renderer/renderer.hpp"
+#include "engine/renderer/scene.hpp"
+#include "badtl/string.hpp"
+#include "badtl/print.hpp"
 
 namespace game {
 
-enum class Action {
-  Interact,
-};
+struct Game {
+  enum class Action {
+    Interact,
+    StartTest,
+  };
 
-struct Game final {
-  using PrevStates = utils::type_list<>;
-
-  Game()
-    : scene{
-        {"assets/backpack.obj"},
-        core::Camera{core::Camera::Type::Perspective, {0.0f, 0.0f, -5.0f}}
-  } {
-    core::KeyMap<Action>::instance().bind(core::Key::E, Action::Interact);
+  void init(btl::Allocator& allocator) {
+    asset_manager = core::AssetManager::make(allocator);
+    core::AssetManager::instance = &asset_manager;
+    scene = core::Scene::make(
+      core::Model::from_file(btl::String::make("assets/backpack.obj"), allocator).expect("couldnt parse model"),
+      core::Camera::make(core::Camera::Type::Perspective, {0.0f, 0.0f, -5.0f}),
+      allocator
+    );
+    key_map.bind(core::Key::E, Action::Interact);
+    key_map.bind(core::Key::T, Action::StartTest);
   }
 
   void render() {
@@ -32,38 +35,112 @@ struct Game final {
   void update(float) {
     scene.camera.yaw += 1.0f;
     scene.camera.updateCameraVectors();
-    // std::println("{}", scene.camera.yaw);
   }
 
-  // TODO(szulf): dont really like the ifs and the switch
-  void event(const core::Event& event) {
-    if (const auto* window_resize{std::get_if<core::ResizeEvent>(&event)}) {
-      scene.camera.viewport_width = window_resize->width;
-      scene.camera.viewport_height = window_resize->height;
-    }
-    if (const auto* keydown{std::get_if<core::KeydownEvent>(&event)}) {
-      const auto action{core::KeyMap<Action>::instance()[keydown->key]};
-      switch (action) {
-        case Action::Interact: {
-          std::println("interacted by pressing some key");
-        } break;
-      }
-    }
-    if (const auto* mouse_move{std::get_if<core::MouseMoveEvent>(&event)}) {
-      std::println("x: {} y: {}", mouse_move->x, mouse_move->y);
+  void event(const core::Event& e) {
+    switch (e.tag) {
+      case core::Event::Tag::Resize: {
+        scene.camera.viewport_width = e.event.resize.width;
+        scene.camera.viewport_height = e.event.resize.height;
+      } break;
+      case core::Event::Tag::Keydown: {
+        const auto action = key_map[e.event.keydown.key];
+        switch (action) {
+          case Action::Interact: {
+            btl::print("interacted by pressing some key\n");
+          } break;
+          case Action::StartTest: {
+            // TODO(szulf): somehow change the state to test
+          } break;
+        }
+      } break;
+      case core::Event::Tag::MouseMove: {
+      } break;
     }
   }
 
+  core::KeyMap<Action> key_map;
   core::Scene scene;
+  core::AssetManager asset_manager;
 };
+
+struct Test {
+  void init() {}
+  void render() {}
+  void update(float) {}
+  void event(const core::Event&) {}
+};
+
+#if 0
+struct GameStates {
+  enum class Tag {
+    Game,
+    Test,
+  };
+  union States {
+    Game game;
+    Test test;
+  };
+
+  void init() {
+    switch (tag) {
+      case Tag::Game: {
+        states.game.init();
+      } break;
+      case Tag::Test: {
+        states.test.init();
+      } break;
+    }
+  }
+
+  void render() {
+    switch (tag) {
+      case Tag::Game: {
+        states.game.render();
+      } break;
+      case Tag::Test: {
+        states.test.render();
+      } break;
+    }
+  }
+
+  void update(float t) {
+    switch (tag) {
+      case Tag::Game: {
+        states.game.update(t);
+      } break;
+      case Tag::Test: {
+        states.test.update(t);
+      } break;
+    }
+  }
+
+  void event(const core::Event& event) {
+    switch (tag) {
+      case Tag::Game: {
+        states.game.event(event);
+      } break;
+      case Tag::Test: {
+        states.test.event(event);
+      } break;
+    }
+  }
+
+  States states;
+  Tag tag;
+};
+#endif
 
 }
 
-std::int32_t main() {
-  core::AppSpec spec{
-    .name = "game",
-    .width = 1280,
-    .height = 720,
+btl::i32 main() {
+  auto allocator = btl::Allocator::make(btl::Allocator::Type::Arena, GB(1));
+
+  core::AppSpec spec = {
+    "game",
+    1280,
+    720,
+    allocator,
   };
 
   core::Engine<game::Game> engine{spec};

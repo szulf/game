@@ -1,13 +1,13 @@
 #pragma once
 
-#include <string>
+#include "badtl/string.hpp"
 
 namespace core {
 
-struct Material final {
+struct Material {
   // NOTE(szulf): would prefer if this was an uuid, but i get it from the path to the image file in the obj parser so
   // not much i can do here ig
-  std::string texture_name;
+  btl::String texture_name;
 };
 
 }

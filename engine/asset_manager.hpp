@@ -1,21 +1,19 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
-
-#include "renderer/texture.hpp"
-#include "renderer/material.hpp"
+#include "engine/renderer/texture.hpp"
+#include "engine/renderer/material.hpp"
+#include "badtl/map.hpp"
+#include "badtl/string.hpp"
 
 namespace core {
 
 struct AssetManager {
-  static constexpr AssetManager& instance() {
-    static AssetManager am{};
-    return am;
-  }
+  static AssetManager make(btl::Allocator& allocator);
 
-  std::unordered_map<std::string, Texture> textures{};
-  std::unordered_map<std::string, Material> materials{};
+  // TODO(szulf): this is really fuckin weird
+  static AssetManager* instance;
+  btl::Map<btl::String, Texture> textures;
+  btl::Map<btl::String, Material> materials;
 };
 
 }

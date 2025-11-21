@@ -1,7 +1,7 @@
-#include "renderer.hpp"
+#include "engine/renderer/renderer.hpp"
 
-#include "gl_functions.hpp"
-#include "asset_manager.hpp"
+#include "engine/renderer/gl_functions.hpp"
+#include "engine/asset_manager.hpp"
 
 namespace core {
 
@@ -9,18 +9,18 @@ namespace renderer {
 
 #ifdef GAME_OPENGL
 
-void init() noexcept {
+void init() {
   glEnable(GL_DEPTH_TEST);
 }
 
-void clearScreen() noexcept {
+void clearScreen() {
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void render(const Scene& scene) noexcept {
-  const auto& shader_map{ShaderMap::instance()};
-  const auto& assets{AssetManager::instance()};
+void render(const Scene& scene) {
+  const auto& shader_map = ShaderMap::instance();
+  const auto& assets = *AssetManager::instance;
 
   for (const auto& renderable : scene.renderables) {
     glUseProgram(shader_map[renderable.shader]);
@@ -28,31 +28,31 @@ void render(const Scene& scene) noexcept {
       glGetUniformLocation(shader_map[renderable.shader], "view"),
       1,
       false,
-      scene.camera.lookAtMatrix().data
+      scene.camera.lookAtMatrix().data.data
     );
     glUniformMatrix4fv(
       glGetUniformLocation(shader_map[renderable.shader], "proj"),
       1,
       false,
-      scene.camera.projectionMatrix().data
+      scene.camera.projectionMatrix().data.data
     );
     glUniformMatrix4fv(
       glGetUniformLocation(shader_map[renderable.shader], "model"),
       1,
       false,
-      renderable.model.matrix.data
+      renderable.model.matrix.data.data
     );
 
     for (const auto& mesh : renderable.model.meshes) {
       glActiveTexture(GL_TEXTURE0);
       // TODO(szulf): this is horrible
-      auto texture_id = assets.textures.at(assets.materials.at(mesh.material_name).texture_name).backend_data.id;
+      auto texture_id = assets.textures[assets.materials[mesh.material_name].texture_name].backend_data.id;
       glBindTexture(GL_TEXTURE_2D, texture_id);
       glUniform1i(glGetUniformLocation(shader_map[renderable.shader], "sampler"), 0);
       glBindVertexArray(mesh.backend_data.vao);
       glDrawElements(
         GL_TRIANGLES,
-        static_cast<GLsizei>(mesh.indices.size()),
+        static_cast<GLsizei>(mesh.indices.size),
         GL_UNSIGNED_INT,
         reinterpret_cast<void*>(0)
       );

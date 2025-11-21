@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/scene.hpp"
+#include "engine/renderer/scene.hpp"
 
 namespace core {
 
@@ -8,9 +8,9 @@ namespace core {
 
 namespace renderer {
 
-void init() noexcept;
-void clearScreen() noexcept;
-void render(const Scene& scene) noexcept;
+void init();
+void clearScreen();
+void render(const Scene& scene);
 
 }
 

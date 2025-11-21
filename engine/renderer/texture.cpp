@@ -1,4 +1,4 @@
-#include "renderer/texture.hpp"
+#include "engine/renderer/texture.hpp"
 
 #ifdef GAME_OPENGL
 #  include "gl_functions.hpp"
@@ -10,9 +10,10 @@ namespace core {
 
 #ifdef GAME_OPENGL
 
-Texture::Texture(const Image& img) noexcept {
-  glGenTextures(1, &backend_data.id);
-  glBindTexture(GL_TEXTURE_2D, backend_data.id);
+Texture Texture::make(const Image& img) {
+  Texture t;
+  glGenTextures(1, &t.backend_data.id);
+  glBindTexture(GL_TEXTURE_2D, t.backend_data.id);
 
   // TODO(szulf): do i want to customize these
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -32,20 +33,7 @@ Texture::Texture(const Image& img) noexcept {
     img.data
   );
   glGenerateMipmap(GL_TEXTURE_2D);
-}
-
-Texture::~Texture() {
-  glDeleteTextures(1, &backend_data.id);
-}
-
-Texture::Texture(Texture&& other) : backend_data{other.backend_data} {
-  other.backend_data = {};
-}
-
-Texture& Texture::operator=(Texture&& other) {
-  backend_data = other.backend_data;
-  other.backend_data = {};
-  return *this;
+  return t;
 }
 
 #else

@@ -4,28 +4,26 @@
 #  include <SDL3/SDL.h>
 #endif
 
-#include <thread>
-#include <variant>
-#include <atomic>
-
-#include "event.hpp"
-#include "renderer/renderer.hpp"
-#include "utils/templates.hpp"
-#include "utils/assert.hpp"
+#include "engine/event.hpp"
+#include "engine/renderer/renderer.hpp"
+#include "badtl/utils.hpp"
+#include "badtl/threads.hpp"
+#include "badtl/time.hpp"
+#include "badtl/allocator.hpp"
+#include "badtl/list.hpp"
+#include "badtl/function.hpp"
 
 namespace core {
 
 struct AppSpec final {
-  const char* name{};
-  std::int32_t width{};
-  std::int32_t height{};
+  const char* name;
+  btl::i32 width;
+  btl::i32 height;
+  btl::Allocator& allocator;
 };
 
-template <typename... Ts>
-struct Engine final {
-  using StarterState = utils::type_list_first<Ts...>::type;
-
-public:
+template <typename T>
+struct Engine {
 #ifdef GAME_SDL3
   struct PlatformData {
     SDL_Window* window;
@@ -35,29 +33,25 @@ public:
 #  error Unknown platform
 #endif
 
-public:
-  Engine(const AppSpec& spec);
-
-  template <typename NewState>
-  void setState();
+  Engine(AppSpec& spec);
 
   void run();
+  btl::ThreadFunction update;
 
-  void updateThread();
+  btl::Allocator& allocator;
 
-public:
-  std::atomic<bool> running{true};
+  btl::AtomicBool running;
 
-  std::mutex state_mutex{};
-  std::optional<std::variant<Ts...>> states{};
+  btl::Mutex state_mutex;
+  T game;
 
-  std::mutex main_thread_queue_mutex{};
-  std::vector<std::function<void()>> main_thread_queue{};
+  btl::Mutex main_thread_queue_mutex;
+  btl::List<btl::Function> main_thread_queue;
 
-  PlatformData platform_data{};
+  PlatformData platform_data;
 
-  static constexpr auto TPS{20.0f};
-  static constexpr auto MSPT{std::chrono::seconds(1) / TPS};
+  static constexpr btl::u32 TPS = 20;
+  static constexpr btl::u64 MSPT = 1000 / TPS;
 };
 
 }
@@ -68,8 +62,26 @@ public:
 
 namespace core {
 
-template <typename... Ts>
-Engine<Ts...>::Engine(const AppSpec& spec) {
+namespace {
+
+inline static Key keyFromSDLK(SDL_Keycode sdlk) {
+  switch (sdlk) {
+    case SDLK_E:
+      return Key::E;
+  }
+
+  return static_cast<Key>(-1);
+}
+
+struct WidthHeight {
+  btl::i32 width;
+  btl::i32 height;
+};
+
+}
+
+template <typename T>
+Engine<T>::Engine(AppSpec& spec) : allocator{spec.allocator} {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
   platform_data.window = SDL_CreateWindow(spec.name, spec.width, spec.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
@@ -95,119 +107,95 @@ Engine<Ts...>::Engine(const AppSpec& spec) {
   glDebugMessageCallback(debugCallback, nullptr);
 #  endif
 
-  states = StarterState{};
   renderer::init();
-}
+  game.init(allocator);
 
-template <typename... Ts>
-template <typename NewState>
-void Engine<Ts...>::setState() {
-  std::visit([&](const auto& val) {
-    using CurrentState = std::decay_t<decltype(val)>;
-    // NOTE(szulf): i swear this used to work as a compile time check
-    ASSERT(
-      (utils::type_list_contains<typename NewState::PrevStates, CurrentState>),
-      std::format(
-        "CurrentState({}) has to be in the NewStates({}) PrevStates({}) declaration",
-        typeid(CurrentState).name(),
-        typeid(NewState).name(),
-        typeid(typename NewState::PrevStates).name()
-      )
-    );
-    states = NewState{};
-  }, *states);
-}
+  running.set(true);
+  state_mutex = btl::Mutex::make();
+  main_thread_queue_mutex = btl::Mutex::make();
 
-template <typename... Ts>
-void Engine<Ts...>::run() {
-  std::visit([&](auto& state) {
-    std::jthread update_thread{[&]() {
-      updateThread();
-    }};
+  main_thread_queue = btl::List<btl::Function>::make(16, allocator);
 
-    while (running) {
-      {
-        std::lock_guard lock{main_thread_queue_mutex};
-        for (const auto& callable : main_thread_queue) {
-          callable();
-        }
-        main_thread_queue.clear();
-      }
-
-      {
-        std::lock_guard lock{state_mutex};
-        state.render();
-      }
-      SDL_GL_SwapWindow(platform_data.window);
-    }
-  }, *states);
-}
-
-inline static Key keyFromSDLK(SDL_Keycode sdlk) {
-  switch (sdlk) {
-    case SDLK_E:
-      return Key::E;
-  }
-
-  return static_cast<Key>(-1);
-}
-
-template <typename... Ts>
-void Engine<Ts...>::updateThread() {
-  std::visit([&](auto& state) {
-    SDL_Event e{};
-    while (running) {
-      const auto ms{std::chrono::high_resolution_clock::now()};
+  update = [](void* data) {
+    Engine& engine = *static_cast<Engine*>(data);
+    SDL_Event e = {};
+    while (engine.running.get()) {
+      btl::u64 ms = btl::time::now();
 
       while (SDL_PollEvent(&e)) {
         switch (e.type) {
           case SDL_EVENT_QUIT: {
-            running = false;
+            engine.running.set(false);
           } break;
           case SDL_EVENT_WINDOW_RESIZED: {
-            {
-              std::lock_guard lock{main_thread_queue_mutex};
-              main_thread_queue.push_back([width = e.window.data1, height = e.window.data2]() {
-                glViewport(0, 0, width, height);
-              });
-            }
-            std::lock_guard lock{state_mutex};
-            state.event(
-              ResizeEvent{
-                .width = static_cast<std::uint32_t>(e.window.data1),
-                .height = static_cast<std::uint32_t>(e.window.data2)
+            WidthHeight* width_height = static_cast<WidthHeight*>(engine.allocator.alloc(sizeof(WidthHeight)));
+            width_height->width = e.window.data1;
+            width_height->height = e.window.data2;
+            engine.main_thread_queue_mutex.lock();
+            engine.main_thread_queue.push(
+              btl::Function{
+                [](void* args) -> void* {
+                  WidthHeight wh = *static_cast<WidthHeight*>(args);
+                  glViewport(0, 0, wh.width, wh.height);
+                  return nullptr;
+                },
+                width_height
               }
             );
+            engine.main_thread_queue_mutex.unlock();
+
+            engine.state_mutex.lock();
+            engine.game.event(
+              Event::make(ResizeEvent{static_cast<btl::u32>(e.window.data1), static_cast<btl::u32>(e.window.data2)})
+            );
+            engine.state_mutex.unlock();
           } break;
           case SDL_EVENT_KEY_DOWN: {
             if (keyFromSDLK(e.key.key) == static_cast<Key>(-1)) {
               continue;
             }
-            state.event(KeydownEvent{.key = keyFromSDLK(e.key.key)});
+            engine.game.event(Event::make(KeydownEvent{keyFromSDLK(e.key.key)}));
           } break;
           case SDL_EVENT_MOUSE_MOTION: {
-            state.event(
-              MouseMoveEvent{
-                .x = static_cast<std::uint32_t>(e.motion.x),
-                .y = static_cast<std::uint32_t>(e.motion.y),
-              }
+            engine.game.event(
+              Event::make(MouseMoveEvent{static_cast<btl::u32>(e.motion.x), static_cast<btl::u32>(e.motion.y)})
             );
           } break;
         }
       }
 
-      {
-        std::lock_guard lock{state_mutex};
-        state.update(0.0f);
-      }
+      engine.state_mutex.lock();
+      engine.game.update(0.0f);
+      engine.state_mutex.unlock();
 
-      const auto end_ms{std::chrono::high_resolution_clock::now()};
-      const auto ms_in_frame = end_ms - ms;
+      btl::u64 end_ms = btl::time::now();
+      btl::u64 ms_in_frame = end_ms - ms;
       if (ms_in_frame < MSPT) {
-        std::this_thread::sleep_for(MSPT - ms_in_frame);
+        btl::time::sleep_ms(static_cast<btl::u32>(MSPT - ms_in_frame));
       }
     }
-  }, *states);
+    return 0;
+  };
+}
+
+template <typename T>
+void Engine<T>::run() {
+  auto update_thread = btl::Thread::make(update, this);
+  update_thread.detach();
+
+  while (running.get()) {
+    main_thread_queue_mutex.lock();
+    for (const auto& fn : main_thread_queue) {
+      fn();
+    }
+    main_thread_queue.clear();
+    main_thread_queue_mutex.unlock();
+
+    state_mutex.lock();
+    game.render();
+    state_mutex.unlock();
+    SDL_GL_SwapWindow(platform_data.window);
+  }
 }
 
 }

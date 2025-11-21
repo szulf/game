@@ -1,51 +1,56 @@
-#include "renderer/model.hpp"
+#include "engine/renderer/model.hpp"
 
-#include <fstream>
-#include <unordered_map>
-#include <ranges>
-
-#include "image.hpp"
-#include "renderer/vertex.hpp"
-#include "asset_manager.hpp"
+#include "engine/image.hpp"
+#include "engine/renderer/vertex.hpp"
+#include "engine/asset_manager.hpp"
+#include "badtl/array.hpp"
+#include "badtl/utils.hpp"
+#include "badtl/files.hpp"
+#include "badtl/map.hpp"
+#include "badtl/vec2.hpp"
+#include "badtl/vec3.hpp"
+#include "badtl/math.hpp"
 
 namespace core {
 
 namespace obj_impl {
 
 struct Context {
-  std::ifstream file;
-  std::unordered_map<Vertex, std::uint32_t> vertex_map;
-  std::vector<math::vec3> positions;
-  std::vector<math::vec3> normals;
-  std::vector<math::vec2> uvs;
-  std::size_t mesh_count;
-  std::size_t pos_count;
-  std::size_t normal_count;
-  std::size_t uv_count;
+  btl::List<btl::String> lines;
+  btl::usize idx;
+  btl::Map<Vertex, btl::usize> vertex_map;
+  btl::List<btl::Vec3> positions;
+  btl::List<btl::Vec3> normals;
+  btl::List<btl::Vec2> uvs;
+  btl::Allocator* allocator;
+  btl::usize mesh_count;
+  btl::usize pos_count;
+  btl::usize normal_count;
+  btl::usize uv_count;
 };
 
-static void parse_mtl_file(std::istream& mtl_file) {
-  std::string line;
-  bool parsing{};
-  std::string material_name{};
-  AssetManager& assets = AssetManager::instance();
-  while (std::getline(mtl_file, line)) {
+static btl::Result<void, ModelError> parse_mtl_file(const btl::String& mtl_file, btl::Allocator& allocator) {
+  bool parsing = false;
+  btl::String material_name = {};
+  auto scratch_arena = btl::ScratchArena::get();
+  defer(scratch_arena.release());
+  AssetManager& assets = *AssetManager::instance;
+  auto lines = mtl_file.split('\n', scratch_arena.allocator);
+
+  for (const auto& line : lines) {
     switch (line[0]) {
       case 'n': {
-        auto parts = line | std::views::split(' ');
-        auto it = parts.begin();
-        if (it == parts.end()) {
-          throw std::runtime_error{"invalid mtl file"};
+        auto parts = line.split(' ', scratch_arena.allocator);
+        if (parts.size != 2) {
+          return btl::err<void>(ModelError::InvalidMTLFile);
         }
-        std::string_view header{std::begin(*it), std::end(*it)};
-        if (header != "newmtl") {
+        if (parts[0] != "newmtl") {
           continue;
         }
-        ++it;
-        std::string data{std::begin(*it), std::end(*it)};
-        if (!assets.materials.contains(data)) {
+        if (!assets.materials.contains(parts[1])) {
           parsing = true;
-          material_name = std::move(data);
+          // NOTE(szulf): weird way to copy a string, change it pls
+          material_name = parts[1].copy(allocator);
         }
       } break;
 
@@ -53,54 +58,56 @@ static void parse_mtl_file(std::istream& mtl_file) {
         if (!parsing) {
           continue;
         }
-        auto parts = line | std::views::split(' ');
-        auto it = parts.begin();
-        if (it == parts.end()) {
-          throw std::runtime_error{"invalid map_Kd"};
-        }
-        std::string_view header{std::begin(*it), std::end(*it)};
-        if (header != "map_Kd") {
+        auto parts = line.split(' ', scratch_arena.allocator);
+        if (parts.size != 2) {
           continue;
         }
-        ++it;
-        std::string data{std::begin(*it), std::end(*it)};
-        std::filesystem::path texture_file_path{"assets"};
-        texture_file_path /= data;
-        Material mat{};
-        if (!assets.textures.contains(texture_file_path)) {
-          auto img = Image{texture_file_path};
-          Texture texture{img};
-          assets.textures[texture_file_path] = std::move(texture);
+        if (parts[0] != "map_Kd") {
+          continue;
         }
-        mat.texture_name = texture_file_path;
-        assets.materials[material_name] = std::move(mat);
+        auto base_file_path = btl::String::make("assets/");
+        auto texture_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
+        Material mat = {};
+        if (!assets.textures.contains(texture_file_path)) {
+          auto img = Image::from_file(texture_file_path, scratch_arena.allocator).value_or(Image::error_image());
+          auto texture = Texture::make(img);
+          auto allocated_texture_file_path = texture_file_path.copy(allocator);
+          assets.textures.set(allocated_texture_file_path, texture);
+          mat.texture_name = allocated_texture_file_path;
+        } else {
+          auto& entry = assets.textures.get_entry(texture_file_path);
+          mat.texture_name = entry.key;
+        }
+        assets.materials.set(material_name, mat);
       } break;
     }
   }
+  return btl::ok<ModelError>();
 }
 
-template <std::size_t N>
-static void parse_vertex(std::array<float, N>& points, const std::string& line) {
-  std::size_t idx{};
-  for (const auto split : line | std::views::split(' ') | std::views::drop(1)) {
-    std::string_view s{split};
-    float val;
-    auto err = std::from_chars(s.begin(), s.end(), val).ec;
-    if (err != std::errc{}) {
-      throw std::runtime_error{"[OBJ] couldnt parse string into index"};
+template <btl::usize N>
+static btl::Result<void, ModelError> parse_vertex(btl::Array<float, N>& points, const btl::String& line) {
+  auto scratch_arena = btl::ScratchArena::get();
+  defer(scratch_arena.release());
+  btl::usize idx = 0;
+  const auto parts = line.split(' ', scratch_arena.allocator);
+  for (btl::usize i = 1; i < parts.size; ++i) {
+    auto res = parts[i].parse<btl::f32>();
+    if (res.has_err) {
+      return btl::err<void>(ModelError::InvalidVertex);
     }
-    points[idx] = val;
+    points[idx] = res.value.success;
     ++idx;
   }
+  return btl::ok<ModelError>();
 }
 
-static Mesh parse_object(Context& ctx) {
-  std::size_t indices_amount{};
-  bool parsing{true};
-  std::string line;
-  auto pos = ctx.file.tellg();
-  while (parsing && std::getline(ctx.file, line)) {
-    switch (line[0]) {
+static btl::Result<Mesh, ModelError> parse_object(Context& ctx) {
+  btl::usize indices_amount = 0;
+  bool parsing = true;
+  auto idx_old = ctx.idx;
+  for (; parsing && ctx.idx < ctx.lines.size; ++ctx.idx) {
+    switch (ctx.lines[ctx.idx][0]) {
       case 'f': {
         ++indices_amount;
       } break;
@@ -110,31 +117,31 @@ static Mesh parse_object(Context& ctx) {
       } break;
     }
   }
-  ctx.file.clear();
-  ctx.file.seekg(pos);
+  ctx.idx = idx_old;
   indices_amount *= 3;
-  std::vector<std::uint32_t> mesh_indices{};
-  mesh_indices.reserve(indices_amount);
-  std::vector<Vertex> mesh_vertices{};
-  std::string mesh_material_name{};
+  auto mesh_indices = btl::List<btl::u32>::make(indices_amount, *ctx.allocator);
+  auto mesh_vertices = btl::List<Vertex>::make(1, *ctx.allocator);
+  btl::String mesh_material_name;
+
+  auto scratch_arena = btl::ScratchArena::get();
+  defer(scratch_arena.release());
 
   parsing = true;
-  std::ifstream::pos_type back_pos{};
-  while (parsing && std::getline(ctx.file, line)) {
-    pos = ctx.file.tellg();
-    switch (line[0]) {
+  btl::usize back_idx = 0;
+  for (; parsing && ctx.idx < ctx.lines.size; ++ctx.idx) {
+    switch (ctx.lines[ctx.idx][0]) {
       case 'f': {
-        for (const auto split : line | std::views::split(' ') | std::views::drop(1)) {
-          std::array<std::uint32_t, 3> indices;
-          std::size_t idx = 0;
-          for (const auto part : split | std::views::split('/')) {
-            std::string_view p{part};
-            std::uint32_t vertex_idx;
-            auto err = std::from_chars(p.begin(), p.end(), vertex_idx).ec;
-            if (err != std::errc{}) {
-              throw std::runtime_error{"[OBJ] invalid data"};
+        const auto splits = ctx.lines[ctx.idx].split(' ', scratch_arena.allocator);
+        for (btl::usize i = 1; i < splits.size; ++i) {
+          btl::Array<btl::u32, 3> indices;
+          btl::usize idx = 0;
+          const auto parts = splits[i].split('/', scratch_arena.allocator);
+          for (const auto& part : parts) {
+            auto res = part.parse<btl::u32>();
+            if (res.has_err) {
+              return btl::err<Mesh>(ModelError::InvalidInput);
             }
-            indices[idx] = vertex_idx - 1;
+            indices[idx] = res.value.success - 1;
             ++idx;
           }
           Vertex vertex;
@@ -142,77 +149,83 @@ static Mesh parse_object(Context& ctx) {
           vertex.uv = ctx.uvs[indices[1]];
           vertex.normal = ctx.normals[indices[2]];
           if (ctx.vertex_map.contains(vertex)) {
-            mesh_indices.push_back(ctx.vertex_map[vertex]);
+            mesh_indices.push(static_cast<btl::u32>(ctx.vertex_map[vertex]));
           } else {
-            ctx.vertex_map[vertex] = static_cast<std::uint32_t>(mesh_vertices.size());
-            mesh_indices.push_back(static_cast<std::uint32_t>(mesh_vertices.size()));
-            mesh_vertices.push_back(vertex);
+            ctx.vertex_map.set(vertex, mesh_vertices.size);
+            mesh_indices.push(static_cast<btl::u32>(mesh_vertices.size));
+            mesh_vertices.push(vertex);
           }
         }
       } break;
 
       case 'v': {
-        switch (line[1]) {
+        switch (ctx.lines[ctx.idx][1]) {
           case ' ': {
-            std::array<float, 3> points{};
-            parse_vertex(points, line);
-            ctx.positions.push_back({points[0], points[1], points[2]});
+            btl::Array<float, 3> points;
+            auto parse_res = parse_vertex(points, ctx.lines[ctx.idx]);
+            if (parse_res.has_err) {
+              return btl::err<Mesh>(parse_res.value.error);
+            }
+            ctx.positions.push({points[0], points[1], points[2]});
           } break;
 
           case 'n': {
-            std::array<float, 3> points;
-            parse_vertex(points, line);
-            ctx.normals.push_back({points[0], points[1], points[2]});
+            btl::Array<float, 3> points;
+            auto parse_res = parse_vertex(points, ctx.lines[ctx.idx]);
+            if (parse_res.has_err) {
+              return btl::err<Mesh>(parse_res.value.error);
+            }
+            ctx.normals.push({points[0], points[1], points[2]});
           } break;
 
           case 't': {
-            std::array<float, 2> points;
-            parse_vertex(points, line);
-            ctx.uvs.push_back({points[0], points[1]});
+            btl::Array<float, 2> points;
+            auto parse_res = parse_vertex(points, ctx.lines[ctx.idx]);
+            if (parse_res.has_err) {
+              return btl::err<Mesh>(parse_res.value.error);
+            }
+            ctx.uvs.push({points[0], points[1]});
           } break;
         }
       } break;
 
       case 'u': {
-        auto parts = line | std::views::split(' ');
-        auto it = parts.begin();
-        if (it == parts.end()) {
-          throw std::runtime_error{"[OBJ] invalid data"};
+        const auto parts = ctx.lines[ctx.idx].split(' ', scratch_arena.allocator);
+        if (parts.size != 2 || parts[0] != "usemtl") {
+          return btl::err<Mesh>(ModelError::InvalidInput);
         }
-        std::string_view header{std::begin(*it), std::end(*it)};
-        if (header != "usemtl") {
-          throw std::runtime_error{"[OBJ] invalid data"};
-        }
-        ++it;
-        if (it == parts.end()) {
-          throw std::runtime_error{"[OBJ] invalid data"};
-        }
-        mesh_material_name = {std::begin(*it), std::end(*it)};
+        mesh_material_name = parts[1].copy(*ctx.allocator);
       } break;
 
       case 'g':
       case 'o': {
         parsing = false;
-        ctx.file.clear();
-        ctx.file.seekg(back_pos);
+        ctx.idx = back_idx;
       } break;
     }
-    back_pos = pos;
+    back_idx = ctx.idx;
   }
 
-  return Mesh{std::move(mesh_vertices), std::move(mesh_indices), std::move(mesh_material_name)};
+  return btl::ok<ModelError>(Mesh::make(mesh_vertices, mesh_indices, mesh_material_name));
 }
 
 }
 
-Model::Model(const std::filesystem::path& path) {
+btl::Result<Model, ModelError> Model::from_file(const btl::String& path, btl::Allocator& allocator) {
+  Model model = {};
+  model.matrix = btl::Mat4::make();
   obj_impl::Context ctx = {};
-  ctx.file = std::ifstream{path};
-  std::string line;
+  ctx.allocator = &allocator;
+  auto scratch_arena = btl::ScratchArena::get();
+  defer(scratch_arena.release());
+  auto file_ptr = btl::readFile(path, scratch_arena.allocator);
+  auto file = btl::String::make(static_cast<const char*>(file_ptr.ptr), file_ptr.size);
+  ctx.lines = file.split('\n', scratch_arena.allocator);
 
-  while (std::getline(ctx.file, line)) {
-    if (line.size() < 4) {
-      continue;
+  btl::usize vertex_count = 0;
+  for (const auto& line : ctx.lines) {
+    if (line.size < 2) {
+      return btl::err<Model>(ModelError::InvalidInput);
     }
     switch (line[0]) {
       case 'g':
@@ -231,46 +244,50 @@ Model::Model(const std::filesystem::path& path) {
             ++ctx.uv_count;
           } break;
         }
-      }
+      } break;
+      case 'f': {
+        vertex_count += 3;
+      } break;
     }
   }
 
-  meshes.reserve(ctx.mesh_count);
-  ctx.positions.reserve(ctx.pos_count);
-  ctx.normals.reserve(ctx.normal_count);
-  ctx.uvs.reserve(ctx.uv_count);
+  model.meshes = btl::List<Mesh>::make(ctx.mesh_count, allocator);
+  ctx.positions = btl::List<btl::Vec3>::make(ctx.pos_count, scratch_arena.allocator);
+  ctx.normals = btl::List<btl::Vec3>::make(ctx.normal_count, scratch_arena.allocator);
+  ctx.uvs = btl::List<btl::Vec2>::make(ctx.uv_count, scratch_arena.allocator);
+  ctx.vertex_map = btl::Map<Vertex, btl::usize>::make(vertex_count * 2, scratch_arena.allocator);
 
-  ctx.file.clear();
-  ctx.file.seekg(0);
-  while (std::getline(ctx.file, line)) {
-    switch (line[0]) {
+  for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx) {
+    switch (ctx.lines[ctx.idx][0]) {
       case 'o':
       case 'g': {
-        Mesh mesh = obj_impl::parse_object(ctx);
-        meshes.push_back(std::move(mesh));
+        ++ctx.idx;
+        auto object_res = obj_impl::parse_object(ctx);
+        if (object_res.has_err) {
+          return btl::err<Model>(object_res.value.error);
+        }
+        model.meshes.push(object_res.value.success);
+        --ctx.idx;
       } break;
 
       case 'm': {
-        auto parts = line | std::views::split(' ');
-        auto it = parts.begin();
-        if (it == parts.end()) {
-          throw std::runtime_error{"[OBJ] invalid data"};
+        auto parts = ctx.lines[ctx.idx].split(' ', scratch_arena.allocator);
+        if (parts.size != 2 || parts[0] != "mtllib") {
+          return btl::err<Model>(ModelError::InvalidInput);
         }
-        std::string_view header{std::begin(*it), std::end(*it)};
-        if (header != "mtllib") {
-          throw std::runtime_error{"[OBJ] invalid data"};
+        auto base_file_path = btl::String::make("assets/");
+        auto mtl_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
+        auto mtl_file = btl::readFile(mtl_file_path.cString(allocator), scratch_arena.allocator);
+        auto mtl_file_res =
+          obj_impl::parse_mtl_file(btl::String::make(static_cast<const char*>(mtl_file.ptr), mtl_file.size), allocator);
+        if (mtl_file_res.has_err) {
+          return btl::err<Model>(mtl_file_res.value.error);
         }
-        ++it;
-        if (it == parts.end()) {
-          throw std::runtime_error{"[OBJ] invalid data"};
-        }
-        std::filesystem::path mtl_file_path{"assets/"};
-        mtl_file_path /= std::string_view{std::begin(*it), std::end(*it)};
-        std::ifstream mtl_file{mtl_file_path};
-        obj_impl::parse_mtl_file(mtl_file);
       } break;
     }
   }
+
+  return btl::ok<ModelError>(model);
 }
 
 }

@@ -1,9 +1,7 @@
-#include "renderer/shaders.hpp"
+#include "engine/renderer/shaders.hpp"
 
-#include <filesystem>
-#include <fstream>
-
-#include "gl_functions.hpp"
+#include "engine/renderer/gl_functions.hpp"
+#include "badtl/files.hpp"
 
 namespace core {
 
@@ -11,13 +9,12 @@ namespace core {
 
 namespace shader_impl {
 
-static std::uint32_t setup_shader(const std::filesystem::path& path, ShaderType shader_type) {
-  std::ifstream shader_stream{path};
-  std::stringstream ss{};
-  ss << shader_stream.rdbuf();
-  std::string shader_src{ss.str()};
+static btl::Result<btl::u32, ShaderError> setup_shader(const char* path, ShaderType shader_type) {
+  auto scratch_arena = btl::ScratchArena::get();
+  defer(scratch_arena.release());
+  auto file = btl::readFile(path, scratch_arena.allocator);
 
-  std::uint32_t shader{};
+  btl::u32 shader;
   switch (shader_type) {
     case ShaderType::Vertex: {
       shader = glCreateShader(GL_VERTEX_SHADER);
@@ -28,8 +25,8 @@ static std::uint32_t setup_shader(const std::filesystem::path& path, ShaderType 
     } break;
   }
 
-  const char* const ssrc = shader_src.data();
-  glShaderSource(shader, 1, &ssrc, nullptr);
+  auto* shader_src = btl::String::make(static_cast<const char*>(file.ptr), file.size).cString(scratch_arena.allocator);
+  glShaderSource(shader, 1, &shader_src, nullptr);
   glCompileShader(shader);
   GLint compiled;
   glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
@@ -39,17 +36,19 @@ static std::uint32_t setup_shader(const std::filesystem::path& path, ShaderType 
     glGetShaderInfoLog(shader, 1024, &log_length, message);
     switch (shader_type) {
       case ShaderType::Vertex: {
-        throw std::runtime_error{std::format("Error compiling vertex shader:\n{}", message)};
+        btl::print("vertex shader compilation failed with message:\n{}\n", message);
+        return btl::err<btl::u32>(ShaderError::InvalidVertex);
       } break;
       case ShaderType::Fragment: {
-        throw std::runtime_error{std::format("Error compiling fragment shader:\n{}", message)};
+        btl::print("fragment shader compilation failed with message:\n{}\n", message);
+        return btl::err<btl::u32>(ShaderError::InvalidFragment);
       } break;
     }
   }
-  return shader;
+  return btl::ok<ShaderError>(shader);
 }
 
-static std::uint32_t link_shaders(std::uint32_t vertex_shader, std::uint32_t fragment_shader) {
+static btl::Result<btl::u32, ShaderError> link_shaders(btl::u32 vertex_shader, btl::u32 fragment_shader) {
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex_shader);
   glAttachShader(program, fragment_shader);
@@ -64,20 +63,24 @@ static std::uint32_t link_shaders(std::uint32_t vertex_shader, std::uint32_t fra
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
-    throw std::runtime_error{std::format("Error linking shader:\n{}", message)};
+    return btl::err<btl::u32>(ShaderError::CouldntLink);
   }
-  return program;
+  return btl::ok<ShaderError>(program);
 }
 
 }
 
-ShaderMap::ShaderMap() {
+ShaderMap ShaderMap::make() {
+  ShaderMap sm;
   {
-    std::uint32_t v_shader = shader_impl::setup_shader("shaders/shader.vert", ShaderType::Vertex);
-    std::uint32_t f_shader = shader_impl::setup_shader("shaders/shader.frag", ShaderType::Fragment);
-    std::uint32_t shader = shader_impl::link_shaders(v_shader, f_shader);
-    m_map[static_cast<std::size_t>(Shader::Default)] = shader;
+    btl::u32 v_shader =
+      shader_impl::setup_shader("shaders/shader.vert", ShaderType::Vertex).expect("invalid vertex shader");
+    btl::u32 f_shader =
+      shader_impl::setup_shader("shaders/shader.frag", ShaderType::Fragment).expect("invalid fragment shader");
+    btl::u32 shader = shader_impl::link_shaders(v_shader, f_shader).expect("couldnt link shaders");
+    sm.map[static_cast<btl::usize>(Shader::Default)] = shader;
   }
+  return sm;
 }
 
 #else

@@ -1,30 +1,24 @@
 #pragma once
 
-#include <cstdint>
-
-#include "image.hpp"
+#include "engine/image.hpp"
 
 namespace core {
 
 struct Texture final {
 #ifdef GAME_OPENGL
   struct BackendData final {
-    std::uint32_t id{};
+    btl::u32 id;
   };
 #else
 #  error Unknown rendering backend
 #endif
 
   // TODO(szulf): create placeholder texture
-  constexpr Texture() {}
-  Texture(const Image& img) noexcept;
-  ~Texture();
-  Texture(const Texture& other) = delete;
-  Texture& operator=(const Texture& other) = delete;
-  Texture(Texture&& other);
-  Texture& operator=(Texture&& other);
+  static Texture make();
+  // TODO(szulf): find a way to free gpu memory
+  static Texture make(const Image& img);
 
-  BackendData backend_data{};
+  BackendData backend_data;
 };
 
 }

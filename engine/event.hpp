@@ -1,26 +1,57 @@
 #pragma once
 
-#include <variant>
-#include <cstdint>
-
-#include "action.hpp"
+#include "engine/key.hpp"
+#include "badtl/types.hpp"
 
 namespace core {
 
-struct ResizeEvent final {
-  std::uint32_t width{};
-  std::uint32_t height{};
+struct ResizeEvent {
+  btl::u32 width;
+  btl::u32 height;
 };
 
-struct KeydownEvent final {
-  Key key{};
+struct KeydownEvent {
+  Key key;
 };
 
-struct MouseMoveEvent final {
-  std::uint32_t x{};
-  std::uint32_t y{};
+struct MouseMoveEvent {
+  btl::u32 x;
+  btl::u32 y;
 };
 
-using Event = std::variant<ResizeEvent, KeydownEvent, MouseMoveEvent>;
+struct Event {
+  enum class Tag {
+    Resize,
+    Keydown,
+    MouseMove,
+  };
+  union Events {
+    ResizeEvent resize;
+    KeydownEvent keydown;
+    MouseMoveEvent mouse_move;
+  };
+
+  static Event make(const ResizeEvent& e) {
+    Event out;
+    out.tag = Tag::Resize;
+    out.event.resize = e;
+    return out;
+  }
+  static Event make(const KeydownEvent& e) {
+    Event out;
+    out.tag = Tag::Keydown;
+    out.event.keydown = e;
+    return out;
+  }
+  static Event make(const MouseMoveEvent& e) {
+    Event out;
+    out.tag = Tag::MouseMove;
+    out.event.mouse_move = e;
+    return out;
+  }
+
+  Tag tag;
+  Events event;
+};
 
 }

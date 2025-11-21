@@ -1,10 +1,10 @@
-#include <print>
+#include "badtl/print.hpp"
 
 #ifdef GAME_OPENGL
 
 #  include <SDL3/SDL.h>
 
-#  include "renderer/gl_functions.hpp"
+#  include "engine/renderer/gl_functions.hpp"
 
 PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
 PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
@@ -161,8 +161,8 @@ void APIENTRY debugCallback(
       break;
   }
 
-  std::println(
-    "[OpenGL Debug] Source: {} | Type: {} | Severity: {} | ID: {}\n    Message: {}",
+  btl::print(
+    "[OpenGL Debug] Source: {} | Type: {} | Severity: {} | ID: {}\n    Message: {}\n",
     source_str,
     type_str,
     severity_str,

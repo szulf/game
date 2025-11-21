@@ -1,35 +1,30 @@
 #pragma once
 
-#include <vector>
-
-#include "renderer/vertex.hpp"
+#include "engine/renderer/vertex.hpp"
+#include "badtl/string.hpp"
+#include "badtl/list.hpp"
 
 namespace core {
 
-struct Mesh final {
+// TODO(szulf): think how to free gpu memory
+struct Mesh {
 #ifdef GAME_OPENGL
-  struct BackendData final {
-    std::uint32_t vao{};
-    std::uint32_t vbo{};
-    std::uint32_t ebo{};
+  struct BackendData {
+    btl::u32 vao;
+    btl::u32 vbo;
+    btl::u32 ebo;
   };
 #else
 #  error Unknown rendering backend
 #endif
 
-  Mesh(std::vector<Vertex>&& vertices, std::vector<std::uint32_t>&& indices, std::string&& material_name) noexcept;
-  ~Mesh();
-  Mesh(const Mesh& other) = delete;
-  Mesh& operator=(const Mesh& other) = delete;
+  static Mesh
+  make(const btl::List<Vertex>& vertices, const btl::List<btl::u32>& indices, const btl::String& material_name);
 
-  Mesh(Mesh&& other);
-  Mesh& operator=(Mesh&& other);
-
-  std::vector<Vertex> vertices{};
-  std::vector<std::uint32_t> indices{};
-  // NOTE(szulf): would prefer this to be a uuid but obj stores it as string so not much i can do ig
-  std::string material_name{};
-  BackendData backend_data{};
+  btl::List<Vertex> vertices;
+  btl::List<btl::u32> indices;
+  btl::String material_name;
+  BackendData backend_data;
 };
 
 }

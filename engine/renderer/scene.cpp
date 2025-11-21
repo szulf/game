@@ -1,9 +1,13 @@
-#include "scene.hpp"
+#include "engine/renderer/scene.hpp"
 
 namespace core {
 
-Scene::Scene(Model&& m, const Camera& c) : camera{c} {
-  renderables.push_back({std::move(m), Shader::Default});
+Scene Scene::make(const Model& model, const Camera& camera, btl::Allocator& allocator) {
+  Scene out = {};
+  out.camera = camera;
+  out.renderables = btl::List<Renderable>::make(1, allocator);
+  out.renderables.push({model, Shader::Default});
+  return out;
 }
 
 }

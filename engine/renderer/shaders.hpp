@@ -1,32 +1,39 @@
 #pragma once
 
-#include <cstdint>
-#include <array>
+#include "badtl/array.hpp"
+#include "badtl/types.hpp"
 
 namespace core {
 
-enum class ShaderType : std::uint8_t {
+enum class ShaderType {
   Vertex,
   Fragment,
 };
 
-enum class Shader : std::uint8_t {
+enum class Shader {
   // NOTE(szulf): this should be last
   Default,
 };
 
-struct ShaderMap final {
-  ShaderMap();
+enum class ShaderError {
+  InvalidVertex,
+  InvalidFragment,
+  CouldntLink,
+};
 
-  constexpr std::uint32_t operator[](Shader shader) const noexcept {
-    return m_map[static_cast<std::size_t>(shader)];
+struct ShaderMap {
+
+  static ShaderMap make();
+
+  btl::u32 operator[](Shader shader) const noexcept {
+    return map[static_cast<btl::usize>(shader)];
   }
-  static constexpr ShaderMap& instance() noexcept {
-    static ShaderMap map{};
-    return map;
+  static ShaderMap& instance() noexcept {
+    static auto sm = ShaderMap::make();
+    return sm;
   }
 
-  std::array<std::uint32_t, static_cast<std::size_t>(Shader::Default) + 1> m_map{};
+  btl::Array<btl::u32, static_cast<btl::usize>(Shader::Default) + 1> map;
 };
 
 }

@@ -1,22 +1,38 @@
 #pragma once
 
-#include <filesystem>
+#include "badtl/allocator.hpp"
+#include "badtl/string.hpp"
+#include "badtl/types.hpp"
+#include "badtl/result.hpp"
 
 namespace core {
 
-static constexpr std::uint32_t MAX_SIZE = 1 << 24;
+static constexpr btl::u32 MAX_SIZE = 1 << 24;
 
-struct Image final {
-public:
-  // TODO(szulf): on fail dont throw exceptions initialize with an error image
-  Image(const std::filesystem::path& path);
-  ~Image();
-  Image(const Image& other) = delete;
-  Image& operator=(const Image& other) = delete;
+enum class ImageError {
+  InvalidFilter,
+  BadCodeLength,
+  UnexpectedEnd,
+  BadHuffmanCode,
+  BadDistance,
+  BadSizes,
+  CorruptZlib,
+  InvalidHeader,
+  IHDRNotFirst,
+  InvalidIHDR,
+  InvalidIDAT,
+  ReadPastBuffer,
+  IllegalCompressionType,
+};
 
-  std::uint8_t* data{};
-  std::size_t width{};
-  std::size_t height{};
+struct Image {
+  static btl::Result<Image, ImageError> from_file(const char* path, btl::Allocator& allocator);
+  static btl::Result<Image, ImageError> from_file(const btl::String& path, btl::Allocator& allocator);
+  static Image error_image();
+
+  btl::u8* data;
+  btl::usize width;
+  btl::usize height;
 };
 
 }

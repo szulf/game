@@ -35,7 +35,7 @@ PFNGLDELETEBUFFERSPROC glDeleteBuffers;
 
 namespace core {
 
-void setupGLFunctions() {
+void setup_gl_functions() {
   glGenVertexArrays = reinterpret_cast<PFNGLGENVERTEXARRAYSPROC>(SDL_GL_GetProcAddress("glGenVertexArrays"));
   glBindVertexArray = reinterpret_cast<PFNGLBINDVERTEXARRAYPROC>(SDL_GL_GetProcAddress("glBindVertexArray"));
   glGenBuffers = reinterpret_cast<PFNGLGENBUFFERSPROC>(SDL_GL_GetProcAddress("glGenBuffers"));
@@ -68,7 +68,7 @@ void setupGLFunctions() {
 }
 
 #  ifdef GAME_DEBUG
-void APIENTRY debugCallback(
+void APIENTRY debug_callback(
   GLenum source,
   GLenum type,
   GLuint id,

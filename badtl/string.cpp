@@ -59,7 +59,7 @@ String String::append(const String& str, Allocator& allocator) const {
   return String::make(out, size + str.size);
 }
 
-const char* String::cString(Allocator& allocator) const {
+const char* String::c_string(Allocator& allocator) const {
   char* out = static_cast<char*>(allocator.alloc(size + 1));
   mem::copy(out, data, size);
   out[size] = 0;
@@ -93,7 +93,7 @@ List<String> String::split(char c, Allocator& arena) const {
 }
 
 String String::copy(Allocator& allocator) const {
-  return make(cString(allocator), size);
+  return make(c_string(allocator), size);
 }
 
 template <>

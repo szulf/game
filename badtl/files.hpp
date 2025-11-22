@@ -7,8 +7,8 @@
 
 namespace btl {
 
-Ptr<void> readFile(const String& path, Allocator& allocator);
-Ptr<void> readFile(const char* path, Allocator& allocator);
+Ptr<void> read_file(const String& path, Allocator& allocator);
+Ptr<void> read_file(const char* path, Allocator& allocator);
 
 }
 

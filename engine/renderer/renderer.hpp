@@ -9,7 +9,7 @@ namespace core {
 namespace renderer {
 
 void init();
-void clearScreen();
+void clear_screen();
 void render(const Scene& scene);
 
 }

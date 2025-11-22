@@ -5,6 +5,8 @@
 
 namespace core {
 
+// TODO(szulf): think of a way to consume events
+
 struct ResizeEvent {
   btl::u32 width;
   btl::u32 height;
@@ -21,7 +23,7 @@ struct MouseMoveEvent {
 
 struct Event {
   enum class Tag {
-    Resize,
+    Resize = 1,
     Keydown,
     MouseMove,
   };
@@ -49,6 +51,10 @@ struct Event {
     out.event.mouse_move = e;
     return out;
   }
+
+  // void consume() {
+  //   tag = static_cast<Tag>(0);
+  // }
 
   Tag tag;
   Events event;

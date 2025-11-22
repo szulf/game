@@ -12,7 +12,7 @@ namespace shader_impl {
 static btl::Result<btl::u32, ShaderError> setup_shader(const char* path, ShaderType shader_type) {
   auto scratch_arena = btl::ScratchArena::get();
   defer(scratch_arena.release());
-  auto file = btl::readFile(path, scratch_arena.allocator);
+  auto file = btl::read_file(path, scratch_arena.allocator);
 
   btl::u32 shader;
   switch (shader_type) {
@@ -25,7 +25,7 @@ static btl::Result<btl::u32, ShaderError> setup_shader(const char* path, ShaderT
     } break;
   }
 
-  auto* shader_src = btl::String::make(static_cast<const char*>(file.ptr), file.size).cString(scratch_arena.allocator);
+  auto* shader_src = btl::String::make(static_cast<const char*>(file.ptr), file.size).c_string(scratch_arena.allocator);
   glShaderSource(shader, 1, &shader_src, nullptr);
   glCompileShader(shader);
   GLint compiled;

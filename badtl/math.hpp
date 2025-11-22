@@ -1,7 +1,8 @@
 #ifndef BADTL_MATH_HPP
 #define BADTL_MATH_HPP
 
-#include <cmath>
+#include <math.h>
+#include <stdlib.h>
 
 #include "types.hpp"
 
@@ -42,20 +43,23 @@ struct constants<u64> {
 namespace btl {
 
 inline f32 sin(f32 value) {
-  return std::sin(value);
+  return ::sinf(value);
 }
 
 inline f32 cos(f32 value) {
-  return std::cos(value);
+  return ::cosf(value);
 }
 
 inline f32 tan(f32 value) {
-  return std::tan(value);
+  return ::tanf(value);
 }
 
-template <typename T>
-T abs(T value) {
-  return std::abs(value);
+inline f32 abs(f32 value) {
+  return ::fabsf(value);
+}
+
+inline i32 abs(i32 value) {
+  return ::abs(value);
 }
 
 template <typename T>
@@ -67,11 +71,11 @@ T max(T v1, T v2) {
 }
 
 inline f32 sqrt(f32 value) {
-  return std::sqrt(value);
+  return ::sqrtf(value);
 }
 
 inline f32 log10(f32 value) {
-  return std::log10(value);
+  return ::log10f(value);
 }
 
 inline usize pow(usize base, usize exponent) {

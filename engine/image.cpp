@@ -49,7 +49,7 @@ static constexpr FilterMethod first_line_filter_method[5] = {
   FilterMethod::Sub,
 };
 
-static btl::i32 paethPredictor(btl::i32 a, btl::i32 b, btl::i32 c) {
+static btl::i32 paeth_predictor(btl::i32 a, btl::i32 b, btl::i32 c) {
   btl::i32 p = a + b - c;
   btl::i32 pa = btl::abs(p - a);
   btl::i32 pb = btl::abs(p - b);
@@ -63,7 +63,7 @@ static btl::i32 paethPredictor(btl::i32 a, btl::i32 b, btl::i32 c) {
   }
 }
 
-struct Context final {
+struct Context {
   btl::u8* data;
   btl::u8* data_end;
   btl::u8 bit_depth;
@@ -77,18 +77,18 @@ struct Context final {
     return static_cast<btl::u8>(-1);
   }
 
-  btl::u16 get16BE() {
+  btl::u16 get16be() {
     btl::u16 v = get8();
     return static_cast<btl::u16>((v << 8) + get8());
   }
 
-  btl::u32 get32BE() {
-    btl::u32 v = get16BE();
-    return (v << 16) + get16BE();
+  btl::u32 get32be() {
+    btl::u32 v = get16be();
+    return (v << 16) + get16be();
   }
 
   btl::Result<void, ImageError>
-  createRGBA8(Image& img, btl::u8* zlib_data, btl::Allocator& allocator, btl::Allocator& scratch_arena) {
+  create_rgba_8(Image& img, btl::u8* zlib_data, btl::Allocator& allocator, btl::Allocator& scratch_arena) {
     btl::u8 channels = image_impl::color_format_to_number_of_channels[static_cast<btl::usize>(color_format)];
     btl::u8 byte_depth = bit_depth == 16 ? 2 : 1;
     btl::u32 data_bytes_per_pixel = byte_depth * channels;
@@ -148,9 +148,9 @@ struct Context final {
             curr[i] = (zlib_data[i] + prev[i]) & 255;
           }
           for (btl::u32 i = data_bytes_per_pixel; i < data_bytes_per_line; ++i) {
-            curr[i] =
-              (zlib_data[i] + paethPredictor(curr[i - data_bytes_per_pixel], prev[i], prev[i - data_bytes_per_pixel])) &
-              255;
+            curr[i] = (zlib_data[i] +
+                       paeth_predictor(curr[i - data_bytes_per_pixel], prev[i], prev[i - data_bytes_per_pixel])) &
+                      255;
           }
         } break;
         case image_impl::FilterMethod::AverageFirstLine: {
@@ -196,7 +196,7 @@ static constexpr btl::u32 IDAT = ('I' << 24) | ('D' << 16) | ('A' << 8) | ('T');
 static constexpr btl::u32 IEND = ('I' << 24) | ('E' << 16) | ('N' << 8) | ('D');
 static constexpr btl::u32 MAX_IDAT_CHUNK_SIZE = 1u << 30;
 
-inline static auto bitReverse16(btl::u16 n) -> btl::u16 {
+inline static auto bit_reverse_16(btl::u16 n) -> btl::u16 {
   n = ((n & 0xAAAA) >> 1) | static_cast<btl::u16>((n & 0x5555) << 1);
   n = ((n & 0xCCCC) >> 2) | static_cast<btl::u16>((n & 0x3333) << 2);
   n = ((n & 0xF0F0) >> 4) | static_cast<btl::u16>((n & 0x0F0F) << 4);
@@ -204,9 +204,9 @@ inline static auto bitReverse16(btl::u16 n) -> btl::u16 {
   return n;
 }
 
-inline static auto bitReverse(btl::u16 v, btl::u8 bits) -> btl::u16 {
+inline static auto bit_reverse(btl::u16 v, btl::u8 bits) -> btl::u16 {
   ASSERT(bits <= 16, "this function doesnt reverse more than 16 bits");
-  return bitReverse16(v) >> (16 - bits);
+  return bit_reverse_16(v) >> (16 - bits);
 }
 
 namespace zlib {
@@ -216,7 +216,7 @@ static constexpr btl::u16 FAST_MASK = (1 << FAST_BITS) - 1;
 static constexpr btl::u16 NUM_SYMBOLS_LITERAL_LENGTH = 288;
 
 struct Context;
-struct Huffman final {
+struct Huffman {
   btl::u16 value[NUM_SYMBOLS_LITERAL_LENGTH];
   btl::u8 length[NUM_SYMBOLS_LITERAL_LENGTH];
   btl::u32 max_code[17];
@@ -258,7 +258,7 @@ static constexpr btl::Array<btl::u8, 32> distance_code_to_extra_bits = {0, 0, 0,
                                                                         4, 4, 5,  5,  6,  6,  7,  7,  8,  8,
                                                                         9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
-struct Context final {
+struct Context {
   Huffman length;
   Huffman distance;
   btl::List<btl::u8> out;
@@ -268,18 +268,18 @@ struct Context final {
   btl::u32 bits_buffer;
   bool hit_eof_once;
 
-  bool dataInBounds() {
+  bool data_in_bounds() {
     return data < data_end;
   }
 
   btl::u8 get8() {
-    if (dataInBounds()) {
+    if (data_in_bounds()) {
       return *data++;
     }
     return static_cast<btl::u8>(-1);
   }
 
-  void fillBits() {
+  void fill_bits() {
     do {
       if (bits_buffer >= (1u << bits_buffered)) {
         data = data_end;
@@ -290,10 +290,10 @@ struct Context final {
     } while (bits_buffered <= 24);
   }
 
-  btl::u32 readBits(btl::u32 n) {
+  btl::u32 read_bits(btl::u32 n) {
     btl::u32 k = 0;
     if (bits_buffered < n) {
-      fillBits();
+      fill_bits();
     }
     k = bits_buffer & static_cast<btl::u32>((1 << n) - 1);
     bits_buffer >>= n;
@@ -305,18 +305,18 @@ struct Context final {
     return data >= data_end;
   }
 
-  btl::Result<void, ImageError> computeCodes() {
+  btl::Result<void, ImageError> compute_codes() {
     static constexpr btl::Array<btl::u8, 19> code_length_indices =
       {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
-    btl::u32 hlit = readBits(5) + 257;
-    btl::u32 hdist = readBits(5) + 1;
-    btl::u32 hclen = readBits(4) + 4;
+    btl::u32 hlit = read_bits(5) + 257;
+    btl::u32 hdist = read_bits(5) + 1;
+    btl::u32 hclen = read_bits(4) + 4;
     btl::u32 total_iterations = hlit + hdist;
 
     btl::u8 code_length_sizes[19] = {};
     Huffman code_length_tree = {};
     for (btl::u32 i = 0; i < hclen; ++i) {
-      btl::u8 code_length = static_cast<btl::u8>(readBits(3));
+      btl::u8 code_length = static_cast<btl::u8>(read_bits(3));
       code_length_sizes[code_length_indices[i]] = code_length;
     }
     auto code_length_tree_res = code_length_tree.build(code_length_sizes, 19);
@@ -341,15 +341,15 @@ struct Context final {
         btl::u8 fill = 0;
         btl::u32 repeat_times;
         if (decoded_value == 16) {
-          repeat_times = readBits(2) + 3;
+          repeat_times = read_bits(2) + 3;
           if (iteration_idx == 0) {
             return btl::err<void>(ImageError::BadCodeLength);
           }
           fill = code_lengths[iteration_idx - 1];
         } else if (decoded_value == 17) {
-          repeat_times = readBits(3) + 3;
+          repeat_times = read_bits(3) + 3;
         } else {
-          repeat_times = readBits(7) + 11;
+          repeat_times = read_bits(7) + 11;
         }
         if (total_iterations - iteration_idx < repeat_times) {
           return btl::err<void>(ImageError::BadCodeLength);
@@ -373,7 +373,7 @@ struct Context final {
     return btl::ok<ImageError>();
   }
 
-  btl::Result<void, ImageError> parseBlock() {
+  btl::Result<void, ImageError> parse_block() {
     while (true) {
       auto decoded_value_res = length.decode(*this);
       if (decoded_value_res.has_err) {
@@ -394,7 +394,7 @@ struct Context final {
         decoded_value -= 257;
         btl::u32 len = length_code_to_base_length[decoded_value];
         if (length_code_to_extra_bits[decoded_value]) {
-          len += readBits(length_code_to_extra_bits[decoded_value]);
+          len += read_bits(length_code_to_extra_bits[decoded_value]);
         }
 
         decoded_value_res = distance.decode(*this);
@@ -406,7 +406,7 @@ struct Context final {
         }
         btl::u32 dist = distance_code_to_base_length[decoded_value];
         if (distance_code_to_extra_bits[decoded_value]) {
-          dist += readBits(distance_code_to_extra_bits[decoded_value]);
+          dist += read_bits(distance_code_to_extra_bits[decoded_value]);
         }
         if (out.size < dist) {
           return btl::err<void>(ImageError::BadDistance);
@@ -464,7 +464,7 @@ btl::Result<void, ImageError> Huffman::build(const btl::u8* code_lengths, btl::u
     length[canonical_pos] = static_cast<btl::u8>(code_length);
     value[canonical_pos] = static_cast<btl::u16>(i);
     if (code_length <= FAST_BITS) {
-      btl::u32 j = bitReverse(static_cast<btl::u16>(next_code[code_length]), code_length);
+      btl::u32 j = bit_reverse(static_cast<btl::u16>(next_code[code_length]), code_length);
       while (j < (1 << FAST_BITS)) {
         fast_table[j] = fast_table_val;
         j += (1 << code_length);
@@ -484,7 +484,7 @@ btl::Result<btl::u32, ImageError> Huffman::decode(Context& zlib_ctx) {
       zlib_ctx.hit_eof_once = true;
       zlib_ctx.bits_buffered += 16;
     } else {
-      zlib_ctx.fillBits();
+      zlib_ctx.fill_bits();
     }
   }
 
@@ -504,7 +504,7 @@ btl::Result<btl::u32, ImageError> Huffman::decode(Context& zlib_ctx) {
   }
 
   // NOTE(szulf): lookup table failed, doing it the slow way
-  btl::u32 bits = bitReverse(static_cast<btl::u16>(zlib_ctx.bits_buffer), 16);
+  btl::u32 bits = bit_reverse(static_cast<btl::u16>(zlib_ctx.bits_buffer), 16);
   btl::u32 code_length = FAST_BITS + 1;
   while (true) {
     if (bits < max_code[code_length]) {
@@ -550,7 +550,7 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
   Image img = {};
   auto scratch_arena = btl::ScratchArena::get();
   defer(scratch_arena.release());
-  auto file = btl::readFile(path, scratch_arena.allocator);
+  auto file = btl::read_file(path, scratch_arena.allocator);
   image_impl::Context ctx = {};
   ctx.data = static_cast<btl::u8*>(file.ptr);
   ctx.data_end = static_cast<btl::u8*>(file.ptr) + file.size;
@@ -564,11 +564,11 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
 
   bool first = true;
   bool running = true;
-  auto combined_idat_chunks = btl::List<btl::u8>::fromDynamicArena(scratch_arena.allocator);
+  auto combined_idat_chunks = btl::List<btl::u8>::from_dynamic_arena(scratch_arena.allocator);
   while (running && ctx.data != ctx.data_end) {
     image_impl::Chunk chunk = {};
-    chunk.length = ctx.get32BE();
-    chunk.type = ctx.get32BE();
+    chunk.length = ctx.get32be();
+    chunk.type = ctx.get32be();
 
     switch (chunk.type) {
       case image_impl::IHDR: {
@@ -579,8 +579,8 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
         if (chunk.length != 13) {
           return btl::err<Image>(ImageError::InvalidIHDR);
         }
-        img.width = ctx.get32BE();
-        img.height = ctx.get32BE();
+        img.width = ctx.get32be();
+        img.height = ctx.get32be();
         if (!(img.width < MAX_SIZE && img.width > 0 && img.height < MAX_SIZE && img.height > 0)) {
           return btl::err<Image>(ImageError::InvalidIHDR);
         }
@@ -628,18 +628,18 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
         if (combined_idat_chunks.size == 0) {
           return btl::err<Image>(ImageError::InvalidIDAT);
         }
-        combined_idat_chunks.dynamicFinish();
+        combined_idat_chunks.dynamic_finish();
 
         // NOTE(szulf): zlib parsing
         image_impl::zlib::Context zlib_ctx = {};
         zlib_ctx.data = combined_idat_chunks.data;
         zlib_ctx.data_end = combined_idat_chunks.data + combined_idat_chunks.size;
-        zlib_ctx.out = btl::List<btl::u8>::fromDynamicArena(scratch_arena.allocator);
+        zlib_ctx.out = btl::List<btl::u8>::from_dynamic_arena(scratch_arena.allocator);
         { // NOTE(szulf): header
           btl::u8 cmf = zlib_ctx.get8();
           btl::u8 cm = cmf & 15;
           btl::u8 flg = zlib_ctx.get8();
-          if (!zlib_ctx.dataInBounds() || static_cast<btl::u16>(cmf * 256 + flg) % 31 != 0 || flg & 32 || cm != 8) {
+          if (!zlib_ctx.data_in_bounds() || static_cast<btl::u16>(cmf * 256 + flg) % 31 != 0 || flg & 32 || cm != 8) {
             return btl::err<Image>(ImageError::CorruptZlib);
           }
         }
@@ -650,12 +650,12 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
         bool final = false;
         image_impl::CompressionType type;
         do {
-          final = zlib_ctx.readBits(1);
-          type = static_cast<image_impl::CompressionType>(zlib_ctx.readBits(2));
+          final = zlib_ctx.read_bits(1);
+          type = static_cast<image_impl::CompressionType>(zlib_ctx.read_bits(2));
           switch (type) {
             case image_impl::CompressionType::Uncompressed: {
               if (zlib_ctx.bits_buffered & 7) {
-                zlib_ctx.readBits(zlib_ctx.bits_buffered & 7);
+                zlib_ctx.read_bits(zlib_ctx.bits_buffered & 7);
               }
               btl::u8 header[4];
               btl::u32 k = 0;
@@ -692,18 +692,18 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
               if (distance_build_res.has_err) {
                 return btl::err<Image>(distance_build_res.value.error);
               }
-              auto parse_block_res = zlib_ctx.parseBlock();
+              auto parse_block_res = zlib_ctx.parse_block();
               if (parse_block_res.has_err) {
                 return btl::err<Image>(parse_block_res.value.error);
               }
             } break;
 
             case image_impl::CompressionType::DynamicHuffman: {
-              auto compute_res = zlib_ctx.computeCodes();
+              auto compute_res = zlib_ctx.compute_codes();
               if (compute_res.has_err) {
                 return btl::err<Image>(compute_res.value.error);
               }
-              auto parse_block_res = zlib_ctx.parseBlock();
+              auto parse_block_res = zlib_ctx.parse_block();
               if (parse_block_res.has_err) {
                 return btl::err<Image>(parse_block_res.value.error);
               }
@@ -714,10 +714,10 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
             } break;
           }
         } while (!final);
-        zlib_ctx.out.dynamicFinish();
+        zlib_ctx.out.dynamic_finish();
 
         if (!ctx.interlaced) {
-          auto res = ctx.createRGBA8(img, zlib_ctx.out.data, allocator, scratch_arena.allocator);
+          auto res = ctx.create_rgba_8(img, zlib_ctx.out.data, allocator, scratch_arena.allocator);
           if (res.has_err) {
             return btl::err<Image>(res.value.error);
           }
@@ -725,7 +725,7 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
           ASSERT(false, "[TODO] support interlaced pngs");
         }
 
-        ctx.get32BE();
+        ctx.get32be();
         running = false;
       } break;
 
@@ -737,7 +737,7 @@ btl::Result<Image, ImageError> Image::from_file(const btl::String& path, btl::Al
       } break;
     }
     // NOTE(szulf): skip CRC
-    ctx.get32BE();
+    ctx.get32be();
   }
   return btl::ok<ImageError>(img);
 }

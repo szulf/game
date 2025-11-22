@@ -18,4 +18,7 @@ struct Scene {
   Camera camera;
 };
 
+void write_formatted_type(btl::usize& buf_idx, char* buffer, btl::usize n, const Renderable& first);
+void write_formatted_type(btl::usize& buf_idx, char* buffer, btl::usize n, const Scene& first);
+
 }

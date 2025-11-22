@@ -218,7 +218,7 @@ btl::Result<Model, ModelError> Model::from_file(const btl::String& path, btl::Al
   ctx.allocator = &allocator;
   auto scratch_arena = btl::ScratchArena::get();
   defer(scratch_arena.release());
-  auto file_ptr = btl::readFile(path, scratch_arena.allocator);
+  auto file_ptr = btl::read_file(path, scratch_arena.allocator);
   auto file = btl::String::make(static_cast<const char*>(file_ptr.ptr), file_ptr.size);
   ctx.lines = file.split('\n', scratch_arena.allocator);
 
@@ -277,7 +277,7 @@ btl::Result<Model, ModelError> Model::from_file(const btl::String& path, btl::Al
         }
         auto base_file_path = btl::String::make("assets/");
         auto mtl_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
-        auto mtl_file = btl::readFile(mtl_file_path.cString(allocator), scratch_arena.allocator);
+        auto mtl_file = btl::read_file(mtl_file_path.c_string(allocator), scratch_arena.allocator);
         auto mtl_file_res =
           obj_impl::parse_mtl_file(btl::String::make(static_cast<const char*>(mtl_file.ptr), mtl_file.size), allocator);
         if (mtl_file_res.has_err) {

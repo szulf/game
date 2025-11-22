@@ -5,9 +5,9 @@ import re
 
 # List of directories to search
 directories = [
+    "./badtl",
     "./engine",
     "./game",
-    "./badtl",
     # Add more directories here
 ]
 

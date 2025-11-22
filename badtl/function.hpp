@@ -3,14 +3,22 @@
 
 namespace btl {
 
+template <typename R, typename... Ts>
 struct Function {
-  void* operator()() const {
-    return fn(args);
-  }
+  R operator()(Ts... args) const;
 
-  void* (*fn)(void* args);
-  void* args;
+  void* bound_args;
+  R (*fn)(void* args, Ts...);
 };
+
+}
+
+namespace btl {
+
+template <typename R, typename... Ts>
+R Function<R, Ts...>::operator()(Ts... args) const {
+  return fn(bound_args, args...);
+}
 
 }
 

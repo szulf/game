@@ -13,7 +13,7 @@ void init() {
   glEnable(GL_DEPTH_TEST);
 }
 
-void clearScreen() {
+void clear_screen() {
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -28,13 +28,13 @@ void render(const Scene& scene) {
       glGetUniformLocation(shader_map[renderable.shader], "view"),
       1,
       false,
-      scene.camera.lookAtMatrix().data.data
+      scene.camera.look_at_matrix().data.data
     );
     glUniformMatrix4fv(
       glGetUniformLocation(shader_map[renderable.shader], "proj"),
       1,
       false,
-      scene.camera.projectionMatrix().data.data
+      scene.camera.projection_matrix().data.data
     );
     glUniformMatrix4fv(
       glGetUniformLocation(shader_map[renderable.shader], "model"),

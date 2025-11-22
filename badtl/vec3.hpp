@@ -18,6 +18,8 @@ struct Vec3 {
 
 Vec3 cross(const Vec3& va, const Vec3& vb);
 
+void write_formatted_type(usize& buf_idx, char* buffer, usize n, const Vec3& first);
+
 }
 
 #endif

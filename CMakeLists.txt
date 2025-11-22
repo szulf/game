@@ -23,7 +23,8 @@ set(COMPILE_FLAGS
   -Wno-unused-macros -Wno-missing-noreturn -Wno-covered-switch-default
   -Wno-undefined-func-template -Wno-missing-designated-field-initializers
   -Wno-global-constructors -Wno-unused-function -Wno-unused-template
-  -Wno-format-nonliteral
+  -Wno-format-nonliteral -Wno-shadow-uncaptured-local
+  -nostdlib++ -nostdinc++
 )
 
 include(FetchContent)
@@ -48,8 +49,6 @@ add_library(badtl STATIC
   badtl/ptr.hpp
   badtl/result.hpp
   badtl/string.cpp badtl/string.hpp
-  badtl/templates.hpp
-  badtl/threads.cpp badtl/threads.hpp
   badtl/time.cpp badtl/time.hpp
   badtl/types.hpp
   badtl/utils.hpp

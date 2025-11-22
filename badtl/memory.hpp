@@ -1,8 +1,8 @@
 #ifndef BADTL_MEMORY_HPP
 #define BADTL_MEMORY_HPP
 
-#include <cstring>
-#include <cstdlib>
+#include <string.h>
+#include <stdlib.h>
 
 #include "types.hpp"
 
@@ -29,19 +29,19 @@ namespace btl {
 namespace mem {
 
 inline void copy(void* dest, const void* src, usize n) {
-  std::memcpy(dest, src, n);
+  memcpy(dest, src, n);
 }
 
 inline void set(void* dest, u8 value, usize n) {
-  std::memset(dest, value, n);
+  memset(dest, value, n);
 }
 
 inline bool eql(const void* p1, const void* p2, usize n) {
-  return std::memcmp(p1, p2, n) == 0;
+  return memcmp(p1, p2, n) == 0;
 }
 
 inline void* alloc(usize size) {
-  return std::malloc(size);
+  return malloc(size);
 }
 
 }

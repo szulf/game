@@ -32,9 +32,9 @@ extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
 
 namespace core {
 
-void setupGLFunctions();
+void setup_gl_functions();
 #ifdef GAME_DEBUG
-void APIENTRY debugCallback(
+void APIENTRY debug_callback(
   GLenum source,
   GLenum type,
   GLuint id,

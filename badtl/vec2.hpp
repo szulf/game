@@ -12,6 +12,8 @@ struct Vec2 {
   bool operator==(const Vec2& other) const;
 };
 
+void write_formatted_type(usize& buf_idx, char* buffer, usize n, const Vec2& first);
+
 }
 
 #endif

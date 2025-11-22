@@ -10,13 +10,13 @@ namespace btl {
 
 #ifdef BADTL_PLATFORM_SDL3
 
-Ptr<void> readFile(const String& path, Allocator& allocator) {
+Ptr<void> read_file(const String& path, Allocator& allocator) {
   auto scratch_arena = btl::ScratchArena::get();
   defer(scratch_arena.release());
-  return readFile(path.cString(scratch_arena.allocator), allocator);
+  return read_file(path.c_string(scratch_arena.allocator), allocator);
 }
 
-Ptr<void> readFile(const char* filepath, Allocator& allocator) {
+Ptr<void> read_file(const char* filepath, Allocator& allocator) {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
   defer(SDL_CloseStorage(storage));
 

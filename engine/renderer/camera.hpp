@@ -12,7 +12,7 @@ struct Camera {
     Perspective,
   };
 
-  static Camera make(Type type, const btl::Vec3& pos) {
+  static Camera make(Type type, const btl::Vec3& pos, btl::u32 width, btl::u32 height) {
     Camera out = {};
     out.type = type;
     out.pos = pos;
@@ -23,29 +23,27 @@ struct Camera {
     out.near_plane = 0.1f;
     out.far_plane = 1000.0f;
 
-    out.updateCameraVectors();
+    out.viewport_width = width;
+    out.viewport_height = height;
+
+    out.update_camera_vectors();
     return out;
   }
 
-  btl::Mat4 projectionMatrix() const {
-    switch (type) {
-      case Type::Perspective: {
-        return btl::Mat4::perspective(
-          fov,
-          static_cast<btl::f32>(viewport_width) / static_cast<btl::f32>(viewport_height),
-          near_plane,
-          far_plane
-        );
-      } break;
-    }
+  btl::Mat4 projection_matrix() const {
+    ASSERT(type == Type::Perspective, "illegal camera type");
 
-    ASSERT(false, "unexpected camera type");
-    return {};
+    return btl::Mat4::perspective(
+      fov,
+      static_cast<btl::f32>(viewport_width) / static_cast<btl::f32>(viewport_height),
+      near_plane,
+      far_plane
+    );
   }
 
-  btl::Mat4 lookAtMatrix() const;
+  btl::Mat4 look_at_matrix() const;
 
-  void updateCameraVectors() {
+  void update_camera_vectors() {
     front.x = btl::cos(btl::radians(yaw)) * btl::cos(btl::radians(pitch));
     front.y = btl::sin(btl::radians(pitch));
     front.z = btl::sin(btl::radians(yaw)) * btl::cos(btl::radians(pitch));
@@ -72,5 +70,7 @@ struct Camera {
   Type type;
   constexpr static btl::Vec3 WORLD_UP = {0.0f, 1.0f, 0.0f};
 };
+
+void write_formatted_type(btl::usize& buf_idx, char* buffer, btl::usize n, const core::Camera& first);
 
 }

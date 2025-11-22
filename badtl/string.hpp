@@ -26,7 +26,7 @@ struct String {
   usize find_char(char c, usize start_idx = 0) const;
   String append(const char* cstr, Allocator& allocator) const;
   String append(const String& str, Allocator& allocator) const;
-  const char* cString(Allocator& allocator) const;
+  const char* c_string(Allocator& allocator) const;
   List<String> split(char c, Allocator& allocator) const;
   String copy(Allocator& allocator) const;
 

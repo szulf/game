@@ -1,7 +1,7 @@
 #ifndef BADTL_PRINT_HPP
 #define BADTL_PRINT_HPP
 
-#include <cstdio>
+#include <stdio.h>
 
 #include "types.hpp"
 
@@ -20,54 +20,47 @@ namespace btl {
 struct String;
 
 template <typename T>
-inline static void write_formatted_type(usize& buf_idx, char* buffer, usize n, const T& first) {
-  auto x = to_string(first);
-  for (const auto c : x) {
-    if (buf_idx + 1 >= n) {
-      break;
-    }
-    buffer[buf_idx++] = c;
+inline static void write_formatted_type(usize& buf_idx, char* buffer, usize n, const T&) {
+  buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "<unsupported>"));
+}
+
+inline static void write_formatted_type(usize& buf_idx, char* buffer, usize n, void* first) {
+  if (first) {
+    buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "%p", first));
+  } else {
+    buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "<null>"));
   }
-  (void) n;
 }
 
 inline void write_formatted_type(usize& buf_idx, char* buffer, usize n, const btl::i32& first) {
-  auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "%d", first);
-  buf_idx += static_cast<usize>(written);
+  buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "%d", first));
 }
 
 inline void write_formatted_type(usize& buf_idx, char* buffer, usize n, const btl::u32& first) {
-  auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "%u", first);
-  buf_idx += static_cast<usize>(written);
+  buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "%u", first));
 }
 
 inline void write_formatted_type(usize& buf_idx, char* buffer, usize n, const btl::usize& first) {
-  auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "%zu", first);
-  buf_idx += static_cast<usize>(written);
+  buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "%zu", first));
 }
 
 inline void write_formatted_type(usize& buf_idx, char* buffer, usize n, const btl::f32& first) {
-  auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "%f", static_cast<double>(first));
-  buf_idx += static_cast<usize>(written);
+  buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "%f", static_cast<double>(first)));
 }
 
 inline void write_formatted_type(usize& buf_idx, char* buffer, usize n, const char* first) {
-  auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "%s", first);
-  buf_idx += static_cast<usize>(written);
+  buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "%s", first));
 }
 
 inline void write_formatted_type(usize& buf_idx, char* buffer, usize n, bool first) {
   if (first) {
-    auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "true");
-    buf_idx += static_cast<usize>(written);
+    buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "true"));
   } else {
-    auto written = std::snprintf(buffer + buf_idx, n - buf_idx - 1, "false");
-    buf_idx += static_cast<usize>(written);
+    buf_idx += static_cast<usize>(snprintf(buffer + buf_idx, n - buf_idx, "false"));
   }
 }
 
 inline void format(usize& buf_idx, char* buffer, usize n, const char* fmt) {
-  (void) n;
   while (*fmt) {
     if (buf_idx + 1 >= n) {
       return;
@@ -102,9 +95,18 @@ template <typename... Ts>
 void print(const char* fmt, const Ts&... args) {
   char buf[4096] = {};
   usize buf_idx = 0;
-  format(buf_idx, buf, 4096, fmt, args...);
-  buf[4095] = 0;
-  std::fputs(buf, stdout);
+  format(buf_idx, buf, sizeof(buf), fmt, args...);
+  buf[sizeof(buf) - 1] = '\0';
+  fputs(buf, stdout);
+}
+
+template <typename... Ts>
+void println(const char* fmt, const Ts&... args) {
+  char buf[4096] = {};
+  usize buf_idx = 0;
+  format(buf_idx, buf, sizeof(buf), fmt, args...);
+  buf[sizeof(buf) - 1] = '\0';
+  puts(buf);
 }
 
 }

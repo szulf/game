@@ -1,5 +1,7 @@
 #include "vec3.hpp"
 
+#include <stdio.h>
+
 #include "math.hpp"
 
 namespace btl {
@@ -31,6 +33,17 @@ Vec3 cross(const Vec3& va, const Vec3& vb) {
     (va.z * vb.x) - (va.x * vb.z),
     (va.x * vb.y) - (va.y * vb.x),
   };
+}
+
+void write_formatted_type(usize& buf_idx, char* buffer, usize n, const Vec3& first) {
+  buf_idx += static_cast<usize>(snprintf(
+    buffer + buf_idx,
+    n - buf_idx,
+    "{%.2f %.2f %.2f}",
+    static_cast<double>(first.x),
+    static_cast<double>(first.y),
+    static_cast<double>(first.z)
+  ));
 }
 
 }

@@ -1,0 +1,33 @@
+#ifndef IMAGE_H
+#define IMAGE_H
+
+#define IMAGE_MAX_SIZE (1 << 24)
+
+enum ImageError
+{
+  IMAGE_ERROR_INVALID_FILTER = GLOBAL_ERROR_COUNT,
+  IMAGE_ERROR_BAD_CODE_LENGTH,
+  IMAGE_ERROR_UNEXPECTED_END,
+  IMAGE_ERROR_BAD_HUFFMAN_CODE,
+  IMAGE_ERROR_BAD_DISTANCE,
+  IMAGE_ERROR_BAD_SIZES,
+  IMAGE_ERROR_CORRUPT_ZLIB,
+  IMAGE_ERROR_INVALID_HEADER,
+  IMAGE_ERROR_IHDR_NOT_FIRST,
+  IMAGE_ERROR_INVALID_IHDR,
+  IMAGE_ERROR_INVALID_IDAT,
+  IMAGE_ERROR_READ_PAST_BUFFER,
+  IMAGE_ERROR_ILLEGAL_COMPRESSION_TYPE,
+};
+
+struct Image
+{
+  u8* data;
+  usize width;
+  usize height;
+};
+
+Image image_from_file(const char* path, Allocator* allocator, Error* out_error);
+Image image_error_placeholder();
+
+#endif

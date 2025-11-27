@@ -1,0 +1,60 @@
+#ifndef GL_FUNCTIONS_H
+#define GL_FUNCTIONS_H
+
+#include "GL/glcorearb.h"
+#include <GL/glx.h>
+
+extern "C" struct OpenGLAPI
+{
+  PFNGLGENTEXTURESPROC glGenTextures;
+  PFNGLBINDTEXTUREPROC glBindTexture;
+  PFNGLTEXPARAMETERIPROC glTexParameteri;
+  PFNGLTEXIMAGE2DPROC glTexImage2D;
+  PFNGLENABLEPROC glEnable;
+  PFNGLCLEARCOLORPROC glClearColor;
+  PFNGLCLEARPROC glClear;
+  PFNGLACTIVETEXTUREPROC glActiveTexture;
+  PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
+  PFNGLDRAWELEMENTSPROC glDrawElements;
+  PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
+  PFNGLGENBUFFERSPROC glGenBuffers;
+  PFNGLBINDBUFFERPROC glBindBuffer;
+  PFNGLBUFFERDATAPROC glBufferData;
+  PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+  PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+  PFNGLUNIFORM1IPROC glUniform1i;
+  PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
+  PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
+  PFNGLUSEPROGRAMPROC glUseProgram;
+  PFNGLCREATESHADERPROC glCreateShader;
+  PFNGLSHADERSOURCEPROC glShaderSource;
+  PFNGLCOMPILESHADERPROC glCompileShader;
+  PFNGLGETSHADERIVPROC glGetShaderiv;
+  PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
+  PFNGLCREATEPROGRAMPROC glCreateProgram;
+  PFNGLATTACHSHADERPROC glAttachShader;
+  PFNGLLINKPROGRAMPROC glLinkProgram;
+  PFNGLDELETESHADERPROC glDeleteShader;
+  PFNGLGETPROGRAMIVPROC glGetProgramiv;
+  PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
+  PFNGLGENERATEMIPMAPPROC glGenerateMipmap;
+  PFNGLDEBUGMESSAGECALLBACKPROC glDebugMessageCallback;
+  PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
+  PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+  PFNGLGETERRORPROC glGetError;
+};
+void setup_gl_functions(OpenGLAPI* api);
+
+#ifdef MODE_DEBUG
+void APIENTRY debug_callback(
+  GLenum source,
+  GLenum type,
+  GLuint id,
+  GLenum severity,
+  GLsizei length,
+  const GLchar* message,
+  const void* user
+);
+#endif
+
+#endif

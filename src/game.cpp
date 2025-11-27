@@ -27,6 +27,14 @@ struct Entity
   ModelHandle model;
 };
 
+enum Action
+{
+  ACTION_MOVE_FRONT,
+  ACTION_MOVE_BACK,
+  ACTION_MOVE_LEFT,
+  ACTION_MOVE_RIGHT,
+};
+
 struct Main
 {
   Allocator allocator;
@@ -36,8 +44,11 @@ struct Main
   // TODO(szulf): do i really want this here?
   Array<DrawCall> renderer_queue;
 
+  // TODO(szulf): this is just wasteful, it should only contain ACTION_COUNT,
+  // but i dont know how to easily index it if it does
+  Action key_map[KEY_COUNT];
   Camera camera;
-  Entity entity;
+  Entity player;
 };
 
 dll_export SPEC_FN(spec)
@@ -71,16 +82,21 @@ dll_export INIT_FN(init)
   main->asset_manager = asset_manager_make(&main->allocator);
   asset_manager_instance = &main->asset_manager;
 
-  auto model_handle = assets_load_model("assets/backpack.obj", &main->allocator, &error);
+  auto player_model = assets_load_model("assets/backpack.obj", &main->allocator, &error);
   ASSERT(error == SUCCESS, "failed to load model");
-  main->entity.position = {0.0f, 0.0f, 0.0f};
-  main->entity.scale = 1.0f;
-  main->entity.has_model = true;
-  main->entity.model = model_handle;
-  main->entity.type = ENTITY_TYPE_PLAYER;
+  main->player.position = {0.0f, 0.0f, 0.0f};
+  main->player.scale = 1.0f;
+  main->player.has_model = true;
+  main->player.model = player_model;
+  main->player.type = ENTITY_TYPE_PLAYER;
 
   Vec3 camera_pos = {0.0f, 0.0f, -5.0f};
   main->camera = camera_make(&camera_pos, platform.get_width(), platform.get_height());
+
+  main->key_map[KEY_W] = ACTION_MOVE_FRONT;
+  main->key_map[KEY_S] = ACTION_MOVE_BACK;
+  main->key_map[KEY_A] = ACTION_MOVE_LEFT;
+  main->key_map[KEY_D] = ACTION_MOVE_RIGHT;
 }
 
 dll_export POST_RELOAD_FN(post_reload)
@@ -95,10 +111,7 @@ dll_export UPDATE_FN(update)
 {
   auto* main = (Main*) memory->memory;
 
-  const f32 add = 1.0f;
-  main->camera.yaw += add;
-  camera_update_vectors(&main->camera);
-
+  unused(main);
   unused(dt);
 }
 
@@ -124,14 +137,50 @@ dll_export RENDER_FN(render)
 
   renderer_clear_screen();
 
-  auto draw_call = draw_call_make(&main->entity, &main->camera);
-  renderer_queue_draw_call(&draw_call);
+  auto player_draw_call = draw_call_make(&main->player, &main->camera);
+  renderer_queue_draw_call(&player_draw_call);
   renderer_draw();
 }
 
 dll_export EVENT_FN(event)
 {
   auto* main = (Main*) memory->memory;
-  main->camera.viewport_width = event->width;
-  main->camera.viewport_height = event->height;
+
+  switch (event->type)
+  {
+    case EVENT_TYPE_WINDOW_RESIZE:
+    {
+      main->camera.viewport_width = event->data.window_resize.width;
+      main->camera.viewport_height = event->data.window_resize.height;
+    }
+    break;
+    case EVENT_TYPE_KEYDOWN:
+    {
+      auto action = main->key_map[event->data.keydown.key];
+      switch (action)
+      {
+        case ACTION_MOVE_FRONT:
+        {
+          main->player.position.z -= 1.0f;
+        }
+        break;
+        case ACTION_MOVE_BACK:
+        {
+          main->player.position.z += 1.0f;
+        }
+        break;
+        case ACTION_MOVE_LEFT:
+        {
+          main->player.position.x -= 1.0f;
+        }
+        break;
+        case ACTION_MOVE_RIGHT:
+        {
+          main->player.position.x += 1.0f;
+        }
+        break;
+      }
+    }
+    break;
+  }
 }

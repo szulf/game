@@ -53,6 +53,22 @@ GameAPI load_game_api()
   return out;
 }
 
+static Key key_from_sdlk(SDL_Keycode key)
+{
+  switch (key)
+  {
+    case SDLK_W:
+      return KEY_W;
+    case SDLK_S:
+      return KEY_S;
+    case SDLK_A:
+      return KEY_A;
+    case SDLK_D:
+      return KEY_D;
+  }
+  return (Key) 0;
+}
+
 i32 main()
 {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -149,24 +165,23 @@ i32 main()
           g_width = (u32) e.window.data1;
           g_height = (u32) e.window.data2;
           glViewport(0, 0, e.window.data1, e.window.data2);
-          Event event = {g_width, g_height};
+          Event event = {};
+          event.type = EVENT_TYPE_WINDOW_RESIZE;
+          event.data.window_resize = {g_width, g_height};
           game.event(&memory, &event);
         }
         break;
         case SDL_EVENT_KEY_DOWN:
         {
-          // if (key_from_sdlk(e.key.key) == static_cast<Key>(-1))
-          // {
-          //   continue;
-          // }
-          // auto event = Event::make(KeydownEvent{key_from_sdlk(e.key.key)});
-          // game.event(&memory, &event);
-        }
-        break;
-        case SDL_EVENT_MOUSE_MOTION:
-        {
-          // auto event = Event::make(MouseMoveEvent{static_cast<u32>(e.motion.x), static_cast<u32>(e.motion.y)});
-          // game.event(&memory, &event);
+          auto key = key_from_sdlk(e.key.key);
+          if (key == (Key) 0)
+          {
+            continue;
+          }
+          Event event = {};
+          event.type = EVENT_TYPE_KEYDOWN;
+          event.data.keydown = {key};
+          game.event(&memory, &event);
         }
         break;
       }

@@ -3,6 +3,8 @@
 
 #include "base/base.cpp"
 
+#include "event.h"
+
 #define TPS 20
 #define MSPT (1000 / TPS)
 
@@ -33,13 +35,6 @@ extern "C"
     u32 width;
     u32 height;
     usize memory_size;
-  };
-
-  // TODO(szulf): make this the tagged union
-  struct Event
-  {
-    u32 width;
-    u32 height;
   };
 
 #define SPEC_FN(name) void name(GameSpec* spec)

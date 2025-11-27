@@ -170,7 +170,7 @@ void mat4_scale(Mat4* mat, f32 scale)
 
 void mat4_translate(Mat4* mat, const Vec3* position)
 {
-  mat->data[3] = position->x;
-  mat->data[7] = position->y;
-  mat->data[11] = position->z;
+  mat->data[12] = position->x;
+  mat->data[13] = position->y;
+  mat->data[14] = position->z;
 }

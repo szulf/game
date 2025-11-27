@@ -57,6 +57,7 @@ Texture texture_make(const Image* img);
 struct Material
 {
   TextureHandle texture;
+  Shader shader;
 };
 
 struct Mesh
@@ -117,9 +118,19 @@ struct Scene
 // TODO(szulf): remove this after restructuring renderer
 #include "assets.cpp"
 
-// TODO(szulf): this should be more general, it shouldnt know what a scene is
-void renderer_init();
+struct DrawCall
+{
+  Mat4 model;
+  Mat4 view;
+  Mat4 projection;
+
+  ModelHandle model_handle;
+};
+
+void renderer_init(Allocator* allocator);
 void renderer_clear_screen();
-void renderer_render(const Scene* scene);
+// TODO(szulf): i feel like this abstraction is really bad, figure something out later, for now moving on
+void renderer_queue_draw_call(const DrawCall* scene);
+void renderer_draw();
 
 #endif

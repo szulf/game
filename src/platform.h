@@ -48,8 +48,8 @@ extern "C"
   typedef APIS_FN(APIsFN);
 #define INIT_FN(name) void name(GameMemory* memory)
   typedef INIT_FN(InitFN);
-#define REINIT_FN(name) void name(GameMemory* memory)
-  typedef REINIT_FN(ReInitFN);
+#define POST_RELOAD_FN(name) void name(GameMemory* memory)
+  typedef POST_RELOAD_FN(PostReloadFN);
 #define UPDATE_FN(name) void name(GameMemory* memory, float dt)
   typedef UPDATE_FN(UpdateFN);
 #define RENDER_FN(name) void name(GameMemory* memory)
@@ -62,7 +62,7 @@ extern "C"
     SpecFN* spec;
     APIsFN* apis;
     InitFN* init;
-    ReInitFN* reinit;
+    PostReloadFN* post_reload;
     UpdateFN* update;
     RenderFN* render;
     EventFN* event;

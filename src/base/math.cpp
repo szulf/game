@@ -152,3 +152,25 @@ Mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far)
   out.data[15] = 0.0f;
   return out;
 }
+
+void mat4_scale(Mat4* mat, f32 scale)
+{
+  mat->data[0] *= scale;
+  mat->data[4] *= scale;
+  mat->data[8] *= scale;
+
+  mat->data[1] *= scale;
+  mat->data[5] *= scale;
+  mat->data[9] *= scale;
+
+  mat->data[2] *= scale;
+  mat->data[6] *= scale;
+  mat->data[10] *= scale;
+}
+
+void mat4_translate(Mat4* mat, const Vec3* position)
+{
+  mat->data[3] = position->x;
+  mat->data[7] = position->y;
+  mat->data[11] = position->z;
+}

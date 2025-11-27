@@ -45,7 +45,7 @@ GameAPI load_game_api()
   out.spec = (SpecFN*) SDL_LoadFunction(so, "spec");
   out.apis = (APIsFN*) SDL_LoadFunction(so, "apis");
   out.init = (InitFN*) SDL_LoadFunction(so, "init");
-  out.reinit = (ReInitFN*) SDL_LoadFunction(so, "reinit");
+  out.post_reload = (PostReloadFN*) SDL_LoadFunction(so, "post_reload");
   out.render = (RenderFN*) SDL_LoadFunction(so, "render");
   out.update = (UpdateFN*) SDL_LoadFunction(so, "update");
   out.event = (EventFN*) SDL_LoadFunction(so, "event");
@@ -128,7 +128,7 @@ i32 main()
       }
       game = load_game_api();
       game.apis(&gl_api, &platform_api);
-      game.reinit(&memory);
+      game.post_reload(&memory);
       game_lib_info = new_game_lib_info;
     }
 #endif

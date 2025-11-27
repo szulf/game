@@ -245,8 +245,6 @@ Mat4 camera_look_at(const Camera* camera)
 
 Mat4 camera_projection(const Camera* camera)
 {
-  unused(camera);
-
   return mat4_perspective(
     camera->fov,
     (f32) camera->viewport_width / (f32) camera->viewport_height,
@@ -254,6 +252,8 @@ Mat4 camera_projection(const Camera* camera)
     camera->far_plane
   );
 }
+
+static Array<DrawCall>* renderer_queue_instance;
 
 void renderer_init()
 {
@@ -266,43 +266,51 @@ void renderer_clear_screen()
   gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void renderer_render(const Scene* scene)
+void renderer_queue_draw_call(const DrawCall* draw_call)
 {
-  for (usize renderable_idx = 0; renderable_idx < scene->renderables.size; ++renderable_idx)
+  // TODO(szulf): for now just pushing into the array, later actually try to sort it in place
+  array_push(renderer_queue_instance, draw_call);
+}
+
+void renderer_draw()
+{
+  for (usize draw_call_idx = 0; draw_call_idx < renderer_queue_instance->size; ++draw_call_idx)
   {
-    auto* renderable = array_get(&scene->renderables, renderable_idx);
-    auto* model = assets_get_model(renderable->model);
-    gl.glUseProgram(shader_map_instance[renderable->shader]);
-    gl.glUniformMatrix4fv(
-      gl.glGetUniformLocation(shader_map_instance[renderable->shader], "view"),
-      1,
-      false,
-      // mat4_make().data
-      camera_look_at(&scene->camera).data
-    );
-    gl.glUniformMatrix4fv(
-      gl.glGetUniformLocation(shader_map_instance[renderable->shader], "proj"),
-      1,
-      false,
-      // mat4_make().data
-      camera_projection(&scene->camera).data
-    );
-    gl.glUniformMatrix4fv(
-      gl.glGetUniformLocation(shader_map_instance[renderable->shader], "model"),
-      1,
-      false,
-      model->matrix.data
-    );
+    auto* draw_call = array_get(renderer_queue_instance, draw_call_idx);
+    auto* model = assets_get_model(draw_call->model_handle);
 
     for (usize mesh_idx = 0; mesh_idx < model->meshes.size; ++mesh_idx)
     {
       auto* mesh = assets_get_mesh(*array_get(&model->meshes, mesh_idx));
+      auto* material = assets_get_material(mesh->material);
+
+      gl.glUseProgram(shader_map_instance[material->shader]);
+      gl.glUniformMatrix4fv(
+        gl.glGetUniformLocation(shader_map_instance[material->shader], "model"),
+        1,
+        false,
+        draw_call->model.data
+      );
+      gl.glUniformMatrix4fv(
+        gl.glGetUniformLocation(shader_map_instance[material->shader], "view"),
+        1,
+        false,
+        draw_call->view.data
+      );
+      gl.glUniformMatrix4fv(
+        gl.glGetUniformLocation(shader_map_instance[material->shader], "proj"),
+        1,
+        false,
+        draw_call->projection.data
+      );
+
       gl.glActiveTexture(GL_TEXTURE0);
       auto texture_id = assets_get_texture(assets_get_material(mesh->material)->texture)->id;
       gl.glBindTexture(GL_TEXTURE_2D, texture_id);
-      gl.glUniform1i(gl.glGetUniformLocation(shader_map_instance[renderable->shader], "sampler"), 0);
+      gl.glUniform1i(gl.glGetUniformLocation(shader_map_instance[material->shader], "sampler"), 0);
       gl.glBindVertexArray(mesh->vao);
       gl.glDrawElements(GL_TRIANGLES, (GLsizei) mesh->indices.size, GL_UNSIGNED_INT, nullptr);
     }
   }
+  renderer_queue_instance->size = 0;
 }

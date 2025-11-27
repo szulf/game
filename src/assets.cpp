@@ -123,7 +123,8 @@ static void obj_parse_mtl_file(const char* path, Allocator* allocator, Error* ou
   for (usize i = 0; i < lines.size; ++i)
   {
     const auto* line = array_get(&lines, i);
-    switch (string_get(line, 0)) {
+    switch (string_get(line, 0))
+    {
       case 'n':
       {
         auto parts = string_split(line, ' ', scratch_arena.allocator);
@@ -141,14 +142,18 @@ static void obj_parse_mtl_file(const char* path, Allocator* allocator, Error* ou
           parsing = true;
           material_name = string_copy(array_get(&parts, 1), allocator);
         }
-      } break;
+      }
+      break;
 
-      case 'm': {
-        if (!parsing) {
+      case 'm':
+      {
+        if (!parsing)
+        {
           continue;
         }
         auto parts = string_split(line, ' ', scratch_arena.allocator);
-        if (parts.size != 2) {
+        if (parts.size != 2)
+        {
           continue;
         }
         if (!equal(array_get(&parts, 0), "map_Kd"))
@@ -160,7 +165,11 @@ static void obj_parse_mtl_file(const char* path, Allocator* allocator, Error* ou
         Material mat = {};
         if (!assets_texture_handle_exists(&texture_file_path))
         {
-          auto img = image_from_file(string_to_cstr(&texture_file_path, scratch_arena.allocator), scratch_arena.allocator, &error);
+          auto img = image_from_file(
+            string_to_cstr(&texture_file_path, scratch_arena.allocator),
+            scratch_arena.allocator,
+            &error
+          );
           // TODO(szulf): do i want to initialize it with an error image here instead?
           if (error != SUCCESS)
           {
@@ -172,13 +181,18 @@ static void obj_parse_mtl_file(const char* path, Allocator* allocator, Error* ou
           auto texture_handle = assets_set_texture(&texture);
           assets_texture_handle_set(&allocated_texture_file_path, texture_handle);
           mat.texture = texture_handle;
-        } else {
+        }
+        else
+        {
           auto texture_handle = assets_texture_handle_get(&texture_file_path);
           mat.texture = texture_handle;
         }
+        // TODO(szulf): how to correctly initialize the shader in the future? for now hardcoded
+        mat.shader = SHADER_DEFAULT;
         auto material_handle = assets_set_material(&mat);
         assets_material_handle_set(&material_name, material_handle);
-      } break;
+      }
+      break;
     }
   }
 }
@@ -202,21 +216,27 @@ static void obj_parse_vertex(f32* points, usize points_size, const String* line,
   }
 }
 
-static Mesh obj_parse_object(ObjContext* ctx, Error* out_error) {
+static Mesh obj_parse_object(ObjContext* ctx, Error* out_error)
+{
   Error error = SUCCESS;
   usize indices_amount = 0;
   b8 parsing = true;
   auto idx_old = ctx->idx;
-  for (; parsing && ctx->idx < ctx->lines.size; ++ctx->idx) {
+  for (; parsing && ctx->idx < ctx->lines.size; ++ctx->idx)
+  {
     switch (string_get(array_get(&ctx->lines, ctx->idx), 0))
     {
-      case 'f': {
+      case 'f':
+      {
         indices_amount += 3;
-      } break;
+      }
+      break;
       case 'o':
-      case 'g': {
+      case 'g':
+      {
         parsing = false;
-      } break;
+      }
+      break;
     }
   }
   ctx->idx = idx_old;
@@ -229,19 +249,24 @@ static Mesh obj_parse_object(ObjContext* ctx, Error* out_error) {
 
   parsing = true;
   usize back_idx = 0;
-  for (; parsing && ctx->idx < ctx->lines.size; ++ctx->idx) {
+  for (; parsing && ctx->idx < ctx->lines.size; ++ctx->idx)
+  {
     auto* line = array_get(&ctx->lines, ctx->idx);
-    switch (string_get(line, 0)) {
-      case 'f': {
+    switch (string_get(line, 0))
+    {
+      case 'f':
+      {
         const auto splits = string_split(line, ' ', scratch_arena.allocator);
-        for (usize i = 1; i < splits.size; ++i) {
+        for (usize i = 1; i < splits.size; ++i)
+        {
           u32 indices[3];
           usize idx = 0;
           const auto parts = string_split(array_get(&splits, i), '/', scratch_arena.allocator);
           for (usize part_idx = 0; part_idx < parts.size; ++part_idx)
           {
             auto num = string_parse_u32(array_get(&parts, part_idx), &error);
-            if (error != SUCCESS) {
+            if (error != SUCCESS)
+            {
               *out_error = error;
               return {};
             }
@@ -255,49 +280,65 @@ static Mesh obj_parse_object(ObjContext* ctx, Error* out_error) {
           if (map_contains(&ctx->vertex_map, &vertex))
           {
             array_push(&mesh_indices, (u32*) map_get(&ctx->vertex_map, &vertex));
-          } else {
+          }
+          else
+          {
             map_set(&ctx->vertex_map, &vertex, &mesh_vertices.size);
             array_push(&mesh_indices, (u32*) &mesh_vertices.size);
             array_push(&mesh_vertices, &vertex);
           }
         }
-      } break;
+      }
+      break;
 
-      case 'v': {
-        switch (string_get(line, 1)) {
-          case ' ': {
+      case 'v':
+      {
+        switch (string_get(line, 1))
+        {
+          case ' ':
+          {
             f32 points[3];
             obj_parse_vertex(points, 3, line, &error);
-            if (error != SUCCESS) {
+            if (error != SUCCESS)
+            {
               *out_error = error;
               return {};
             }
             array_push_rvalue(&ctx->positions, {points[0], points[1], points[2]});
-          } break;
+          }
+          break;
 
-          case 'n': {
+          case 'n':
+          {
             f32 points[3];
             obj_parse_vertex(points, 3, line, &error);
-            if (error != SUCCESS) {
+            if (error != SUCCESS)
+            {
               *out_error = error;
               return {};
             }
             array_push_rvalue(&ctx->normals, {points[0], points[1], points[2]});
-          } break;
+          }
+          break;
 
-          case 't': {
+          case 't':
+          {
             f32 points[2];
             obj_parse_vertex(points, 2, line, &error);
-            if (error != SUCCESS) {
+            if (error != SUCCESS)
+            {
               *out_error = error;
               return {};
             }
             array_push_rvalue(&ctx->uvs, {points[0], points[1]});
-          } break;
+          }
+          break;
         }
-      } break;
+      }
+      break;
 
-      case 'u': {
+      case 'u':
+      {
         const auto parts = string_split(line, ' ', scratch_arena.allocator);
         if (parts.size != 2 || !equal(array_get(&parts, 0), "usemtl"))
         {
@@ -306,13 +347,16 @@ static Mesh obj_parse_object(ObjContext* ctx, Error* out_error) {
         }
         ASSERT(assets_material_handle_exists(array_get(&parts, 1)), "material with name {} does not exist");
         mesh_material_handle = assets_material_handle_get(array_get(&parts, 1));
-      } break;
+      }
+      break;
 
       case 'g':
-      case 'o': {
+      case 'o':
+      {
         parsing = false;
         ctx->idx = back_idx;
-      } break;
+      }
+      break;
     }
     back_idx = ctx->idx;
   }
@@ -320,7 +364,8 @@ static Mesh obj_parse_object(ObjContext* ctx, Error* out_error) {
   return mesh_make(&mesh_vertices, &mesh_indices, mesh_material_handle);
 }
 
-ModelHandle assets_load_model(const char* path, Allocator* allocator, Error* out_error) {
+ModelHandle assets_load_model(const char* path, Allocator* allocator, Error* out_error)
+{
   Error error = SUCCESS;
   Model model = {};
   model.matrix = mat4_make();
@@ -335,38 +380,53 @@ ModelHandle assets_load_model(const char* path, Allocator* allocator, Error* out
     *out_error = GLOBAL_ERROR_NOT_FOUND;
     return {};
   }
-  auto file = string_make_len((const char*) file_ptr , file_size);
+  auto file = string_make_len((const char*) file_ptr, file_size);
   ctx.lines = string_split(&file, '\n', scratch_arena.allocator);
 
   usize vertex_count = 0;
   for (usize i = 0; i < ctx.lines.size; ++i)
   {
     const auto* line = array_get(&ctx.lines, i);
-    if (line->size < 2) {
+    if (line->size < 2)
+    {
       *out_error = GLOBAL_ERROR_INVALID_DATA;
       return {};
     }
-    switch (string_get(line, 0)) {
+    switch (string_get(line, 0))
+    {
       case 'g':
-      case 'o': {
+      case 'o':
+      {
         ++ctx.mesh_count;
-      } break;
-      case 'v': {
-        switch (string_get(line, 1)) {
-          case ' ': {
+      }
+      break;
+      case 'v':
+      {
+        switch (string_get(line, 1))
+        {
+          case ' ':
+          {
             ++ctx.pos_count;
-          } break;
-          case 'n': {
+          }
+          break;
+          case 'n':
+          {
             ++ctx.normal_count;
-          } break;
-          case 't': {
+          }
+          break;
+          case 't':
+          {
             ++ctx.uv_count;
-          } break;
+          }
+          break;
         }
-      } break;
-      case 'f': {
+      }
+      break;
+      case 'f':
+      {
         vertex_count += 3;
-      } break;
+      }
+      break;
     }
   }
 
@@ -376,23 +436,29 @@ ModelHandle assets_load_model(const char* path, Allocator* allocator, Error* out
   ctx.uvs = array_make<Vec2>(ctx.uv_count, scratch_arena.allocator);
   ctx.vertex_map = map_make<Vertex, usize>(vertex_count * 3, scratch_arena.allocator);
 
-  for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx) {
+  for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx)
+  {
     auto* line = array_get(&ctx.lines, ctx.idx);
-    switch (string_get(line, 0)) {
+    switch (string_get(line, 0))
+    {
       case 'o':
-      case 'g': {
+      case 'g':
+      {
         ++ctx.idx;
         auto mesh = obj_parse_object(&ctx, &error);
-        if (error != SUCCESS) {
+        if (error != SUCCESS)
+        {
           *out_error = error;
           return {};
         }
         auto mesh_handle = assets_set_mesh(&mesh);
         array_push(&model.meshes, &mesh_handle);
         --ctx.idx;
-      } break;
+      }
+      break;
 
-      case 'm': {
+      case 'm':
+      {
         auto parts = string_split(line, ' ', scratch_arena.allocator);
         if (parts.size != 2 || !equal(array_get(&parts, 0), "mtllib"))
         {
@@ -407,10 +473,10 @@ ModelHandle assets_load_model(const char* path, Allocator* allocator, Error* out
           *out_error = error;
           return {};
         }
-      } break;
+      }
+      break;
     }
   }
 
   return assets_set_model(&model);
 }
-

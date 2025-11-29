@@ -1,11 +1,12 @@
 #ifndef GL_FUNCTIONS_H
 #define GL_FUNCTIONS_H
 
-#include "GL/glcorearb.h"
+#include <GL/glcorearb.h>
 #include <GL/glx.h>
 
 extern "C" struct OpenGLAPI
 {
+  PFNGLVIEWPORTPROC glViewport;
   PFNGLGENTEXTURESPROC glGenTextures;
   PFNGLBINDTEXTUREPROC glBindTexture;
   PFNGLTEXPARAMETERIPROC glTexParameteri;

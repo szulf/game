@@ -4,7 +4,7 @@
 template <typename K, typename V>
 struct MapEntry
 {
-  b8 set;
+  bool set;
   K key;
   V value;
 };
@@ -17,14 +17,14 @@ struct Map
 };
 
 template <typename K, typename V>
-Map<K, V> map_make(usize cap, Allocator* allocator);
+Map<K, V> map_make(usize cap, Allocator& allocator);
 template <typename K, typename V>
-const V* map_get(const Map<K, V>* map, const K* key);
+V* map_get(const Map<K, V>& map, const K& key);
 template <typename K, typename V>
-const MapEntry<K, V>* map_entry(const Map<K, V>* map, const K* key);
+const MapEntry<K, V>* map_entry(const Map<K, V>& map, const K& key);
 template <typename K, typename V>
-void map_set(Map<K, V>* map, const K* key, const V* value);
+void map_set(Map<K, V>& map, const K& key, const V& value);
 template <typename K, typename V>
-b8 map_contains(const Map<K, V>* map, const K* key);
+bool map_contains(const Map<K, V>& map, const K& key);
 
 #endif

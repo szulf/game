@@ -17,17 +17,19 @@ usize usize_pow(usize base, usize exponent);
 i32 i32_abs(i32 value);
 
 f32 f32_max(f32 a, f32 b);
+f32 f32_min(f32 a, f32 b);
+f32 f32_clamp(f32 val, f32 a, f32 b);
 f32 f32_abs(f32 value);
-i32 f32_floor(f32 value);
-i32 f32_ceil(f32 value);
+f32 f32_floor(f32 value);
+f32 f32_ceil(f32 value);
+f32 f32_round(f32 value);
 f32 f32_sqrt(f32 value);
 f32 f32_sin(f32 value);
 f32 f32_cos(f32 value);
 f32 f32_tan(f32 value);
 f32 f32_radians(f32 deg);
 
-template <>
-b8 equal(const f32* a, const f32* b);
+bool f32_equal(f32 a, f32 b);
 
 u64 u64_random();
 
@@ -37,8 +39,7 @@ struct Vec2
   f32 y;
 };
 
-template <>
-b8 equal(const Vec2* va, const Vec2* vb);
+bool operator==(const Vec2& va, const Vec2& vb);
 
 struct Vec3
 {
@@ -47,14 +48,21 @@ struct Vec3
   f32 z;
 };
 
-f32 vec3_len(const Vec3* vec);
-Vec3 vec3_normalize(const Vec3* vec);
-Vec3 vec3_negate(const Vec3* vec);
-f32 vec3_dot(const Vec3* va, const Vec3* vb);
-Vec3 vec3_cross(const Vec3* va, const Vec3* vb);
+Vec3 operator-(const Vec3& vec);
+Vec3 operator+(const Vec3& va, const Vec3& vb);
+Vec3 operator-(const Vec3& va, const Vec3& vb);
+Vec3 operator*(const Vec3& va, f32 scalar);
+Vec3& operator+=(Vec3& va, const Vec3& vb);
+Vec3& operator-=(Vec3& va, const Vec3& vb);
+Vec3& operator*=(const Vec3& va, f32 scalar);
 
-template <>
-b8 equal(const Vec3* va, const Vec3* vb);
+f32 vec3_len(const Vec3& vec);
+Vec3 vec3_normalize(const Vec3& vec);
+f32 vec3_dot(const Vec3& va, const Vec3& vb);
+Vec3 vec3_cross(const Vec3& va, const Vec3& vb);
+Vec3 vec3_multiply(const Vec3& va, const Vec3& vb);
+
+bool operator==(const Vec3& va, const Vec3& vb);
 
 struct Mat4
 {
@@ -64,7 +72,7 @@ struct Mat4
 Mat4 mat4_make();
 Mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far);
 
-void mat4_scale(Mat4* mat, f32 scale);
-void mat4_translate(Mat4* mat, const Vec3* position);
+void mat4_scale(Mat4& mat, f32 scale);
+void mat4_translate(Mat4& mat, const Vec3& position);
 
 #endif

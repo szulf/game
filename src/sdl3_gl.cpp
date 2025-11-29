@@ -23,7 +23,7 @@ void* read_file(const char* filepath, Allocator* allocator, usize* out_size)
   {
     return nullptr;
   }
-  void* file = alloc(allocator, *out_size);
+  void* file = alloc(*allocator, *out_size);
   if (!SDL_ReadStorageFile(storage, filepath, file, *out_size))
   {
     return nullptr;
@@ -65,8 +65,41 @@ static Key key_from_sdlk(SDL_Keycode key)
       return KEY_A;
     case SDLK_D:
       return KEY_D;
+    case SDLK_SPACE:
+      return KEY_SPACE;
+    case SDLK_LSHIFT:
+      return KEY_LSHIFT;
+    case SDLK_F1:
+      return KEY_F1;
   }
   return (Key) 0;
+}
+
+static SDL_Keycode sdlk_from_key(Key key)
+{
+  switch (key)
+  {
+    case KEY_W:
+      return SDLK_W;
+    case KEY_S:
+      return SDLK_S;
+    case KEY_A:
+      return SDLK_A;
+    case KEY_D:
+      return SDLK_D;
+    case KEY_SPACE:
+      return SDLK_SPACE;
+    case KEY_LSHIFT:
+      return SDLK_LSHIFT;
+    case KEY_F1:
+      return SDLK_F1;
+    case KEY_COUNT:
+    {
+      ASSERT(false, "this should never happen");
+    }
+    break;
+  }
+  return (SDL_Keycode) -1;
 }
 
 i32 main()
@@ -88,6 +121,7 @@ i32 main()
   SDL_Window* window =
     SDL_CreateWindow(spec.name, (i32) spec.width, (i32) spec.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
   ASSERT(window, "failed to create sdl3 window");
+  SDL_HideCursor();
 
 #ifdef GAME_DEBUG
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -114,13 +148,15 @@ i32 main()
   memory.size = spec.memory_size;
   memory.memory = malloc(memory.size);
 
+  GameInput input = {};
+
   SDL_PathInfo game_lib_info = {};
   SDL_GetPathInfo("./build/libgame.so", &game_lib_info);
 
   game.apis(&gl_api, &platform_api);
-  game.init(&memory);
+  game.init(&memory, &input);
 
-  b8 running = true;
+  bool running = true;
   u64 accumulator = 0;
   auto last_time = SDL_GetTicks();
   while (running)
@@ -129,6 +165,8 @@ i32 main()
     auto dt = time - last_time;
     last_time = time;
     accumulator += dt;
+
+    SDL_WarpMouseInWindow(window, (f32) g_width / 2.0f, (f32) g_height / 2.0f);
 
 #ifdef MODE_DEBUG
     // TODO(szulf): maybe dont do this every frame, but once every 5/10 frames or so
@@ -164,7 +202,6 @@ i32 main()
         {
           g_width = (u32) e.window.data1;
           g_height = (u32) e.window.data2;
-          glViewport(0, 0, e.window.data1, e.window.data2);
           Event event = {};
           event.type = EVENT_TYPE_WINDOW_RESIZE;
           event.data.window_resize = {g_width, g_height};
@@ -173,24 +210,49 @@ i32 main()
         break;
         case SDL_EVENT_KEY_DOWN:
         {
-          auto key = key_from_sdlk(e.key.key);
-          if (key == (Key) 0)
+          if (e.key.key == sdlk_from_key(input.toggle_debug_mode_key))
           {
-            continue;
+            input.toggle_debug_mode = true;
           }
-          Event event = {};
-          event.type = EVENT_TYPE_KEYDOWN;
-          event.data.keydown = {key};
-          game.event(&memory, &event);
+        }
+        break;
+        case SDL_EVENT_MOUSE_MOTION:
+        {
+          input.mouse_relative = {e.motion.xrel, e.motion.yrel};
         }
         break;
       }
     }
 
+    {
+      const bool* key_states = SDL_GetKeyboardState(nullptr);
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_front_key), nullptr)])
+      {
+        input.move.z = -1.0f;
+      }
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_back_key), nullptr)])
+      {
+        input.move.z = 1.0f;
+      }
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_left_key), nullptr)])
+      {
+        input.move.x = -1.0f;
+      }
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_right_key), nullptr)])
+      {
+        input.move.x = 1.0f;
+      }
+      input.move = vec3_normalize(input.move);
+    }
+
     while (accumulator >= MSPT)
     {
-      game.update(&memory, 1.0f / TPS);
+      game.update(&memory, &input, 1.0f / TPS);
       accumulator -= MSPT;
+
+      input.move = {};
+      input.toggle_debug_mode = false;
+      input.mouse_pos_last = input.mouse_pos;
     }
 
     game.render(&memory);

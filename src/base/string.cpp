@@ -1,5 +1,11 @@
 #include "string.h"
 
+force_inline char String::operator[](usize idx) const
+{
+  ASSERT(idx < size, "string index out of bounds");
+  return data[idx];
+}
+
 usize cstr_len(const char* cstr)
 {
   const char* s;
@@ -25,12 +31,12 @@ String string_make_len(const char* cstr, usize len)
   return s;
 }
 
-usize string_count_chars(const String* str, char c)
+usize string_count_chars(const String& str, char c)
 {
   usize count = 0;
-  for (usize i = 0; i < str->size; ++i)
+  for (usize i = 0; i < str.size; ++i)
   {
-    if (string_get(str, i) == c)
+    if (str[i] == c)
     {
       ++count;
     }
@@ -38,12 +44,12 @@ usize string_count_chars(const String* str, char c)
   return count;
 }
 
-usize string_find_char(const String* str, char c, usize start_idx)
+usize string_find_char(const String& str, char c, usize start_idx)
 {
-  ASSERT(start_idx < str->size, "start_idx is out of bounds");
-  for (usize i = start_idx; i < str->size; ++i)
+  ASSERT(start_idx < str.size, "start_idx is out of bounds");
+  for (usize i = start_idx; i < str.size; ++i)
   {
-    if (string_get(str, i) == c)
+    if (str[i] == c)
     {
       return i;
     }
@@ -51,33 +57,33 @@ usize string_find_char(const String* str, char c, usize start_idx)
   return (usize) -1;
 }
 
-String string_append_cstr(const String* str, const char* cstr, Allocator* allocator)
+String string_append_cstr(const String& str, const char* cstr, Allocator& allocator)
 {
   usize cstr_size = cstr_len(cstr);
-  char* out = (char*) alloc(allocator, str->size + cstr_size);
-  mem_copy(out, str->data, str->size);
-  mem_copy(out + str->size, cstr, cstr_size);
-  return string_make_len(out, str->size + cstr_size);
+  char* out = (char*) alloc(allocator, str.size + cstr_size);
+  mem_copy(out, str.data, str.size);
+  mem_copy(out + str.size, cstr, cstr_size);
+  return string_make_len(out, str.size + cstr_size);
 }
 
-String string_append_str(const String* s1, const String* s2, Allocator* allocator)
+String string_append_str(const String& s1, const String& s2, Allocator& allocator)
 {
-  char* out = (char*) alloc(allocator, s1->size + s2->size);
-  mem_copy(out, s1->data, s1->size);
-  mem_copy(out + s1->size, s2->data, s2->size);
-  return string_make_len(out, s1->size + s2->size);
+  char* out = (char*) alloc(allocator, s1.size + s2.size);
+  mem_copy(out, s1.data, s1.size);
+  mem_copy(out + s1.size, s2.data, s2.size);
+  return string_make_len(out, s1.size + s2.size);
 }
 
-const char* string_to_cstr(const String* str, Allocator* allocator)
+const char* string_to_cstr(const String& str, Allocator& allocator)
 {
-  char* out = (char*) alloc(allocator, str->size + 1);
-  mem_copy(out, str->data, str->size);
-  out[str->size] = 0;
+  char* out = (char*) alloc(allocator, str.size + 1);
+  mem_copy(out, str.data, str.size);
+  out[str.size] = 0;
   return out;
 }
 
 // TODO(szulf): this whole implementation is kinda whacky but idc for now
-Array<String> string_split(const String* str, char c, Allocator* allocator)
+Array<String> string_split(const String& str, char c, Allocator& allocator)
 {
   usize splits_count = string_count_chars(str, c) + 1;
   auto splits = array_make<String>(splits_count, allocator);
@@ -86,35 +92,35 @@ Array<String> string_split(const String* str, char c, Allocator* allocator)
   for (usize found_idx = string_find_char(str, c, start_idx); found_idx != (usize) -1;
        found_idx = string_find_char(str, c, start_idx))
   {
-    auto s = string_make_len(str->data + start_idx, found_idx - start_idx);
+    auto s = string_make_len(str.data + start_idx, found_idx - start_idx);
     start_idx = found_idx + 1;
     if (s.size != 0)
     {
-      array_push(&splits, &s);
+      array_push(splits, s);
     }
-    if (start_idx >= str->size)
+    if (start_idx >= str.size)
     {
       break;
     }
   }
 
-  if (str->size - start_idx > 0)
+  if (str.size - start_idx > 0)
   {
-    auto s = string_make_len(str->data + start_idx, str->size - start_idx);
-    array_push(&splits, &s);
+    auto s = string_make_len(str.data + start_idx, str.size - start_idx);
+    array_push(splits, s);
   }
 
   return splits;
 }
 
-String string_copy(const String* str, Allocator* allocator)
+String string_copy(const String& str, Allocator& allocator)
 {
-  return string_make_len(string_to_cstr(str, allocator), str->size);
+  return string_make_len(string_to_cstr(str, allocator), str.size);
 }
 
-f32 string_parse_f32(const String* str, Error* out_error)
+f32 string_parse_f32(const String& str, Error& out_error)
 {
-  const char* s = str->data;
+  const char* s = str.data;
 
   f32 sign = 1.0f;
   if (*s == '-')
@@ -127,17 +133,17 @@ f32 string_parse_f32(const String* str, Error* out_error)
     ++s;
   }
 
-  b8 is_fraction = false;
+  bool is_fraction = false;
   f32 val = 0.0f;
   f32 frac = 0.0f;
   f32 divisor = 1.0f;
-  while (s < str->data + str->size)
+  while (s < str.data + str.size)
   {
     if (*s == '.')
     {
       if (is_fraction)
       {
-        *out_error = GLOBAL_ERROR_INVALID_DATA;
+        out_error = GLOBAL_ERROR_INVALID_DATA;
         return 0.0f;
       }
       is_fraction = true;
@@ -145,7 +151,7 @@ f32 string_parse_f32(const String* str, Error* out_error)
     }
     if (*s < '0' && *s > '9')
     {
-      *out_error = GLOBAL_ERROR_INVALID_DATA;
+      out_error = GLOBAL_ERROR_INVALID_DATA;
       return 0.0f;
     }
     if (!is_fraction)
@@ -163,16 +169,16 @@ f32 string_parse_f32(const String* str, Error* out_error)
   return sign * (val + frac);
 }
 
-u32 string_parse_u32(const String* str, Error* out_error)
+u32 string_parse_u32(const String& str, Error& out_error)
 {
-  const char* s = str->data;
+  const char* s = str.data;
 
   u32 val = 0;
-  while (s < str->data + str->size)
+  while (s < str.data + str.size)
   {
     if (*s < '0' && *s > '9')
     {
-      *out_error = GLOBAL_ERROR_INVALID_DATA;
+      out_error = GLOBAL_ERROR_INVALID_DATA;
       return 0;
     }
     val = val * 10u + static_cast<u32>(*s - '0');
@@ -182,34 +188,40 @@ u32 string_parse_u32(const String* str, Error* out_error)
   return val;
 }
 
+force_inline bool operator==(const String& s1, const String& s2)
+{
+  return s1.size == s2.size && mem_equal(s1.data, s2.data, s1.size);
+}
+
+force_inline bool operator==(const String& s1, const char* cstr)
+{
+  return s1.size == cstr_len(cstr) && mem_equal(s1.data, cstr, s1.size);
+}
+
+force_inline bool operator==(const char* cstr, const String& s1)
+{
+  return s1.size == cstr_len(cstr) && mem_equal(s1.data, cstr, s1.size);
+}
+
+force_inline bool operator!=(const String& sa, const String& sb)
+{
+  return !(sa == sb);
+}
+
+force_inline bool operator!=(const String& str, const char* cstr)
+{
+  return !(str == cstr);
+}
+
+force_inline bool operator!=(const char* cstr, const String& str)
+{
+  return !(str == cstr);
+}
+
 template <>
-usize hash<String>(const String* v)
+usize hash<String>(const String& v)
 {
   usize hash = 0;
-  mem_hash_fnv1(&hash, v->data, v->size);
+  mem_hash_fnv1(hash, v.data, v.size);
   return hash;
-}
-
-force_inline char string_get(const String* str, usize idx)
-{
-  ASSERT(idx < str->size, "string index out of bounds");
-  return str->data[idx];
-}
-
-template <>
-force_inline b8 equal(const String* s1, const String* s2)
-{
-  return s1->size == s2->size && mem_equal(s1->data, s2->data, s1->size);
-}
-
-template <>
-force_inline b8 equal(const String* s1, const char* cstr)
-{
-  return s1->size == cstr_len(cstr) && mem_equal(s1->data, cstr, s1->size);
-}
-
-template <>
-force_inline b8 equal(const char* cstr, const String* s1)
-{
-  return s1->size == cstr_len(cstr) && mem_equal(s1->data, cstr, s1->size);
 }

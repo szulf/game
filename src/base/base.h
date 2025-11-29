@@ -26,11 +26,6 @@ typedef ptrdiff_t isize;
 typedef float f32;
 typedef double f64;
 
-typedef u8 b8;
-typedef u16 b16;
-typedef u32 b32;
-typedef u64 b64;
-
 #define U8_MIN 0u
 #define U8_MAX 0xffu
 #define U16_MIN 0u
@@ -187,11 +182,8 @@ typedef u32 Error;
     while (0)
 #endif
 
-template <typename T1, typename T2>
-b8 equal(const T1* v1, const T2* v2);
-
 template <typename T>
-usize hash(const T* value);
+usize hash(const T& value);
 
 #include "math.cpp"
 #include "memory.cpp"

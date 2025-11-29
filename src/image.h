@@ -27,7 +27,7 @@ struct Image
   usize height;
 };
 
-Image image_from_file(const char* path, Allocator* allocator, Error* out_error);
+Image image_from_file(const char* path, Allocator& allocator, Error& out_error);
 Image image_error_placeholder();
 
 #endif

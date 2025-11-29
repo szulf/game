@@ -5,9 +5,7 @@
 
 // NOTE(szulf): specialization needed for handles to work correctly
 template <>
-b8 equal(const u64* v1, const u64* v2);
-template <>
-usize hash(const u64* value);
+usize hash(const u64& value);
 
 enum Shader
 {
@@ -38,9 +36,8 @@ struct Vertex
 };
 
 template <>
-usize hash(const Vertex* vertex);
-template <>
-b8 equal(const Vertex* va, const Vertex* vb);
+usize hash(const Vertex& vertex);
+bool operator==(const Vertex& va, const Vertex& vb);
 
 typedef u64 TextureHandle;
 typedef u64 MaterialHandle;
@@ -52,7 +49,7 @@ struct Texture
   u32 id;
 };
 
-Texture texture_make(const Image* img);
+Texture texture_make(const Image& img);
 
 struct Material
 {
@@ -70,7 +67,7 @@ struct Mesh
   MaterialHandle material;
 };
 
-Mesh mesh_make(const Array<Vertex>* vertices, const Array<u32>* indices, MaterialHandle material);
+Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, MaterialHandle material);
 
 struct Model
 {
@@ -85,6 +82,7 @@ struct Renderable
 };
 
 static const Vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
+#define CAMERA_SPEED 2.5f
 
 struct Camera
 {
@@ -104,10 +102,10 @@ struct Camera
   u32 viewport_height;
 };
 
-Camera camera_make(const Vec3* pos, u32 width, u32 height);
+void camera_update_vectors(Camera& camera);
 
-Mat4 camera_look_at(const Camera* camera);
-Mat4 camera_projection(const Camera* camera);
+Mat4 camera_look_at(const Camera& camera);
+Mat4 camera_projection(const Camera& camera);
 
 struct Scene
 {
@@ -127,10 +125,10 @@ struct DrawCall
   ModelHandle model_handle;
 };
 
-void renderer_init(Allocator* allocator);
+void renderer_init();
 void renderer_clear_screen();
-// TODO(szulf): i feel like this abstraction is really bad, figure something out later, for now moving on
-void renderer_queue_draw_call(const DrawCall* scene);
+void renderer_window_resize(u32 width, u32 height);
+void renderer_queue_draw_call(const DrawCall& scene);
 void renderer_draw();
 
 #endif

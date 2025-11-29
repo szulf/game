@@ -3,7 +3,6 @@ extern "C"
   enum EventType
   {
     EVENT_TYPE_WINDOW_RESIZE,
-    EVENT_TYPE_KEYDOWN,
   };
 
   enum Key
@@ -12,6 +11,9 @@ extern "C"
     KEY_S,
     KEY_A,
     KEY_D,
+    KEY_F1,
+    KEY_SPACE,
+    KEY_LSHIFT,
     KEY_COUNT,
   };
 
@@ -21,19 +23,12 @@ extern "C"
     u32 height;
   };
 
-  struct Keydown
-  {
-    Key key;
-  };
-
-  // TODO(szulf): make this the tagged union
   struct Event
   {
     EventType type;
     union
     {
       WindowResize window_resize;
-      Keydown keydown;
     } data;
   };
 }

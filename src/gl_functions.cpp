@@ -4,6 +4,7 @@
 
 void setup_gl_functions(OpenGLAPI* api)
 {
+  api->glViewport = (PFNGLVIEWPORTPROC) SDL_GL_GetProcAddress("glViewport");
   api->glGenTextures = (PFNGLGENTEXTURESPROC) SDL_GL_GetProcAddress("glGenTextures");
   api->glBindTexture = (PFNGLBINDTEXTUREPROC) SDL_GL_GetProcAddress("glBindTexture");
   api->glTexParameteri = (PFNGLTEXPARAMETERIPROC) SDL_GL_GetProcAddress("glTexParameteri");

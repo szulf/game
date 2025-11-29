@@ -7,6 +7,12 @@ enum EntityType
 {
   ENTITY_TYPE_PLAYER,
   ENTITY_TYPE_STATIC_COLLISION,
+  ENTITY_TYPE_INTERACTABLE,
+};
+
+enum InteractableType
+{
+  INTERACTABLE_TYPE_LIGHT_BULB,
 };
 
 struct Entity
@@ -19,6 +25,9 @@ struct Entity
 
   bool has_model;
   ModelHandle model;
+
+  // TODO(szulf): is this a good idea?
+  InteractableType interactable_type;
 };
 
 // TODO(szulf): should this function be here?

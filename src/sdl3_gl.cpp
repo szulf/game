@@ -53,28 +53,6 @@ GameAPI load_game_api()
   return out;
 }
 
-static Key key_from_sdlk(SDL_Keycode key)
-{
-  switch (key)
-  {
-    case SDLK_W:
-      return KEY_W;
-    case SDLK_S:
-      return KEY_S;
-    case SDLK_A:
-      return KEY_A;
-    case SDLK_D:
-      return KEY_D;
-    case SDLK_SPACE:
-      return KEY_SPACE;
-    case SDLK_LSHIFT:
-      return KEY_LSHIFT;
-    case SDLK_F1:
-      return KEY_F1;
-  }
-  return (Key) 0;
-}
-
 static SDL_Keycode sdlk_from_key(Key key)
 {
   switch (key)
@@ -87,17 +65,14 @@ static SDL_Keycode sdlk_from_key(Key key)
       return SDLK_A;
     case KEY_D:
       return SDLK_D;
+    case KEY_E:
+      return SDLK_E;
     case KEY_SPACE:
       return SDLK_SPACE;
     case KEY_LSHIFT:
       return SDLK_LSHIFT;
     case KEY_F1:
       return SDLK_F1;
-    case KEY_COUNT:
-    {
-      ASSERT(false, "this should never happen");
-    }
-    break;
   }
   return (SDL_Keycode) -1;
 }
@@ -214,6 +189,10 @@ i32 main()
           {
             input.toggle_debug_mode = true;
           }
+          else if (e.key.key == sdlk_from_key(input.interact_key))
+          {
+            input.interact = true;
+          }
         }
         break;
         case SDL_EVENT_MOUSE_MOTION:
@@ -253,6 +232,7 @@ i32 main()
       input.move = {};
       input.toggle_debug_mode = false;
       input.mouse_pos_last = input.mouse_pos;
+      input.interact = false;
     }
 
     game.render(&memory);

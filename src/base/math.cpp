@@ -168,6 +168,11 @@ Vec3& operator*=(Vec3& vec, f32 scalar)
   return vec;
 }
 
+f32 vec3_len2(const Vec3& vec)
+{
+  return SQUARE(vec.x) + SQUARE(vec.y) + SQUARE(vec.z);
+}
+
 f32 vec3_len(const Vec3& vec)
 {
   return f32_sqrt(SQUARE(vec.x) + SQUARE(vec.y) + SQUARE(vec.z));
@@ -185,6 +190,11 @@ Vec3 vec3_normalize(const Vec3& vec)
   out.y = vec.y / len;
   out.z = vec.z / len;
   return out;
+}
+
+Vec3 vec3_abs(const Vec3& vec)
+{
+  return {f32_abs(vec.x), f32_abs(vec.y), f32_abs(vec.z)};
 }
 
 f32 vec3_dot(const Vec3& va, const Vec3& vb)

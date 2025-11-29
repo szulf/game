@@ -56,8 +56,10 @@ Vec3& operator+=(Vec3& va, const Vec3& vb);
 Vec3& operator-=(Vec3& va, const Vec3& vb);
 Vec3& operator*=(const Vec3& va, f32 scalar);
 
+f32 vec3_len2(const Vec3& vec);
 f32 vec3_len(const Vec3& vec);
 Vec3 vec3_normalize(const Vec3& vec);
+Vec3 vec3_abs(const Vec3& vec);
 f32 vec3_dot(const Vec3& va, const Vec3& vb);
 Vec3 vec3_cross(const Vec3& va, const Vec3& vb);
 Vec3 vec3_multiply(const Vec3& va, const Vec3& vb);

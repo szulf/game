@@ -11,10 +11,10 @@ extern "C"
     KEY_S,
     KEY_A,
     KEY_D,
+    KEY_E,
     KEY_F1,
     KEY_SPACE,
     KEY_LSHIFT,
-    KEY_COUNT,
   };
 
   struct WindowResize

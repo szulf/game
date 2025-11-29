@@ -37,17 +37,6 @@ extern "C"
     usize memory_size;
   };
 
-  enum GameAction
-  {
-    ACTION_MOVE_UP,
-    ACTION_MOVE_DOWN,
-    ACTION_MOVE_FRONT,
-    ACTION_MOVE_BACK,
-    ACTION_MOVE_LEFT,
-    ACTION_MOVE_RIGHT,
-    ACTION_TOGGLE_DEBUG_MODE,
-  };
-
   // NOTE(szulf): game input needs to know what keys to check, since there are rebindable keys
   struct GameInput
   {
@@ -63,6 +52,9 @@ extern "C"
     Vec2 mouse_pos;
     Vec2 mouse_relative;
     Vec2 mouse_pos_last;
+
+    Key interact_key;
+    bool interact;
   };
 
 #define SPEC_FN(name) void name(GameSpec* spec)

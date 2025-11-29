@@ -12,7 +12,21 @@ static OpenGLAPI gl;
 
 #include "entity.cpp"
 
+// TODO(szulf): collision checking for the light bulb
+
 // TODO(szulf): somehow strip debug mode from release builds
+
+enum GameAction
+{
+  ACTION_MOVE_UP,
+  ACTION_MOVE_DOWN,
+  ACTION_MOVE_FRONT,
+  ACTION_MOVE_BACK,
+  ACTION_MOVE_LEFT,
+  ACTION_MOVE_RIGHT,
+  ACTION_TOGGLE_DEBUG_MODE,
+  ACTION_INTERACT,
+};
 
 struct Main
 {
@@ -25,9 +39,6 @@ struct Main
 
   bool debug_mode;
 
-  // TODO(szulf): this is just wasteful, it should only contain ACTION_COUNT,
-  // but i dont know how to easily index it if it does
-  GameAction key_map[KEY_COUNT];
   Camera camera;
   // TODO(szulf): is a map to an array of entities by their type a good idea?
   Array<Entity> entities;
@@ -67,30 +78,44 @@ dll_export INIT_FN(init)
   // TODO(szulf): i dont really like this
   main.entities = array_make<Entity>(30, main.allocator);
 
-  Entity player = {};
-  auto player_model = assets_load_model("assets/bean.obj", main.allocator, error);
-  ASSERT(error == SUCCESS, "failed to load model");
-  player.position = {0.0f, 0.0f, 0.0f};
-  player.scale = 0.8f;
-  player.has_model = true;
-  player.model = player_model;
-  player.type = ENTITY_TYPE_PLAYER;
-  array_push(main.entities, player);
-
-  auto ground_model = assets_load_model("assets/cube.obj", main.allocator, error);
-  ASSERT(error == SUCCESS, "failed to load model");
-  for (i32 row = -2; row < 3; ++row)
+  // TODO(szulf): load all entities from a file
   {
-    for (i32 column = -2; column < 2; ++column)
+    Entity player = {};
+    auto player_model = assets_load_model("assets/bean.obj", main.allocator, error);
+    ASSERT(error == SUCCESS, "failed to load model");
+    player.position = {0.0f, 0.0f, 0.0f};
+    player.scale = 0.8f;
+    player.has_model = true;
+    player.model = player_model;
+    player.type = ENTITY_TYPE_PLAYER;
+    array_push(main.entities, player);
+
+    auto ground_model = assets_load_model("assets/cube.obj", main.allocator, error);
+    ASSERT(error == SUCCESS, "failed to load model");
+    for (i32 row = -2; row < 3; ++row)
     {
-      Entity ground = {};
-      ground.position = {(f32) row, -1.0f, (f32) column};
-      ground.scale = 1.0f;
-      ground.has_model = true;
-      ground.model = ground_model;
-      ground.type = ENTITY_TYPE_STATIC_COLLISION;
-      array_push(main.entities, ground);
+      for (i32 column = -2; column < 2; ++column)
+      {
+        Entity ground = {};
+        ground.position = {(f32) row, -1.0f, (f32) column};
+        ground.scale = 1.0f;
+        ground.has_model = true;
+        ground.model = ground_model;
+        ground.type = ENTITY_TYPE_STATIC_COLLISION;
+        array_push(main.entities, ground);
+      }
     }
+
+    Entity light_bulb = {};
+    auto light_bulb_model = assets_load_model("assets/light_bulb.obj", main.allocator, error);
+    ASSERT(error == SUCCESS, "failed to load model");
+    light_bulb.position = {-1.0f, 0.0f, 0.0f};
+    light_bulb.scale = 1.0f;
+    light_bulb.has_model = true;
+    light_bulb.model = light_bulb_model;
+    light_bulb.type = ENTITY_TYPE_INTERACTABLE;
+    light_bulb.interactable_type = INTERACTABLE_TYPE_LIGHT_BULB;
+    array_push(main.entities, light_bulb);
   }
 
   main.camera = {};
@@ -105,18 +130,13 @@ dll_export INIT_FN(init)
   main.camera.viewport_height = platform.get_height();
   camera_update_vectors(main.camera);
 
-  main.key_map[KEY_SPACE] = ACTION_MOVE_UP;
-  main.key_map[KEY_LSHIFT] = ACTION_MOVE_DOWN;
-  main.key_map[KEY_W] = ACTION_MOVE_FRONT;
+  // TODO(szulf): read from keymap file
   input->move_front_key = KEY_W;
-  main.key_map[KEY_S] = ACTION_MOVE_BACK;
   input->move_back_key = KEY_S;
-  main.key_map[KEY_A] = ACTION_MOVE_LEFT;
   input->move_left_key = KEY_A;
-  main.key_map[KEY_D] = ACTION_MOVE_RIGHT;
   input->move_right_key = KEY_D;
-  main.key_map[KEY_F1] = ACTION_TOGGLE_DEBUG_MODE;
   input->toggle_debug_mode_key = KEY_F1;
+  input->interact_key = KEY_E;
 }
 
 dll_export POST_RELOAD_FN(post_reload)
@@ -135,18 +155,29 @@ dll_export UPDATE_FN(update)
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   Array<Entity*> ground = array_make<Entity*>(30, scratch_arena.allocator);
+  Array<Entity*> interactables = array_make<Entity*>(30, scratch_arena.allocator);
   // TODO(szulf): i dont like that i have to iterate over the whole entities list to find anything
   // but maybe a more complex solution is not worth implementing as of now
   for (usize i = 0; i < main.entities.size; ++i)
   {
     auto& entity = main.entities[i];
-    if (entity.type == ENTITY_TYPE_PLAYER)
+    switch (entity.type)
     {
-      player = &entity;
-    }
-    if (entity.type == ENTITY_TYPE_STATIC_COLLISION)
-    {
-      array_push(ground, &entity);
+      case ENTITY_TYPE_PLAYER:
+      {
+        player = &entity;
+      }
+      break;
+      case ENTITY_TYPE_STATIC_COLLISION:
+      {
+        array_push(ground, &entity);
+      }
+      break;
+      case ENTITY_TYPE_INTERACTABLE:
+      {
+        array_push(interactables, &entity);
+      }
+      break;
     }
   }
 
@@ -182,8 +213,21 @@ dll_export UPDATE_FN(update)
     }
   }
 
-  unused(main);
-  unused(dt);
+  if (input->interact)
+  {
+    for (usize i = 0; i < interactables.size; ++i)
+    {
+      auto& interactable = *interactables[i];
+      f32 dist = vec3_len2(player->position - interactable.position);
+      if (dist < 1.0f)
+      {
+        if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
+        {
+          print("interacted with light bulb\n");
+        }
+      }
+    }
+  }
 }
 
 dll_export RENDER_FN(render)

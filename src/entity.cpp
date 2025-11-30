@@ -1,6 +1,14 @@
 #include "entity.h"
 
-DrawCall draw_call_make(const Entity& entity, const Camera& camera)
+bool collides(const Entity& ea, const Entity& eb)
+{
+  return ea.position.x - (ea.bounding_box_width / 2.0f) < eb.position.x + (eb.bounding_box_width / 2.0f) &&
+         ea.position.x + (ea.bounding_box_width / 2.0f) > eb.position.x - (eb.bounding_box_width / 2.0f) &&
+         ea.position.z - (ea.bounding_box_depth / 2.0f) < eb.position.z + (eb.bounding_box_depth / 2.0f) &&
+         ea.position.z + (ea.bounding_box_depth / 2.0f) > eb.position.z - (eb.bounding_box_depth / 2.0f);
+}
+
+DrawCall draw_call_entity(const Entity& entity, const Camera& camera)
 {
   if (!entity.has_model)
   {
@@ -9,8 +17,54 @@ DrawCall draw_call_make(const Entity& entity, const Camera& camera)
   DrawCall out = {};
   out.model_handle = entity.model;
   out.model = mat4_make();
-  // TODO(szulf): order of operations matter! is this the correct one?
   mat4_scale(out.model, entity.scale);
+  mat4_translate(out.model, entity.position);
+  out.view = camera_look_at(camera);
+  out.projection = camera_projection(camera);
+  return out;
+}
+
+static Vertex bounding_box_vertices[] = {
+  {{-0.500000, 0.500000, 0.500000},   {-1.000000, -0.000000, -0.000000}, {0.000000, 1.000000}},
+  {{-0.500000, -0.500000, -0.500000}, {-1.000000, -0.000000, -0.000000}, {1.000000, 0.000000}},
+  {{-0.500000, -0.500000, 0.500000},  {-1.000000, -0.000000, -0.000000}, {0.000000, 0.000000}},
+  {{-0.500000, 0.500000, -0.500000},  {-0.000000, -0.000000, -1.000000}, {0.000000, 1.000000}},
+  {{0.500000, -0.500000, -0.500000},  {-0.000000, -0.000000, -1.000000}, {1.000000, 0.000000}},
+  {{-0.500000, -0.500000, -0.500000}, {-0.000000, -0.000000, -1.000000}, {0.000000, 0.000000}},
+  {{0.500000, 0.500000, -0.500000},   {1.000000, -0.000000, -0.000000},  {1.000000, 1.000000}},
+  {{0.500000, -0.500000, 0.500000},   {1.000000, -0.000000, -0.000000},  {0.000000, 0.000000}},
+  {{0.500000, -0.500000, -0.500000},  {1.000000, -0.000000, -0.000000},  {1.000000, 0.000000}},
+  {{0.500000, 0.500000, 0.500000},    {-0.000000, -0.000000, 1.000000},  {1.000000, 1.000000}},
+  {{-0.500000, -0.500000, 0.500000},  {-0.000000, -0.000000, 1.000000},  {0.000000, 0.000000}},
+  {{0.500000, -0.500000, 0.500000},   {-0.000000, -0.000000, 1.000000},  {1.000000, 0.000000}},
+  {{0.500000, -0.500000, -0.500000},  {-0.000000, -1.000000, -0.000000}, {1.000000, 1.000000}},
+  {{-0.500000, -0.500000, 0.500000},  {-0.000000, -1.000000, -0.000000}, {0.000000, 0.000000}},
+  {{-0.500000, -0.500000, -0.500000}, {-0.000000, -1.000000, -0.000000}, {0.000000, 1.000000}},
+  {{-0.500000, 0.500000, -0.500000},  {-0.000000, 1.000000, -0.000000},  {0.000000, 1.000000}},
+  {{0.500000, 0.500000, 0.500000},    {-0.000000, 1.000000, -0.000000},  {1.000000, 0.000000}},
+  {{0.500000, 0.500000, -0.500000},   {-0.000000, 1.000000, -0.000000},  {1.000000, 1.000000}},
+  {{-0.500000, 0.500000, -0.500000},  {-1.000000, -0.000000, -0.000000}, {1.000000, 1.000000}},
+  {{0.500000, 0.500000, -0.500000},   {-0.000000, -0.000000, -1.000000}, {1.000000, 1.000000}},
+  {{0.500000, 0.500000, 0.500000},    {1.000000, -0.000000, -0.000000},  {0.000000, 1.000000}},
+  {{-0.500000, 0.500000, 0.500000},   {-0.000000, -0.000000, 1.000000},  {0.000000, 1.000000}},
+  {{0.500000, -0.500000, 0.500000},   {-0.000000, -1.000000, -0.000000}, {1.000000, 0.000000}},
+  {{-0.500000, 0.500000, 0.500000},   {-0.000000, 1.000000, -0.000000},  {0.000000, 0.000000}},
+};
+
+static u32 bounding_box_indices[] = {0, 1,  2, 3, 4,  5, 6, 7,  8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+                                     0, 18, 1, 3, 19, 4, 6, 20, 7, 9, 21, 10, 12, 22, 13, 15, 23, 16};
+
+// TODO(szulf): this will break on hot reloads
+// will fix on next commit
+static u64 g_bounding_box_model = 0;
+
+DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera)
+{
+  DrawCall out = {};
+  out.wireframe = true;
+  out.model_handle = g_bounding_box_model;
+  out.model = mat4_make();
+  mat4_scale(out.model, {entity.bounding_box_width, 0.0f, entity.bounding_box_depth});
   mat4_translate(out.model, entity.position);
   out.view = camera_look_at(camera);
   out.projection = camera_projection(camera);

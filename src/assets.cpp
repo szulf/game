@@ -244,8 +244,8 @@ static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
     }
   }
   ctx.idx = idx_old;
-  auto mesh_indices = array_make<u32>(indices_amount, *ctx.allocator);
-  auto mesh_vertices = array_make<Vertex>(1, *ctx.allocator);
+  auto mesh_indices = array_make<u32>(ARRAY_TYPE_STATIC, indices_amount, *ctx.allocator);
+  auto mesh_vertices = array_make<Vertex>(ARRAY_TYPE_DYNAMIC, 1, *ctx.allocator);
   MaterialHandle mesh_material_handle = {};
 
   auto scratch_arena = scratch_arena_get();
@@ -438,10 +438,10 @@ ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out
     }
   }
 
-  model.meshes = array_make<MeshHandle>(ctx.mesh_count, allocator);
-  ctx.positions = array_make<Vec3>(ctx.pos_count, scratch_arena.allocator);
-  ctx.normals = array_make<Vec3>(ctx.normal_count, scratch_arena.allocator);
-  ctx.uvs = array_make<Vec2>(ctx.uv_count, scratch_arena.allocator);
+  model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, ctx.mesh_count, allocator);
+  ctx.positions = array_make<Vec3>(ARRAY_TYPE_STATIC, ctx.pos_count, scratch_arena.allocator);
+  ctx.normals = array_make<Vec3>(ARRAY_TYPE_STATIC, ctx.normal_count, scratch_arena.allocator);
+  ctx.uvs = array_make<Vec2>(ARRAY_TYPE_STATIC, ctx.uv_count, scratch_arena.allocator);
   ctx.vertex_map = map_make<Vertex, usize>(vertex_count * 3, scratch_arena.allocator);
 
   for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx)

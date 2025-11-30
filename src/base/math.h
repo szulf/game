@@ -75,6 +75,7 @@ Mat4 mat4_make();
 Mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far);
 
 void mat4_scale(Mat4& mat, f32 scale);
+void mat4_scale(Mat4& mat, const Vec3& scale);
 void mat4_translate(Mat4& mat, const Vec3& position);
 
 #endif

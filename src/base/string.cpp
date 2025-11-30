@@ -86,7 +86,7 @@ const char* string_to_cstr(const String& str, Allocator& allocator)
 Array<String> string_split(const String& str, char c, Allocator& allocator)
 {
   usize splits_count = string_count_chars(str, c) + 1;
-  auto splits = array_make<String>(splits_count, allocator);
+  auto splits = array_make<String>(ARRAY_TYPE_STATIC, splits_count, allocator);
 
   usize start_idx = 0;
   for (usize found_idx = string_find_char(str, c, start_idx); found_idx != (usize) -1;

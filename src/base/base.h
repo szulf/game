@@ -54,6 +54,8 @@ typedef double f64;
 
 #define unused(x) ((void) (sizeof(x)))
 
+#define array_size(arr) (sizeof(arr) / sizeof(*arr))
+
 #ifdef COMPILER_CLANG
 #  define force_inline __attribute((always_inline))
 #else

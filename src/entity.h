@@ -23,14 +23,19 @@ struct Entity
   Vec3 position;
   f32 scale;
 
+  f32 bounding_box_width;
+  f32 bounding_box_depth;
+
   bool has_model;
   ModelHandle model;
 
-  // TODO(szulf): is this a good idea?
   InteractableType interactable_type;
 };
 
-// TODO(szulf): should this function be here?
-DrawCall draw_call_make(const Entity& entity, const Camera& camera);
+bool collides(const Entity& ea, const Entity& eb);
+
+// TODO(szulf): should these functions be here?
+DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
+DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
 
 #endif

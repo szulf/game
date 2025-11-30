@@ -92,6 +92,15 @@ void shader_init(u32* shader_map)
   {
     u32 v_shader = shader_setup("shaders/shader.vert", SHADER_TYPE_VERTEX, error);
     ASSERT(error == SUCCESS, "failed to create vertex shader");
+    u32 f_shader = shader_setup("shaders/green.frag", SHADER_TYPE_FRAGMENT, error);
+    ASSERT(error == SUCCESS, "failed to create fragment shader");
+    u32 shader = shader_link(v_shader, f_shader, error);
+    ASSERT(error == SUCCESS, "failed to link shaders");
+    shader_map[SHADER_GREEN] = shader;
+  }
+  {
+    u32 v_shader = shader_setup("shaders/shader.vert", SHADER_TYPE_VERTEX, error);
+    ASSERT(error == SUCCESS, "failed to create vertex shader");
     u32 f_shader = shader_setup("shaders/shader.frag", SHADER_TYPE_FRAGMENT, error);
     ASSERT(error == SUCCESS, "failed to create fragment shader");
     u32 shader = shader_link(v_shader, f_shader, error);
@@ -263,6 +272,10 @@ void renderer_draw()
   for (usize draw_call_idx = 0; draw_call_idx < renderer_queue_instance->size; ++draw_call_idx)
   {
     auto& draw_call = (*renderer_queue_instance)[draw_call_idx];
+    if (draw_call.wireframe)
+    {
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
     auto& model = *assets_get_model(draw_call.model_handle);
 
     for (usize mesh_idx = 0; mesh_idx < model.meshes.size; ++mesh_idx)
@@ -299,6 +312,10 @@ void renderer_draw()
       }
       gl.glBindVertexArray(mesh.vao);
       gl.glDrawElements(GL_TRIANGLES, (GLsizei) mesh.indices.size, GL_UNSIGNED_INT, nullptr);
+    }
+    if (draw_call.wireframe)
+    {
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
   }
   renderer_queue_instance->size = 0;

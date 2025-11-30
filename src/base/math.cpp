@@ -260,6 +260,22 @@ void mat4_scale(Mat4& mat, f32 scale)
   mat.data[10] *= scale;
 }
 
+// TODO(szulf): no idea if this is correct, could be very wrong
+void mat4_scale(Mat4& mat, const Vec3& scale)
+{
+  mat.data[0] *= scale.x;
+  mat.data[4] *= scale.x;
+  mat.data[8] *= scale.x;
+
+  mat.data[1] *= scale.y;
+  mat.data[5] *= scale.y;
+  mat.data[9] *= scale.y;
+
+  mat.data[2] *= scale.z;
+  mat.data[6] *= scale.z;
+  mat.data[10] *= scale.z;
+}
+
 void mat4_translate(Mat4& mat, const Vec3& position)
 {
   mat.data[12] = position.x;

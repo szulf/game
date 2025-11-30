@@ -9,6 +9,7 @@ usize hash(const u64& value);
 
 enum Shader
 {
+  SHADER_GREEN,
   SHADER_DEFAULT,
 };
 
@@ -82,7 +83,8 @@ struct Renderable
 };
 
 static const Vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
-#define CAMERA_SPEED 2.5f
+#define CAMERA_SPEED 4.0f
+#define CAMERA_SENSITIVITY 1.5f
 
 struct Camera
 {
@@ -123,6 +125,8 @@ struct DrawCall
   Mat4 projection;
 
   ModelHandle model_handle;
+
+  bool wireframe;
 };
 
 void renderer_init();

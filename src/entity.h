@@ -15,6 +15,15 @@ enum InteractableType
   INTERACTABLE_TYPE_LIGHT_BULB,
 };
 
+struct InteractableInfo
+{
+  f32 radius2;
+};
+
+static const InteractableInfo interactable_info[] = {
+  {1.0f},
+};
+
 struct Entity
 {
   EntityType type;
@@ -37,5 +46,6 @@ bool collides(const Entity& ea, const Entity& eb);
 // TODO(szulf): should these functions be here?
 DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
+DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera);
 
 #endif

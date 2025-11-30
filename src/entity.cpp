@@ -15,6 +15,7 @@ DrawCall draw_call_entity(const Entity& entity, const Camera& camera)
     return {};
   }
   DrawCall out = {};
+  out.primitive = PRIMITIVE_TRIANGLES;
   out.model_handle = entity.model;
   out.model = mat4_make();
   mat4_scale(out.model, entity.scale);
@@ -54,13 +55,69 @@ static Vertex bounding_box_vertices[] = {
 static u32 bounding_box_indices[] = {0, 1,  2, 3, 4,  5, 6, 7,  8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
                                      0, 18, 1, 3, 19, 4, 6, 20, 7, 9, 21, 10, 12, 22, 13, 15, 23, 16};
 
+// TODO(szulf): i dont like this, wasting memory on normals and uvs
+static Vertex ring_vertices[] = {
+  {{0.000000f, 0.000000f, -0.500000f},  {}, {}},
+  {{-0.097545f, 0.000000f, -0.490393f}, {}, {}},
+  {{-0.191342f, 0.000000f, -0.461940f}, {}, {}},
+  {{-0.277785f, 0.000000f, -0.415735f}, {}, {}},
+  {{-0.353553f, 0.000000f, -0.353553f}, {}, {}},
+  {{-0.415735f, 0.000000f, -0.277785f}, {}, {}},
+  {{-0.461940f, 0.000000f, -0.191342f}, {}, {}},
+  {{-0.490393f, 0.000000f, -0.097545f}, {}, {}},
+  {{-0.500000f, 0.000000f, 0.000000f},  {}, {}},
+  {{-0.490393f, 0.000000f, 0.097545f},  {}, {}},
+  {{-0.461940f, 0.000000f, 0.191342f},  {}, {}},
+  {{-0.415735f, 0.000000f, 0.277785f},  {}, {}},
+  {{-0.353553f, 0.000000f, 0.353553f},  {}, {}},
+  {{-0.277785f, 0.000000f, 0.415735f},  {}, {}},
+  {{-0.191342f, 0.000000f, 0.461940f},  {}, {}},
+  {{-0.097545f, 0.000000f, 0.490393f},  {}, {}},
+  {{0.000000f, 0.000000f, 0.500000f},   {}, {}},
+  {{0.097545f, 0.000000f, 0.490393f},   {}, {}},
+  {{0.191342f, 0.000000f, 0.461940f},   {}, {}},
+  {{0.277785f, 0.000000f, 0.415735f},   {}, {}},
+  {{0.353553f, 0.000000f, 0.353553f},   {}, {}},
+  {{0.415735f, 0.000000f, 0.277785f},   {}, {}},
+  {{0.461940f, 0.000000f, 0.191342f},   {}, {}},
+  {{0.490393f, 0.000000f, 0.097545f},   {}, {}},
+  {{0.500000f, 0.000000f, 0.000000f},   {}, {}},
+  {{0.490393f, 0.000000f, -0.097545f},  {}, {}},
+  {{0.461940f, 0.000000f, -0.191342f},  {}, {}},
+  {{0.415735f, 0.000000f, -0.277785f},  {}, {}},
+  {{0.353553f, 0.000000f, -0.353553f},  {}, {}},
+  {{0.277785f, 0.000000f, -0.415735f},  {}, {}},
+  {{0.191342f, 0.000000f, -0.461940f},  {}, {}},
+  {{0.097545f, 0.000000f, -0.490393f},  {}, {}},
+};
+
+static u32 ring_indices[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
+                             17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0};
+
 DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera)
 {
   DrawCall out = {};
+  out.primitive = PRIMITIVE_TRIANGLES;
   out.wireframe = true;
-  out.model_handle = STATIC_MODELS_BOUNDING_BOX;
+  out.model_handle = STATIC_MODEL_BOUNDING_BOX;
   out.model = mat4_make();
   mat4_scale(out.model, {entity.bounding_box_width, 1.0f, entity.bounding_box_depth});
+  mat4_translate(out.model, entity.position);
+  out.view = camera_look_at(camera);
+  out.projection = camera_projection(camera);
+  return out;
+}
+
+DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera)
+{
+  DrawCall out = {};
+  out.primitive = PRIMITIVE_LINE_STRIP;
+  out.model_handle = STATIC_MODEL_RING;
+  out.model = mat4_make();
+  mat4_scale(
+    out.model,
+    {interactable_info[entity.interactable_type].radius2, 1.0f, interactable_info[entity.interactable_type].radius2}
+  );
   mat4_translate(out.model, entity.position);
   out.view = camera_look_at(camera);
   out.projection = camera_projection(camera);

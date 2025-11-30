@@ -12,14 +12,17 @@ static OpenGLAPI gl;
 #endif
 
 // TODO(szulf): this should probably not exist in release builds
-enum StaticModels
+// well i might use the ring for some things in the game
+enum StaticModel
 {
-  STATIC_MODELS_BOUNDING_BOX = 1,
+  STATIC_MODEL_BOUNDING_BOX = 1,
+  STATIC_MODEL_RING,
 };
 
 #include "entity.cpp"
 
-// TODO(szulf): would be nice to draw interaction radius on interactables in debug mode
+// TODO(szulf): when moving into a bad position and actually pressing two keys at the same time(W and D over an edge),
+// it should move you in the direction of the possible movement, and not stop the movement completely
 
 // TODO(szulf): somehow strip debug mode from release builds
 
@@ -44,7 +47,8 @@ struct Main
   // TODO(szulf): do i really want this here?
   Array<DrawCall> renderer_queue;
 
-  bool debug_mode;
+  bool camera_mode;
+  bool display_bounding_boxes;
 
   Camera camera;
   // TODO(szulf): is a map to an array of entities by their type a good idea?
@@ -99,7 +103,26 @@ dll_export INIT_FN(init)
     model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, main.allocator);
     array_push(model.meshes, mesh_handle);
     auto handle = assets_set_model(model);
-    ASSERT(handle == STATIC_MODELS_BOUNDING_BOX, "wut happened");
+    ASSERT(handle == STATIC_MODEL_BOUNDING_BOX, "wut happened");
+  }
+  {
+    // TODO(szulf): i hate this being here
+    // NOTE(szulf): creation of the ring model
+    Material material = {};
+    material.shader = SHADER_YELLOW;
+    auto material_handle = assets_set_material(material);
+    Mesh mesh = mesh_make(
+      array_from(ring_vertices, array_size(ring_vertices)),
+      array_from(ring_indices, array_size(ring_indices)),
+      material_handle
+    );
+    auto mesh_handle = assets_set_mesh(mesh);
+    Model model = {};
+    model.matrix = mat4_make();
+    model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, main.allocator);
+    array_push(model.meshes, mesh_handle);
+    auto handle = assets_set_model(model);
+    ASSERT(handle == STATIC_MODEL_RING, "wut happened");
   }
 
   main.entities = array_make<Entity>(ARRAY_TYPE_DYNAMIC, 30, main.allocator);
@@ -110,12 +133,12 @@ dll_export INIT_FN(init)
     auto player_model = assets_load_model("assets/bean.obj", main.allocator, error);
     ASSERT(error == SUCCESS, "failed to load model");
     player.position = {0.0f, 0.0f, 0.0f};
-    player.scale = 0.8f;
+    player.scale = 1.0f;
     player.has_model = true;
     player.model = player_model;
     player.type = ENTITY_TYPE_PLAYER;
-    player.bounding_box_width = 0.8f;
-    player.bounding_box_depth = 0.8f;
+    player.bounding_box_width = 0.7f;
+    player.bounding_box_depth = 0.7f;
     array_push(main.entities, player);
 
     auto ground_model = assets_load_model("assets/cube.obj", main.allocator, error);
@@ -146,8 +169,9 @@ dll_export INIT_FN(init)
     // TODO(szulf): hardcoded for now, can i actually calculate this somehow?
     // could calculate it from the vertices from the obj, same with the scale,
     // but how do i integrate it with the api
-    light_bulb.bounding_box_width = 0.5f;
-    light_bulb.bounding_box_depth = 0.5f;
+    // might just hand calculate it from the print max values from obj
+    light_bulb.bounding_box_width = 0.3f;
+    light_bulb.bounding_box_depth = 0.3f;
     array_push(main.entities, light_bulb);
   }
 
@@ -168,7 +192,8 @@ dll_export INIT_FN(init)
   input->move_back_key = KEY_S;
   input->move_left_key = KEY_A;
   input->move_right_key = KEY_D;
-  input->toggle_debug_mode_key = KEY_F1;
+  input->toggle_camera_mode_key = KEY_F1;
+  input->toggle_display_bounding_boxes_key = KEY_F2;
   input->interact_key = KEY_E;
 }
 
@@ -215,12 +240,16 @@ dll_export UPDATE_FN(update)
     }
   }
 
-  if (input->toggle_debug_mode)
+  if (input->toggle_camera_mode)
   {
-    main.debug_mode = !main.debug_mode;
+    main.camera_mode = !main.camera_mode;
+  }
+  if (input->toggle_display_bounding_boxes)
+  {
+    main.display_bounding_boxes = !main.display_bounding_boxes;
   }
 
-  if (main.debug_mode)
+  if (main.camera_mode)
   {
     f32 x_offset = input->mouse_relative.x * CAMERA_SENSITIVITY;
     f32 y_offset = input->mouse_relative.y * CAMERA_SENSITIVITY;
@@ -271,7 +300,7 @@ dll_export UPDATE_FN(update)
       auto& interactable = *interactables[i];
       // TODO(szulf): also check for the orientation of the player?
       f32 dist = vec3_len2(player->position - interactable.position);
-      if (dist < 1.0f)
+      if (dist < interactable_info[interactable.interactable_type].radius2)
       {
         if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
         {
@@ -295,10 +324,15 @@ dll_export RENDER_FN(render)
     {
       continue;
     }
-    if (main.debug_mode)
+    if (main.display_bounding_boxes && entity.type != ENTITY_TYPE_STATIC_COLLISION)
     {
       auto bounding_box_call = draw_call_entity_bounding_box(entity, main.camera);
       renderer_queue_draw_call(bounding_box_call);
+      if (entity.type == ENTITY_TYPE_INTERACTABLE)
+      {
+        auto radius_call = draw_call_entity_interactable_radius(entity, main.camera);
+        renderer_queue_draw_call(radius_call);
+      }
     }
     auto draw_call = draw_call_entity(entity, main.camera);
     renderer_queue_draw_call(draw_call);

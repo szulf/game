@@ -73,6 +73,8 @@ static SDL_Keycode sdlk_from_key(Key key)
       return SDLK_LSHIFT;
     case KEY_F1:
       return SDLK_F1;
+    case KEY_F2:
+      return SDLK_F2;
   }
   return (SDL_Keycode) -1;
 }
@@ -185,13 +187,17 @@ i32 main()
         break;
         case SDL_EVENT_KEY_DOWN:
         {
-          if (e.key.key == sdlk_from_key(input.toggle_debug_mode_key))
+          if (e.key.key == sdlk_from_key(input.toggle_camera_mode_key))
           {
-            input.toggle_debug_mode = true;
+            input.toggle_camera_mode = true;
           }
           else if (e.key.key == sdlk_from_key(input.interact_key))
           {
             input.interact = true;
+          }
+          else if (e.key.key == sdlk_from_key(input.toggle_display_bounding_boxes_key))
+          {
+            input.toggle_display_bounding_boxes = true;
           }
         }
         break;
@@ -230,7 +236,8 @@ i32 main()
       accumulator -= MSPT;
 
       input.move = {};
-      input.toggle_debug_mode = false;
+      input.toggle_camera_mode = false;
+      input.toggle_display_bounding_boxes = false;
       input.mouse_pos_last = input.mouse_pos;
       input.interact = false;
     }

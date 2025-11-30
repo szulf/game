@@ -3,6 +3,7 @@
 mkdir -p build
 
 flags="
+  -std=c++11
   -g3 -O0 -Weverything -Werror -pedantic
   -fno-rtti -fno-exceptions -fPIC
   -Wno-c++98-compat -Wno-c++98-compat-pedantic

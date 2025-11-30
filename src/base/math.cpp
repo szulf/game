@@ -144,6 +144,11 @@ Vec3 operator*(const Vec3& vec, f32 scalar)
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
+Vec3 operator/(const Vec3& va, f32 scalar)
+{
+  return {va.x / scalar, va.y / scalar, va.z / scalar};
+}
+
 Vec3& operator+=(Vec3& va, const Vec3& vb)
 {
   va.x += vb.x;
@@ -166,6 +171,14 @@ Vec3& operator*=(Vec3& vec, f32 scalar)
   vec.y *= scalar;
   vec.z *= scalar;
   return vec;
+}
+
+Vec3& operator/=(Vec3& va, f32 scalar)
+{
+  va.x /= scalar;
+  va.y /= scalar;
+  va.z /= scalar;
+  return va;
 }
 
 f32 vec3_len2(const Vec3& vec)

@@ -13,6 +13,7 @@ extern "C"
     KEY_D,
     KEY_E,
     KEY_F1,
+    KEY_F2,
     KEY_SPACE,
     KEY_LSHIFT,
   };

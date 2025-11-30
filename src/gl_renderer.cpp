@@ -101,6 +101,15 @@ void shader_init(u32* shader_map)
   {
     u32 v_shader = shader_setup("shaders/shader.vert", SHADER_TYPE_VERTEX, error);
     ASSERT(error == SUCCESS, "failed to create vertex shader");
+    u32 f_shader = shader_setup("shaders/yellow.frag", SHADER_TYPE_FRAGMENT, error);
+    ASSERT(error == SUCCESS, "failed to create fragment shader");
+    u32 shader = shader_link(v_shader, f_shader, error);
+    ASSERT(error == SUCCESS, "failed to link shaders");
+    shader_map[SHADER_YELLOW] = shader;
+  }
+  {
+    u32 v_shader = shader_setup("shaders/shader.vert", SHADER_TYPE_VERTEX, error);
+    ASSERT(error == SUCCESS, "failed to create vertex shader");
     u32 f_shader = shader_setup("shaders/shader.frag", SHADER_TYPE_FRAGMENT, error);
     ASSERT(error == SUCCESS, "failed to create fragment shader");
     u32 shader = shader_link(v_shader, f_shader, error);
@@ -307,7 +316,20 @@ void renderer_draw()
         gl.glUniform1i(gl.glGetUniformLocation(shader_map_instance[material.shader], "sampler"), 0);
       }
       gl.glBindVertexArray(mesh.vao);
-      gl.glDrawElements(GL_TRIANGLES, (GLsizei) mesh.indices.size, GL_UNSIGNED_INT, nullptr);
+
+      switch (draw_call.primitive)
+      {
+        case PRIMITIVE_TRIANGLES:
+        {
+          gl.glDrawElements(GL_TRIANGLES, (GLsizei) mesh.indices.size, GL_UNSIGNED_INT, nullptr);
+        }
+        break;
+        case PRIMITIVE_LINE_STRIP:
+        {
+          gl.glDrawElements(GL_LINE_STRIP, (GLsizei) mesh.indices.size, GL_UNSIGNED_INT, nullptr);
+        }
+        break;
+      }
     }
     if (draw_call.wireframe)
     {

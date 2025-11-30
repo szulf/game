@@ -46,8 +46,10 @@ extern "C"
     Key move_right_key;
     Vec3 move;
 
-    Key toggle_debug_mode_key;
-    bool toggle_debug_mode;
+    Key toggle_camera_mode_key;
+    bool toggle_camera_mode;
+    Key toggle_display_bounding_boxes_key;
+    bool toggle_display_bounding_boxes;
 
     Vec2 mouse_pos;
     Vec2 mouse_relative;

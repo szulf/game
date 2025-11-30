@@ -10,6 +10,7 @@ usize hash(const u64& value);
 enum Shader
 {
   SHADER_GREEN,
+  SHADER_YELLOW,
   SHADER_DEFAULT,
 };
 
@@ -76,12 +77,6 @@ struct Model
   Mat4 matrix;
 };
 
-struct Renderable
-{
-  ModelHandle model;
-  Shader shader;
-};
-
 static const Vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
 #define CAMERA_SPEED 4.0f
 #define CAMERA_SENSITIVITY 1.5f
@@ -109,14 +104,14 @@ void camera_update_vectors(Camera& camera);
 Mat4 camera_look_at(const Camera& camera);
 Mat4 camera_projection(const Camera& camera);
 
-struct Scene
-{
-  Array<Renderable> renderables;
-  Camera camera;
-};
-
 // TODO(szulf): remove this after restructuring renderer
 #include "assets.cpp"
+
+enum Primitive
+{
+  PRIMITIVE_TRIANGLES,
+  PRIMITIVE_LINE_STRIP,
+};
 
 struct DrawCall
 {
@@ -127,6 +122,7 @@ struct DrawCall
   ModelHandle model_handle;
 
   bool wireframe;
+  Primitive primitive;
 };
 
 void renderer_init();

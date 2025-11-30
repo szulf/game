@@ -11,6 +11,12 @@ static OpenGLAPI gl;
 #  include "gl_renderer.cpp"
 #endif
 
+// TODO(szulf): this should probably not exist in release builds
+enum StaticModels
+{
+  STATIC_MODELS_BOUNDING_BOX = 1,
+};
+
 #include "entity.cpp"
 
 // TODO(szulf): would be nice to draw interaction radius on interactables in debug mode
@@ -76,6 +82,26 @@ dll_export INIT_FN(init)
   main.asset_manager = asset_manager_make(main.allocator);
   asset_manager_instance = &main.asset_manager;
 
+  {
+    // TODO(szulf): i hate this being here
+    // NOTE(szulf): creation of the bounding box model
+    Material material = {};
+    material.shader = SHADER_GREEN;
+    auto material_handle = assets_set_material(material);
+    Mesh mesh = mesh_make(
+      array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
+      array_from(bounding_box_indices, array_size(bounding_box_indices)),
+      material_handle
+    );
+    auto mesh_handle = assets_set_mesh(mesh);
+    Model model = {};
+    model.matrix = mat4_make();
+    model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, main.allocator);
+    array_push(model.meshes, mesh_handle);
+    auto handle = assets_set_model(model);
+    ASSERT(handle == STATIC_MODELS_BOUNDING_BOX, "wut happened");
+  }
+
   main.entities = array_make<Entity>(ARRAY_TYPE_DYNAMIC, 30, main.allocator);
 
   // TODO(szulf): load all entities from a file
@@ -118,6 +144,8 @@ dll_export INIT_FN(init)
     light_bulb.type = ENTITY_TYPE_INTERACTABLE;
     light_bulb.interactable_type = INTERACTABLE_TYPE_LIGHT_BULB;
     // TODO(szulf): hardcoded for now, can i actually calculate this somehow?
+    // could calculate it from the vertices from the obj, same with the scale,
+    // but how do i integrate it with the api
     light_bulb.bounding_box_width = 0.5f;
     light_bulb.bounding_box_depth = 0.5f;
     array_push(main.entities, light_bulb);
@@ -142,23 +170,6 @@ dll_export INIT_FN(init)
   input->move_right_key = KEY_D;
   input->toggle_debug_mode_key = KEY_F1;
   input->interact_key = KEY_E;
-
-  // TODO(szulf): i hate this being here
-  // NOTE(szulf): creation of the bounding box model
-  Material material = {};
-  material.shader = SHADER_GREEN;
-  auto material_handle = assets_set_material(material);
-  Mesh mesh = mesh_make(
-    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
-    array_from(bounding_box_indices, array_size(bounding_box_indices)),
-    material_handle
-  );
-  auto mesh_handle = assets_set_mesh(mesh);
-  Model model = {};
-  model.matrix = mat4_make();
-  model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, main.allocator);
-  array_push(model.meshes, mesh_handle);
-  g_bounding_box_model = assets_set_model(model);
 }
 
 dll_export POST_RELOAD_FN(post_reload)
@@ -280,6 +291,10 @@ dll_export RENDER_FN(render)
   for (usize i = 0; i < main.entities.size; ++i)
   {
     auto& entity = main.entities[i];
+    if (!entity.has_model)
+    {
+      continue;
+    }
     if (main.debug_mode)
     {
       auto bounding_box_call = draw_call_entity_bounding_box(entity, main.camera);

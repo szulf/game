@@ -40,10 +40,10 @@ template <>
 usize hash(const Vertex& vertex);
 bool operator==(const Vertex& va, const Vertex& vb);
 
-typedef u64 TextureHandle;
-typedef u64 MaterialHandle;
-typedef u64 MeshHandle;
-typedef u64 ModelHandle;
+typedef usize TextureHandle;
+typedef usize MaterialHandle;
+typedef usize MeshHandle;
+typedef usize ModelHandle;
 
 struct Texture
 {

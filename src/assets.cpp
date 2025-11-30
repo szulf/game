@@ -3,62 +3,58 @@
 AssetManager asset_manager_make(Allocator& allocator)
 {
   AssetManager out = {};
-  out.textures = map_make<MaterialHandle, Texture>(100, allocator);
-  out.materials = map_make<TextureHandle, Material>(100, allocator);
-  out.meshes = map_make<MeshHandle, Mesh>(100, allocator);
-  out.models = map_make<ModelHandle, Model>(100, allocator);
+  out.textures = array_make<Texture>(ARRAY_TYPE_STATIC, 100, allocator);
+  out.materials = array_make<Material>(ARRAY_TYPE_STATIC, 100, allocator);
+  out.meshes = array_make<Mesh>(ARRAY_TYPE_STATIC, 100, allocator);
+  out.models = array_make<Model>(ARRAY_TYPE_STATIC, 100, allocator);
 
   out.texture_handles = map_make<String, TextureHandle>(100, allocator);
   out.material_handles = map_make<String, MaterialHandle>(100, allocator);
   return out;
 }
 
-Material* assets_get_material(MaterialHandle handle)
+Material& assets_get_material(MaterialHandle handle)
 {
-  return map_get(asset_manager_instance->materials, handle);
+  return asset_manager_instance->materials[handle - 1];
 }
 
 MaterialHandle assets_set_material(const Material& material)
 {
-  MaterialHandle handle = u64_random();
-  map_set(asset_manager_instance->materials, handle, material);
-  return handle;
+  array_push(asset_manager_instance->materials, material);
+  return asset_manager_instance->materials.size;
 }
 
-Texture* assets_get_texture(TextureHandle handle)
+Texture& assets_get_texture(TextureHandle handle)
 {
-  return map_get(asset_manager_instance->textures, handle);
+  return asset_manager_instance->textures[handle - 1];
 }
 
 TextureHandle assets_set_texture(const Texture& texture)
 {
-  TextureHandle handle = u64_random();
-  map_set(asset_manager_instance->textures, handle, texture);
-  return handle;
+  array_push(asset_manager_instance->textures, texture);
+  return asset_manager_instance->textures.size;
 }
 
-Mesh* assets_get_mesh(MeshHandle handle)
+Mesh& assets_get_mesh(MeshHandle handle)
 {
-  return map_get(asset_manager_instance->meshes, handle);
+  return asset_manager_instance->meshes[handle - 1];
 }
 
 MeshHandle assets_set_mesh(const Mesh& mesh)
 {
-  MeshHandle handle = u64_random();
-  map_set(asset_manager_instance->meshes, handle, mesh);
-  return handle;
+  array_push(asset_manager_instance->meshes, mesh);
+  return asset_manager_instance->meshes.size;
 }
 
-Model* assets_get_model(ModelHandle handle)
+Model& assets_get_model(ModelHandle handle)
 {
-  return map_get(asset_manager_instance->models, handle);
+  return asset_manager_instance->models[handle - 1];
 }
 
 ModelHandle assets_set_model(const Model& model)
 {
-  ModelHandle handle = u64_random();
-  map_set(asset_manager_instance->models, handle, model);
-  return handle;
+  array_push(asset_manager_instance->models, model);
+  return asset_manager_instance->models.size;
 }
 
 MaterialHandle assets_material_handle_get(const String& key)

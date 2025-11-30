@@ -259,10 +259,6 @@ void renderer_window_resize(u32 width, u32 height)
 
 void renderer_queue_draw_call(const DrawCall& draw_call)
 {
-  if (draw_call.model_handle == 0)
-  {
-    return;
-  }
   // TODO(szulf): for now just pushing into the array, later actually try to sort it in place
   array_push(*renderer_queue_instance, draw_call);
 }
@@ -276,12 +272,12 @@ void renderer_draw()
     {
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
-    auto& model = *assets_get_model(draw_call.model_handle);
+    auto& model = assets_get_model(draw_call.model_handle);
 
     for (usize mesh_idx = 0; mesh_idx < model.meshes.size; ++mesh_idx)
     {
-      auto& mesh = *assets_get_mesh(model.meshes[mesh_idx]);
-      auto& material = *assets_get_material(mesh.material);
+      auto& mesh = assets_get_mesh(model.meshes[mesh_idx]);
+      auto& material = assets_get_material(mesh.material);
 
       gl.glUseProgram(shader_map_instance[material.shader]);
       gl.glUniformMatrix4fv(
@@ -305,7 +301,7 @@ void renderer_draw()
 
       if (material.texture)
       {
-        auto texture_id = assets_get_texture(material.texture)->id;
+        auto texture_id = assets_get_texture(material.texture).id;
         gl.glActiveTexture(GL_TEXTURE0);
         gl.glBindTexture(GL_TEXTURE_2D, texture_id);
         gl.glUniform1i(gl.glGetUniformLocation(shader_map_instance[material.shader], "sampler"), 0);

@@ -11,8 +11,6 @@ static OpenGLAPI gl;
 #  include "gl_renderer.cpp"
 #endif
 
-// TODO(szulf): this should probably not exist in release builds
-// well i might use the ring for some things in the game
 enum StaticModel
 {
   STATIC_MODEL_BOUNDING_BOX = 1,
@@ -20,11 +18,6 @@ enum StaticModel
 };
 
 #include "entity.cpp"
-
-// TODO(szulf): when moving into a bad position and actually pressing two keys at the same time(W and D over an edge),
-// it should move you in the direction of the possible movement, and not stop the movement completely
-
-// TODO(szulf): somehow strip debug mode from release builds
 
 enum GameAction
 {

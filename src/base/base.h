@@ -165,14 +165,14 @@ typedef u32 Error;
     {                                                                                                                  \
       if (!(expr))                                                                                                     \
       {                                                                                                                \
-        write(0, #expr " " #line " " #file "\n", sizeof(#expr " " #line " " #file "\n"));                              \
+        print("%s %s %s\n", #expr, #line, #file);                                                                      \
         (err_var) = (err_val);                                                                                         \
         return ret_val;                                                                                                \
       }                                                                                                                \
     }                                                                                                                  \
     while (0)
 #else
-#  define ERROR_ASSERT(expr, err_var, err_val, ret_val, line, file)                                                    \
+#  define ERROR_ASSERT(expr, err_var, err_val, ret_val)                                                                \
     do                                                                                                                 \
     {                                                                                                                  \
       if (!(expr))                                                                                                     \

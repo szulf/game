@@ -1,52 +1,46 @@
 # CURRENT GOAL: FINISH ENGINE ARCHITECTURE
 
-## CURRENT TODO: how to change state in state struct
+## BIG TODO: togglable light bulb (in preparation of first level)(requires interactions with objects, lights, shadows)
 
-# GLOBAL
+## SMALL TODO: (ordered)
 
-- add overloads for indexing arrays/lists with signed ints
-
-- WRITE TESTS(custom testing framework?)
-  - badtl
-  - camera
-  - image/obj ???
-
-- move sdl to vendor folder and build statically
-- split cmake into multiple files
+1. move sdl to vendor folder and build statically
+2. split the gl_renderer file
+3. bounding_box_from_model or hardcode bounding boxes
+4. read entities from files(custom file format)
+5. read keymap from file
+6. change texture(?) of light bulb between lit and unlit when interacting
+7. player rotation
+   - will change automatically depending on which way you moved
+8. improve the movement system
+   - when moving into a bad position and actually pressing two keys at the same time(W and D over an edge),
+   - it should move you in the direction of the possible movement, and not stop the movement completely
+   - also when moving into a bad position it shouldnt just stop me if the next position will be bad,
+   - it should allow me to move the furthest i can
+9. resizability
+10. figure out stripping debug features from release builds
+    - or maybe dont strip them?
+11. render instancing
+12. phong/blinn-phong lighting
+13. shadow mapping or point shadows (?)
+14. tests?
+    - what do i even test? and how?
+    - do i want unit tests? or just in-game tests?
 
 - read the projection matrix article [https://www.songho.ca/opengl/gl_projectionmatrix.html#fov]
 - read the look at matrix article [https://morning-flow.com/2023/02/06/the-math-behind-the-lookat-transform/]
 
 ---
 
-# BADTL
+# EVERYTHING BELOW THIS LINE IS OUTDATED, PLEASE CHANGE IT!
 
-- the bad template library, made because:
-  - the stl doesnt really handle allocators
-  - non trivial destructors hurt my union types
-
-- do i want to move obj and image parsers into badtl? (i think so)
-
----
-
-# CORE
+# Platform Layer
 
 - core is made up of
   - the engine
   - the renderer
 
 ### ENGINE
-
-Main?
-
-- why the simple struct
-  - simplicity
-  - other more complex systems are easily built on top of the engine in the game layer
-
-- why not layers
-  - seems too complex
-  - consuming events and writing event dispatchers feels like too much for my needs
-  - plus virtual functions yuk
 
 - why not platform layer in main function (casey's/handmade hero approach)
   - other designs allow for a greater separation between the core engine and the actual game
@@ -97,12 +91,24 @@ Assets
 
 ---
 
-# GAME
+# Game Layer
 
 - overworld where you interact with teleports? that move you to other levels
   - for now in each level a single collectible to collect, so also an simple inventory system
 
-- the States system
-  - easily extensible for multiple states
-  - behaves pretty much like layers, but instead of dynamic dispatch(virtual funcs) it uses a tagged union
-  - events are only sent to the top state(dont know if thats good or not, but its not a hard thing to change)
+  what is the game supposed to be?
+  what do you do in a level?
+
+- factory like builder?
+  - with puzzles that you solve that fix some automated system
+  - that you could then rely on in the next level
+
+the game starts you are on a platform in space? with the light broken, so all you have is a flashlight, so you go into the first level
+which is fixing the lights
+next you could have like an automated food making system
+and maybe after fixing the food system the platform would go into emergency mode because the energy system was also damaged and its running low on power
+so in level three you have to go in and fix the energy system?
+dont really see how the ending plays out here if all i want is three levels, could get rid of the food system and just have the power emergency after the lights
+and then think of something for the ending
+
+could do elevators for multiple levels in the future, since i dont want to add a third dimensions so no stars/jumping

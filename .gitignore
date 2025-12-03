@@ -1,3 +1,5 @@
 build/
 .cache/
 .zed/
+todos.md
+vendor/sdl3/*

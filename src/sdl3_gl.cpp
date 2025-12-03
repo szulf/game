@@ -36,7 +36,7 @@ static SDL_SharedObject* so;
 GameAPI load_game_api()
 {
   GameAPI out = {};
-#ifdef PLATFORM_LINUX
+#ifdef OS_LINUX
   const char* lib_name = "./build/libgame.so";
 #endif
   so = SDL_LoadObject(lib_name);

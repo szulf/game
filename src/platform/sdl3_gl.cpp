@@ -1,3 +1,4 @@
+#include "base/base.cpp"
 #include "platform.h"
 
 #include <SDL3/SDL.h>
@@ -95,8 +96,12 @@ i32 main()
   g_width = spec.width;
   g_width = spec.height;
 
-  SDL_Window* window =
-    SDL_CreateWindow(spec.name, (i32) spec.width, (i32) spec.height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+  SDL_Window* window = SDL_CreateWindow(
+    spec.name,
+    (i32) spec.width,
+    (i32) spec.height,
+    SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
+  );
   ASSERT(window, "failed to create sdl3 window");
   SDL_HideCursor();
 
@@ -112,7 +117,7 @@ i32 main()
 
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
   ASSERT(gl_context, "failed to create sdl3 opengl context");
-  OpenGLAPI gl_api;
+  RenderingAPI gl_api;
   setup_gl_functions(&gl_api);
 
 #ifdef GAME_DEBUG
@@ -124,6 +129,7 @@ i32 main()
   GameMemory memory = {};
   memory.size = spec.memory_size;
   memory.memory = malloc(memory.size);
+  mem_set(memory.memory, 0, memory.size);
 
   GameInput input = {};
 
@@ -131,7 +137,7 @@ i32 main()
   SDL_GetPathInfo("./build/libgame.so", &game_lib_info);
 
   game.apis(&gl_api, &platform_api);
-  game.init(&memory, &input);
+  game.init(&memory, &input.key_map);
 
   bool running = true;
   u64 accumulator = 0;
@@ -187,15 +193,15 @@ i32 main()
         break;
         case SDL_EVENT_KEY_DOWN:
         {
-          if (e.key.key == sdlk_from_key(input.toggle_camera_mode_key))
+          if (e.key.key == sdlk_from_key(input.key_map.toggle_camera_mode))
           {
             input.toggle_camera_mode = true;
           }
-          else if (e.key.key == sdlk_from_key(input.interact_key))
+          else if (e.key.key == sdlk_from_key(input.key_map.interact))
           {
             input.interact = true;
           }
-          else if (e.key.key == sdlk_from_key(input.toggle_display_bounding_boxes_key))
+          else if (e.key.key == sdlk_from_key(input.key_map.toggle_display_bounding_boxes))
           {
             input.toggle_display_bounding_boxes = true;
           }
@@ -211,19 +217,19 @@ i32 main()
 
     {
       const bool* key_states = SDL_GetKeyboardState(nullptr);
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_front_key), nullptr)])
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_front), nullptr)])
       {
         input.move.z = -1.0f;
       }
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_back_key), nullptr)])
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_back), nullptr)])
       {
         input.move.z = 1.0f;
       }
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_left_key), nullptr)])
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_left), nullptr)])
       {
         input.move.x = -1.0f;
       }
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_right_key), nullptr)])
+      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_right), nullptr)])
       {
         input.move.x = 1.0f;
       }
@@ -235,11 +241,9 @@ i32 main()
       game.update(&memory, &input, 1.0f / TPS);
       accumulator -= MSPT;
 
-      input.move = {};
-      input.toggle_camera_mode = false;
-      input.toggle_display_bounding_boxes = false;
-      input.mouse_pos_last = input.mouse_pos;
-      input.interact = false;
+      auto key_map = input.key_map;
+      input = {};
+      input.key_map = key_map;
     }
 
     game.render(&memory);

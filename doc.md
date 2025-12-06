@@ -2,35 +2,47 @@
 
 ## BIG TODO: togglable light bulb (in preparation of first level)(requires interactions with objects, lights, shadows)
 
-## SMALL TODO: (ordered)
+## SMALL TODOS: (ordered)
 
-1. move sdl to vendor folder and build statically
-2. split the gl_renderer file
-3. bounding_box_from_model or hardcode bounding boxes
-4. read entities from files(custom file format)
-5. read keymap from file
-6. change texture(?) of light bulb between lit and unlit when interacting
-7. player rotation
+1. interpolate everything so its smooth
+2. bounding_box_from_model(ModelHandle model) or hardcode bounding boxes(why not both?)
+   - could specify in the file format if the bounding box is hardcoded or if i want to load it from the model itself
+   - because i might want invisible entities, so then i would need to hardcode it
+3. read entities from files(custom file format)
+4. read keymap from file
+5. change texture(?) of light bulb between lit and unlit when interacting
+6. player rotation
    - will change automatically depending on which way you moved
-8. improve the movement system
+7. improve the movement system
    - when moving into a bad position and actually pressing two keys at the same time(W and D over an edge),
    - it should move you in the direction of the possible movement, and not stop the movement completely
    - also when moving into a bad position it shouldnt just stop me if the next position will be bad,
    - it should allow me to move the furthest i can
-9. resizability
-10. figure out stripping debug features from release builds
+   - in the platform layer instead of setting move\_\* to a specific value, add it instead so if i press A and D at the same time i actually stay in one place
+8. resizability
+9. figure out stripping debug features from release builds
     - or maybe dont strip them?
-11. render instancing
-12. phong/blinn-phong lighting
-13. shadow mapping or point shadows (?)
-14. tests?
+10. phong/blinn-phong lighting
+11. shadow mapping or point shadows (?)
+12. tests?
     - what do i even test? and how?
     - do i want unit tests? or just in-game tests?
+
+---
+
+## NEXT BIG TODOS: (unordered)
+
+- audio
+- inventory system
+- render instancing
 
 - read the projection matrix article [https://www.songho.ca/opengl/gl_projectionmatrix.html#fov]
 - read the look at matrix article [https://morning-flow.com/2023/02/06/the-math-behind-the-lookat-transform/]
 
----
+# DOCS
+
+### File Structure
+TODO: document the file structure
 
 # EVERYTHING BELOW THIS LINE IS OUTDATED, PLEASE CHANGE IT!
 

@@ -1,5 +1,5 @@
 build/
 .cache/
 .zed/
-todos.md
-vendor/sdl3/*
+source_todos.md
+vendor/sdl3/

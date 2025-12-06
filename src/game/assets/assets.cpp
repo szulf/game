@@ -1,8 +1,15 @@
 #include "assets.h"
 
+template <>
+usize hash(const u64& value)
+{
+  return (usize) value;
+}
+
 AssetManager asset_manager_make(Allocator& allocator)
 {
   AssetManager out = {};
+  out.shaders = array_make<u32>(ARRAY_TYPE_STATIC, 100, allocator);
   out.textures = array_make<Texture>(ARRAY_TYPE_STATIC, 100, allocator);
   out.materials = array_make<Material>(ARRAY_TYPE_STATIC, 100, allocator);
   out.meshes = array_make<Mesh>(ARRAY_TYPE_STATIC, 100, allocator);
@@ -13,15 +20,15 @@ AssetManager asset_manager_make(Allocator& allocator)
   return out;
 }
 
-Material& assets_get_material(MaterialHandle handle)
+ShaderHandle assets_set_shader(Shader shader)
 {
-  return asset_manager_instance->materials[handle - 1];
+  array_push(asset_manager_instance->shaders, shader);
+  return (ShaderHandle) (asset_manager_instance->shaders.size - 1);
 }
 
-MaterialHandle assets_set_material(const Material& material)
+Shader assets_get_shader(ShaderHandle handle)
 {
-  array_push(asset_manager_instance->materials, material);
-  return asset_manager_instance->materials.size;
+  return asset_manager_instance->shaders[handle];
 }
 
 Texture& assets_get_texture(TextureHandle handle)
@@ -55,6 +62,17 @@ ModelHandle assets_set_model(const Model& model)
 {
   array_push(asset_manager_instance->models, model);
   return asset_manager_instance->models.size;
+}
+
+Material& assets_get_material(MaterialHandle handle)
+{
+  return asset_manager_instance->materials[handle - 1];
+}
+
+MaterialHandle assets_set_material(const Material& material)
+{
+  array_push(asset_manager_instance->materials, material);
+  return asset_manager_instance->materials.size;
 }
 
 MaterialHandle assets_material_handle_get(const String& key)
@@ -100,7 +118,8 @@ struct ObjContext
   usize pos_count;
   usize normal_count;
   usize uv_count;
-  // TODO(szulf): calculated just for hardcoding bounding boxes, should probably somehow actually calculate it from this
+  // TODO(szulf): calculated just for hardcoding bounding boxes, should probably somehow actually
+  // calculate it from this
   Vec3 max;
   Vec3 min;
 };
@@ -167,11 +186,15 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
           continue;
         }
         auto base_file_path = string_make("assets/");
-        auto texture_file_path = string_append_str(base_file_path, parts[1], scratch_arena.allocator);
+        auto texture_file_path =
+          string_append_str(base_file_path, parts[1], scratch_arena.allocator);
         if (!assets_texture_handle_exists(texture_file_path))
         {
-          auto img =
-            image_from_file(string_to_cstr(texture_file_path, scratch_arena.allocator), scratch_arena.allocator, error);
+          auto img = image_from_file(
+            string_to_cstr(texture_file_path, scratch_arena.allocator),
+            scratch_arena.allocator,
+            error
+          );
           // TODO(szulf): do i want to initialize it with an error image here instead?
           if (error != SUCCESS)
           {
@@ -483,7 +506,11 @@ ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out
         }
         auto base_file_path = string_make("assets/");
         auto mtl_file_path = string_append_str(base_file_path, parts[1], scratch_arena.allocator);
-        obj_parse_mtl_file(string_to_cstr(mtl_file_path, scratch_arena.allocator), allocator, error);
+        obj_parse_mtl_file(
+          string_to_cstr(mtl_file_path, scratch_arena.allocator),
+          allocator,
+          error
+        );
         if (error != SUCCESS)
         {
           out_error = error;
@@ -496,3 +523,113 @@ ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out
 
   return assets_set_model(model);
 }
+
+enum ShaderType
+{
+  SHADER_TYPE_VERTEX,
+  SHADER_TYPE_FRAGMENT,
+};
+
+// TODO(szulf): move to some opengl specific location?
+#ifdef RENDERER_OPENGL
+
+static u32 shader_load(const char* path, ShaderType shader_type, Error& out_error)
+{
+  auto scratch_arena = scratch_arena_get();
+  defer(scratch_arena_release(scratch_arena));
+  usize file_size;
+  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size);
+
+  u32 shader;
+  switch (shader_type)
+  {
+    case SHADER_TYPE_VERTEX:
+    {
+      shader = rendering.glCreateShader(GL_VERTEX_SHADER);
+    }
+    break;
+
+    case SHADER_TYPE_FRAGMENT:
+    {
+      shader = rendering.glCreateShader(GL_FRAGMENT_SHADER);
+    }
+    break;
+  }
+
+  auto shader_str = string_make_len((const char*) file, file_size);
+  auto shader_src = string_to_cstr(shader_str, scratch_arena.allocator);
+  rendering.glShaderSource(shader, 1, &shader_src, nullptr);
+  rendering.glCompileShader(shader);
+  GLint compiled;
+  rendering.glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+  if (compiled != GL_TRUE)
+  {
+    GLsizei log_length = 0;
+    GLchar message[1024];
+    rendering.glGetShaderInfoLog(shader, 1024, &log_length, message);
+    switch (shader_type)
+    {
+      case SHADER_TYPE_VERTEX:
+      {
+        print("vertex shader compilation failed with message:\n%s\n", message);
+        out_error = SHADER_ERROR_COMPILATION;
+        return (u32) -1;
+      }
+      break;
+      case SHADER_TYPE_FRAGMENT:
+      {
+        print("fragment shader compilation failed with message:\n%s\n", message);
+        out_error = SHADER_ERROR_COMPILATION;
+        return (u32) -1;
+      }
+      break;
+    }
+  }
+  return shader;
+}
+
+static Shader shader_link(u32 vertex_shader, u32 fragment_shader, Error& out_error)
+{
+  GLuint program = rendering.glCreateProgram();
+  rendering.glAttachShader(program, vertex_shader);
+  rendering.glAttachShader(program, fragment_shader);
+  rendering.glLinkProgram(program);
+
+  rendering.glDeleteShader(vertex_shader);
+  rendering.glDeleteShader(fragment_shader);
+
+  GLint program_linked;
+  rendering.glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
+  if (program_linked != GL_TRUE)
+  {
+    GLsizei log_length = 0;
+    GLchar message[1024];
+    rendering.glGetProgramInfoLog(program, 1024, &log_length, message);
+    print("failed to link shaders with message:\n%s\n", message);
+    out_error = SHADER_ERROR_LINKING;
+    return (ShaderHandle) -1;
+  }
+  return program;
+}
+
+#else
+#  error Unknown rendering backend.
+#endif
+
+ShaderHandle assets_load_shader(const char* vert_path, const char* frag_path, Error& out_error)
+{
+  Error error = SUCCESS;
+  auto vertex_shader = shader_load(vert_path, SHADER_TYPE_VERTEX, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
+  auto fragment_shader = shader_load(frag_path, SHADER_TYPE_FRAGMENT, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
+  auto shader = shader_link(vertex_shader, fragment_shader, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
+  return assets_set_shader(shader);
+}
+
+#include "shader.cpp"
+#include "texture.cpp"
+#include "material.cpp"
+#include "mesh.cpp"
+#include "model.cpp"

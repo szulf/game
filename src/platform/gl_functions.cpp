@@ -2,7 +2,7 @@
 
 #  include "gl_functions.h"
 
-void setup_gl_functions(OpenGLAPI* api)
+void setup_gl_functions(RenderingAPI* api)
 {
   api->glViewport = (PFNGLVIEWPORTPROC) SDL_GL_GetProcAddress("glViewport");
   api->glGenTextures = (PFNGLGENTEXTURESPROC) SDL_GL_GetProcAddress("glGenTextures");
@@ -20,11 +20,13 @@ void setup_gl_functions(OpenGLAPI* api)
   api->glGenBuffers = (PFNGLGENBUFFERSPROC) SDL_GL_GetProcAddress("glGenBuffers");
   api->glBindBuffer = (PFNGLBINDBUFFERPROC) SDL_GL_GetProcAddress("glBindBuffer");
   api->glBufferData = (PFNGLBUFFERDATAPROC) SDL_GL_GetProcAddress("glBufferData");
-  api->glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC) SDL_GL_GetProcAddress("glVertexAttribPointer");
+  api->glVertexAttribPointer =
+    (PFNGLVERTEXATTRIBPOINTERPROC) SDL_GL_GetProcAddress("glVertexAttribPointer");
   api->glEnableVertexAttribArray =
     (PFNGLENABLEVERTEXATTRIBARRAYPROC) SDL_GL_GetProcAddress("glEnableVertexAttribArray");
   api->glUniform1i = (PFNGLUNIFORM1IPROC) SDL_GL_GetProcAddress("glUniform1i");
-  api->glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC) SDL_GL_GetProcAddress("glGetUniformLocation");
+  api->glGetUniformLocation =
+    (PFNGLGETUNIFORMLOCATIONPROC) SDL_GL_GetProcAddress("glGetUniformLocation");
   api->glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC) SDL_GL_GetProcAddress("glUniformMatrix4fv");
   api->glUseProgram = (PFNGLUSEPROGRAMPROC) SDL_GL_GetProcAddress("glUseProgram");
   api->glCreateShader = (PFNGLCREATESHADERPROC) SDL_GL_GetProcAddress("glCreateShader");
@@ -37,12 +39,16 @@ void setup_gl_functions(OpenGLAPI* api)
   api->glLinkProgram = (PFNGLLINKPROGRAMPROC) SDL_GL_GetProcAddress("glLinkProgram");
   api->glDeleteShader = (PFNGLDELETESHADERPROC) SDL_GL_GetProcAddress("glDeleteShader");
   api->glGetProgramiv = (PFNGLGETPROGRAMIVPROC) SDL_GL_GetProcAddress("glGetProgramiv");
-  api->glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC) SDL_GL_GetProcAddress("glGetProgramInfoLog");
+  api->glGetProgramInfoLog =
+    (PFNGLGETPROGRAMINFOLOGPROC) SDL_GL_GetProcAddress("glGetProgramInfoLog");
   api->glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC) SDL_GL_GetProcAddress("glGenerateMipmap");
-  api->glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC) SDL_GL_GetProcAddress("glDebugMessageCallback");
-  api->glDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC) SDL_GL_GetProcAddress("glDeleteVertexArrays");
+  api->glDebugMessageCallback =
+    (PFNGLDEBUGMESSAGECALLBACKPROC) SDL_GL_GetProcAddress("glDebugMessageCallback");
+  api->glDeleteVertexArrays =
+    (PFNGLDELETEVERTEXARRAYSPROC) SDL_GL_GetProcAddress("glDeleteVertexArrays");
   api->glDeleteBuffers = (PFNGLDELETEBUFFERSPROC) SDL_GL_GetProcAddress("glDeleteBuffers");
   api->glGetError = (PFNGLGETERRORPROC) SDL_GL_GetProcAddress("glGetError");
+  api->glPolygonMode = (PFNGLPOLYGONMODEPROC) SDL_GL_GetProcAddress("glPolygonMode");
 }
 
 #  ifdef MODE_DEBUG

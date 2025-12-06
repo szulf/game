@@ -106,7 +106,10 @@ void free_all(Allocator& allocator)
 void* alloc_start_align(Allocator& allocator, usize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-  ASSERT(allocator.type == ALLOCATOR_TYPE_ARENA, "cannot do 'dynamic' allocations with non arena allocators");
+  ASSERT(
+    allocator.type == ALLOCATOR_TYPE_ARENA,
+    "cannot do 'dynamic' allocations with non arena allocators"
+  );
 
   auto& data = allocator.type_data.arena;
   ASSERT(!data.dynamic_active, "cannot use allocator when a 'dynamic' allocation is active");
@@ -126,7 +129,10 @@ void* alloc_start(Allocator& allocator)
 
 void alloc_finish(Allocator& allocator, void* end)
 {
-  ASSERT(allocator.type == ALLOCATOR_TYPE_ARENA, "cannot do 'dynamic' allocations with non arena allocators");
+  ASSERT(
+    allocator.type == ALLOCATOR_TYPE_ARENA,
+    "cannot do 'dynamic' allocations with non arena allocators"
+  );
 
   auto& data = allocator.type_data.arena;
   ASSERT(data.dynamic_active, "'dynamic' allocation has to be active to finish it");
@@ -145,13 +151,14 @@ ScratchArena scratch_arena_get()
 {
   if (!scratch_arena_initialized_)
   {
-    // TODO(szulf): maybe in the future somehow dynamically handle how much memory is actually used by the scratch
-    // arena?
+    // TODO(szulf): maybe in the future somehow dynamically handle how much memory is actually used
+    // by the scratch arena?
     scratch_arena_.size = MB(500);
     scratch_arena_.type = ALLOCATOR_TYPE_ARENA;
     // TODO(szulf): is there some better way to get this memory?
     scratch_arena_.buffer = malloc(scratch_arena_.size);
     scratch_arena_initialized_ = true;
+    mem_set(scratch_arena_.buffer, 0, scratch_arena_.size);
   }
   bool top_caller = false;
   if (!scratch_arena_top_caller_used_)
@@ -164,16 +171,20 @@ ScratchArena scratch_arena_get()
 
 void scratch_arena_release(ScratchArena& sa)
 {
-  // NOTE(szulf): wait until the top caller of ScratchArena::get() releases to actually free any memory
-  // this is a way to both reduce mistakes(skill issues?), and simplify the managment of the scratch arena
-  // this probably increases the memory usage by a little,
-  // but i dont know how to check if i can actually free the memory on release
+  // NOTE(szulf): wait until the top caller of ScratchArena::get() releases to actually free any
+  // memory this is a way to both reduce mistakes(skill issues?), and simplify the managment of the
+  // scratch arena this probably increases the memory usage by a little, but i dont know how to
+  // check if i can actually free the memory on release
   // TODO(szulf): maybe think of a better way to handle all this in the future,
   // for now i just want to move on
   if (sa.top_caller)
   {
 #ifdef MODE_DEBUG
-    mem_set((u8*) scratch_arena_.buffer + sa.start_offset, 0, scratch_arena_.type_data.arena.offset - sa.start_offset);
+    mem_set(
+      (u8*) scratch_arena_.buffer + sa.start_offset,
+      0,
+      scratch_arena_.type_data.arena.offset - sa.start_offset
+    );
 #endif
     scratch_arena_.type_data.arena.offset = sa.start_offset;
     scratch_arena_top_caller_used_ = false;

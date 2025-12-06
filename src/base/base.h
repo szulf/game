@@ -1,10 +1,6 @@
 #ifndef BASE_H
 #define BASE_H
 
-#ifndef COMPILER_CLANG
-#  define COMPILER_CLANG
-#endif
-
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -75,17 +71,17 @@ typedef double f64;
 #endif
 
 #ifdef ASSERTIONS
-#  define ASSERT(expr, ...)                                                                                            \
-    do                                                                                                                 \
-    {                                                                                                                  \
-      if (!(expr))                                                                                                     \
-      {                                                                                                                \
-        print("assertion failed on expression: %s\nwith message: ", #expr);                                            \
-        print(__VA_ARGS__);                                                                                            \
-        print("\n");                                                                                                   \
-        breakpoint();                                                                                                  \
-      }                                                                                                                \
-    }                                                                                                                  \
+#  define ASSERT(expr, ...)                                                                        \
+    do                                                                                             \
+    {                                                                                              \
+      if (!(expr))                                                                                 \
+      {                                                                                            \
+        print("assertion failed on expression: %s\nwith message: ", #expr);                        \
+        print(__VA_ARGS__);                                                                        \
+        print("\n");                                                                               \
+        breakpoint();                                                                              \
+      }                                                                                            \
+    }                                                                                              \
     while (false)
 #else
 #  define ASSERT(expr, msg)
@@ -136,12 +132,12 @@ DeferImpl<F> make_defer(F&& f)
 #define DEFER_1(x, y) x##y
 #define DEFER_2(x, y) DEFER_1(x, y)
 #define DEFER_3(x) DEFER_2(x, __COUNTER__)
-#define defer(code)                                                                                                    \
-  auto DEFER_3(_defer) = make_defer(                                                                                   \
-    [&]()                                                                                                              \
-    {                                                                                                                  \
-      code;                                                                                                            \
-    }                                                                                                                  \
+#define defer(code)                                                                                \
+  auto DEFER_3(_defer) = make_defer(                                                               \
+    [&]()                                                                                          \
+    {                                                                                              \
+      code;                                                                                        \
+    }                                                                                              \
   )
 
 enum GlobalError
@@ -156,41 +152,48 @@ typedef u32 Error;
 
 #ifdef MODE_DEBUG
 #  include <unistd.h>
-#  define ERROR_ASSERT(expr, err_var, err_val, ret_val)                                                                \
+#  define ERROR_ASSERT(expr, err_var, err_val, ret_val)                                            \
     ERROR_ASSERT_1(expr, err_var, err_val, ret_val, __LINE__, __FILE__)
-#  define ERROR_ASSERT_1(expr, err_var, err_val, ret_val, line, file)                                                  \
+#  define ERROR_ASSERT_1(expr, err_var, err_val, ret_val, line, file)                              \
     ERROR_ASSERT_2(expr, err_var, err_val, ret_val, line, file)
-#  define ERROR_ASSERT_2(expr, err_var, err_val, ret_val, line, file)                                                  \
-    do                                                                                                                 \
-    {                                                                                                                  \
-      if (!(expr))                                                                                                     \
-      {                                                                                                                \
-        print("%s %s %s\n", #expr, #line, #file);                                                                      \
-        (err_var) = (err_val);                                                                                         \
-        return ret_val;                                                                                                \
-      }                                                                                                                \
-    }                                                                                                                  \
+#  define ERROR_ASSERT_2(expr, err_var, err_val, ret_val, line, file)                              \
+    do                                                                                             \
+    {                                                                                              \
+      if (!(expr))                                                                                 \
+      {                                                                                            \
+        print("%s %s %s\n", #expr, #line, #file);                                                  \
+        (err_var) = (err_val);                                                                     \
+        return ret_val;                                                                            \
+      }                                                                                            \
+    }                                                                                              \
     while (0)
 #else
-#  define ERROR_ASSERT(expr, err_var, err_val, ret_val)                                                                \
-    do                                                                                                                 \
-    {                                                                                                                  \
-      if (!(expr))                                                                                                     \
-      {                                                                                                                \
-        (err_var) = (err_val);                                                                                         \
-        return ret_val;                                                                                                \
-      }                                                                                                                \
-    }                                                                                                                  \
+#  define ERROR_ASSERT(expr, err_var, err_val, ret_val)                                            \
+    do                                                                                             \
+    {                                                                                              \
+      if (!(expr))                                                                                 \
+      {                                                                                            \
+        (err_var) = (err_val);                                                                     \
+        return ret_val;                                                                            \
+      }                                                                                            \
+    }                                                                                              \
     while (0)
 #endif
 
 template <typename T>
 usize hash(const T& value);
 
-#include "math.cpp"
-#include "memory.cpp"
-#include "array.cpp"
-#include "map.cpp"
-#include "string.cpp"
+enum Key
+{
+  KEY_W = 1,
+  KEY_S,
+  KEY_A,
+  KEY_D,
+  KEY_E,
+  KEY_F1,
+  KEY_F2,
+  KEY_SPACE,
+  KEY_LSHIFT,
+};
 
 #endif

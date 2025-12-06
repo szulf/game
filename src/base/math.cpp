@@ -51,13 +51,15 @@ f32 f32_abs(f32 value)
   return ::fabsf(value);
 }
 
-// NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would lose it anyway
+// NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
+// lose it anyway
 f32 f32_floor(f32 value)
 {
   return (f32) (i32) value;
 }
 
-// NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would lose it anyway
+// NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
+// lose it anyway
 f32 f32_ceil(f32 value)
 {
   if (value - (f32) ((i32) value) > 0)

@@ -9,7 +9,7 @@ directories = [
     # Add more directories here
 ]
 
-output_file = "todos.md"
+output_file = "source_todos.md"
 
 # Pattern to detect TODO comments and capture the text
 todo_pattern = re.compile(r"//\s*TODO\(.*?\):\s*(.*)")

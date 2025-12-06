@@ -4,7 +4,7 @@
 #include <GL/glcorearb.h>
 #include <GL/glx.h>
 
-extern "C" struct OpenGLAPI
+extern "C" struct RenderingAPI
 {
   PFNGLVIEWPORTPROC glViewport;
   PFNGLGENTEXTURESPROC glGenTextures;
@@ -43,8 +43,9 @@ extern "C" struct OpenGLAPI
   PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
   PFNGLDELETEBUFFERSPROC glDeleteBuffers;
   PFNGLGETERRORPROC glGetError;
+  PFNGLPOLYGONMODEPROC glPolygonMode;
 };
-void setup_gl_functions(OpenGLAPI* api);
+void setup_gl_functions(RenderingAPI* api);
 
 #ifdef MODE_DEBUG
 void APIENTRY debug_callback(

@@ -1,22 +1,15 @@
-#include "platform.h"
+#include "base/base.cpp"
+#include "platform/platform.h"
 
 static PlatformAPI platform;
+static RenderingAPI rendering;
 
 #include "image.cpp"
 
-// TODO(szulf): should a check like this happen in the files themselves or here?
-#ifdef RENDERER_OPENGL
-#  include "gl_functions.h"
-static OpenGLAPI gl;
-#  include "gl_renderer.cpp"
-#endif
+#include "assets/assets.cpp"
+#include "renderer/renderer.cpp"
 
-enum StaticModel
-{
-  STATIC_MODEL_BOUNDING_BOX = 1,
-  STATIC_MODEL_RING,
-};
-
+#include "camera.cpp"
 #include "entity.cpp"
 
 enum GameAction
@@ -36,8 +29,6 @@ struct Main
   Allocator allocator;
 
   AssetManager asset_manager;
-  u32 shader_map[SHADER_DEFAULT + 1];
-  // TODO(szulf): do i really want this here?
   Array<DrawCall> renderer_queue;
 
   bool camera_mode;
@@ -58,7 +49,7 @@ dll_export SPEC_FN(spec)
 
 dll_export APIS_FN(apis)
 {
-  gl = *gl_api;
+  rendering = *rendering_api;
   platform = *platform_api;
 }
 
@@ -68,55 +59,40 @@ dll_export INIT_FN(init)
   auto& main = *(Main*) memory->memory;
 
   main.allocator.size = GB(1);
+  // TODO(szulf): what about alignment here?
   main.allocator.buffer = (u8*) memory->memory + sizeof(Main);
   main.allocator.type = ALLOCATOR_TYPE_ARENA;
 
   renderer_init();
-  shader_init(main.shader_map);
-  shader_map_instance = main.shader_map;
   main.renderer_queue = array_make<DrawCall>(ARRAY_TYPE_DYNAMIC, 50, main.allocator);
-  renderer_queue_instance = &main.renderer_queue;
   main.asset_manager = asset_manager_make(main.allocator);
   asset_manager_instance = &main.asset_manager;
+  // NOTE(szulf): init shaders
+  {
+    auto shader = assets_load_shader("shaders/shader.vert", "shaders/green.frag", error);
+    ASSERT(error == SUCCESS && shader == SHADER_GREEN, "failed to initalize shader");
 
-  {
-    // TODO(szulf): i hate this being here
-    // NOTE(szulf): creation of the bounding box model
-    Material material = {};
-    material.shader = SHADER_GREEN;
-    auto material_handle = assets_set_material(material);
-    Mesh mesh = mesh_make(
-      array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
-      array_from(bounding_box_indices, array_size(bounding_box_indices)),
-      material_handle
-    );
-    auto mesh_handle = assets_set_mesh(mesh);
-    Model model = {};
-    model.matrix = mat4_make();
-    model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, main.allocator);
-    array_push(model.meshes, mesh_handle);
-    auto handle = assets_set_model(model);
-    ASSERT(handle == STATIC_MODEL_BOUNDING_BOX, "wut happened");
+    shader = assets_load_shader("shaders/shader.vert", "shaders/yellow.frag", error);
+    ASSERT(error == SUCCESS && shader == SHADER_YELLOW, "failed to initalize shader");
+
+    shader = assets_load_shader("shaders/shader.vert", "shaders/shader.frag", error);
+    ASSERT(error == SUCCESS && shader == SHADER_DEFAULT, "failed to initalize shader");
   }
-  {
-    // TODO(szulf): i hate this being here
-    // NOTE(szulf): creation of the ring model
-    Material material = {};
-    material.shader = SHADER_YELLOW;
-    auto material_handle = assets_set_material(material);
-    Mesh mesh = mesh_make(
-      array_from(ring_vertices, array_size(ring_vertices)),
-      array_from(ring_indices, array_size(ring_indices)),
-      material_handle
-    );
-    auto mesh_handle = assets_set_mesh(mesh);
-    Model model = {};
-    model.matrix = mat4_make();
-    model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, main.allocator);
-    array_push(model.meshes, mesh_handle);
-    auto handle = assets_set_model(model);
-    ASSERT(handle == STATIC_MODEL_RING, "wut happened");
-  }
+
+  static_model_init(
+    STATIC_MODEL_BOUNDING_BOX,
+    SHADER_GREEN,
+    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
+    array_from(bounding_box_indices, array_size(bounding_box_indices)),
+    main.allocator
+  );
+  static_model_init(
+    STATIC_MODEL_RING,
+    SHADER_YELLOW,
+    array_from(ring_vertices, array_size(ring_vertices)),
+    array_from(ring_indices, array_size(ring_indices)),
+    main.allocator
+  );
 
   main.entities = array_make<Entity>(ARRAY_TYPE_DYNAMIC, 30, main.allocator);
 
@@ -180,21 +156,19 @@ dll_export INIT_FN(init)
   main.camera.viewport_height = platform.get_height();
   camera_update_vectors(main.camera);
 
-  // TODO(szulf): read from keymap file
-  input->move_front_key = KEY_W;
-  input->move_back_key = KEY_S;
-  input->move_left_key = KEY_A;
-  input->move_right_key = KEY_D;
-  input->toggle_camera_mode_key = KEY_F1;
-  input->toggle_display_bounding_boxes_key = KEY_F2;
-  input->interact_key = KEY_E;
+  // TODO(szulf): read from file
+  key_map->move_front = KEY_W;
+  key_map->move_back = KEY_S;
+  key_map->move_left = KEY_A;
+  key_map->move_right = KEY_D;
+  key_map->toggle_camera_mode = KEY_F1;
+  key_map->toggle_display_bounding_boxes = KEY_F2;
+  key_map->interact = KEY_E;
 }
 
 dll_export POST_RELOAD_FN(post_reload)
 {
   auto& main = *(Main*) memory->memory;
-  shader_map_instance = main.shader_map;
-  renderer_queue_instance = &main.renderer_queue;
   asset_manager_instance = &main.asset_manager;
 }
 
@@ -206,7 +180,8 @@ dll_export UPDATE_FN(update)
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   Array<Entity*> ground = array_make<Entity*>(ARRAY_TYPE_DYNAMIC, 30, scratch_arena.allocator);
-  Array<Entity*> interactables = array_make<Entity*>(ARRAY_TYPE_DYNAMIC, 30, scratch_arena.allocator);
+  Array<Entity*> interactables =
+    array_make<Entity*>(ARRAY_TYPE_DYNAMIC, 30, scratch_arena.allocator);
   // TODO(szulf): i dont like that i have to iterate over the whole entities list to find anything
   // but maybe a more complex solution is not worth implementing as of now
   // could probably just cache this somehow, and check if new entities have not been added
@@ -320,18 +295,18 @@ dll_export RENDER_FN(render)
     if (main.display_bounding_boxes && entity.type != ENTITY_TYPE_STATIC_COLLISION)
     {
       auto bounding_box_call = draw_call_entity_bounding_box(entity, main.camera);
-      renderer_queue_draw_call(bounding_box_call);
+      renderer_queue_draw_call(main.renderer_queue, bounding_box_call);
       if (entity.type == ENTITY_TYPE_INTERACTABLE)
       {
         auto radius_call = draw_call_entity_interactable_radius(entity, main.camera);
-        renderer_queue_draw_call(radius_call);
+        renderer_queue_draw_call(main.renderer_queue, radius_call);
       }
     }
     auto draw_call = draw_call_entity(entity, main.camera);
-    renderer_queue_draw_call(draw_call);
+    renderer_queue_draw_call(main.renderer_queue, draw_call);
   }
 
-  renderer_draw();
+  renderer_draw(main.renderer_queue);
 }
 
 dll_export EVENT_FN(event)

@@ -1,8 +1,15 @@
 #ifndef ASSETS_H
 #define ASSETS_H
 
+#include "shader.h"
+#include "texture.h"
+#include "material.h"
+#include "mesh.h"
+#include "model.h"
+
 struct AssetManager
 {
+  Array<Shader> shaders;
   Array<Texture> textures;
   Array<Material> materials;
   Array<Mesh> meshes;
@@ -12,13 +19,16 @@ struct AssetManager
   Map<String, MaterialHandle> material_handles;
 };
 
+static AssetManager* asset_manager_instance = nullptr;
+
 AssetManager asset_manager_make(Allocator& allocator);
 
-static AssetManager* asset_manager_instance = nullptr;
-Material& assets_get_material(MaterialHandle handle);
-MaterialHandle assets_set_material(const Material& material);
+ShaderHandle assets_set_shader(Shader shader);
+Shader assets_get_shader(ShaderHandle handle);
 Texture& assets_get_texture(TextureHandle handle);
 TextureHandle assets_set_texture(const Texture& texture);
+Material& assets_get_material(MaterialHandle handle);
+MaterialHandle assets_set_material(const Material& material);
 Mesh& assets_get_mesh(MeshHandle handle);
 MeshHandle assets_set_mesh(const Mesh& mesh);
 Model& assets_get_model(ModelHandle handle);
@@ -32,5 +42,6 @@ void assets_texture_handle_set(const String& key, TextureHandle handle);
 bool assets_texture_handle_exists(const String& key);
 
 ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out_error);
+ShaderHandle assets_load_shader(const char* vert_path, const char* frag_path, Error& out_error);
 
 #endif

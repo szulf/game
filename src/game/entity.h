@@ -43,7 +43,6 @@ struct Entity
 
 bool collides(const Entity& ea, const Entity& eb);
 
-// TODO(szulf): should these functions be here?
 DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera);

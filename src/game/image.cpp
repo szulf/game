@@ -62,14 +62,15 @@ struct ImageHuffman
 };
 
 static const u8 image_zlib_fixed_huffman_length_alphabet[IMAGE_ZLIB_NUM_SYMBOLS_LITERAL_LENGTH] = {
-  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-  9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-  9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-  9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-  9, 9, 9, 9, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+  8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+  9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+  9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+  9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+  7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8,
 };
 
 static const u8 image_zlib_fixed_huffman_distance_alphabet[32] = {
@@ -154,7 +155,12 @@ inline static u16 image_bit_reverse(u16 v, u32 bits)
   return image_bit_reverse_16(v) >> (16 - bits);
 }
 
-static void image_zlib_huffman_build(ImageHuffman& huffman, const u8* code_lengths, u32 code_lengths_size, Error& err)
+static void image_zlib_huffman_build(
+  ImageHuffman& huffman,
+  const u8* code_lengths,
+  u32 code_lengths_size,
+  Error& err
+)
 {
   u32 sizes[17] = {0};
   for (u32 i = 0; i < code_lengths_size; ++i)
@@ -195,7 +201,8 @@ static void image_zlib_huffman_build(ImageHuffman& huffman, const u8* code_lengt
       continue;
     }
 
-    u32 canonical_pos = next_code[code_length] - huffman.first_code[code_length] + huffman.first_symbol[code_length];
+    u32 canonical_pos =
+      next_code[code_length] - huffman.first_code[code_length] + huffman.first_symbol[code_length];
     u16 fast_table_val = (u16) ((u32) (code_length << IMAGE_ZLIB_FAST_BITS) | i);
     huffman.length[canonical_pos] = (u8) code_length;
     huffman.value[canonical_pos] = (u16) i;
@@ -256,8 +263,14 @@ static u32 image_zlib_huffman_decode(ImageZlibContext& zlib_ctx, ImageHuffman& h
   }
   ERROR_ASSERT(code_length < 16, err, IMAGE_ERROR_CORRUPT_ZLIB, (u32) -1);
 
-  u32 value_idx = (bits >> (16 - code_length)) - huffman.first_code[code_length] + huffman.first_symbol[code_length];
-  ERROR_ASSERT(value_idx < IMAGE_ZLIB_NUM_SYMBOLS_LITERAL_LENGTH, err, IMAGE_ERROR_CORRUPT_ZLIB, (u32) -1);
+  u32 value_idx = (bits >> (16 - code_length)) - huffman.first_code[code_length] +
+                  huffman.first_symbol[code_length];
+  ERROR_ASSERT(
+    value_idx < IMAGE_ZLIB_NUM_SYMBOLS_LITERAL_LENGTH,
+    err,
+    IMAGE_ERROR_CORRUPT_ZLIB,
+    (u32) -1
+  );
   ERROR_ASSERT(huffman.length[value_idx] == code_length, err, IMAGE_ERROR_CORRUPT_ZLIB, (u32) -1);
   zlib_ctx.bits_buffer >>= code_length;
   zlib_ctx.bits_buffered -= code_length;
@@ -266,7 +279,8 @@ static u32 image_zlib_huffman_decode(ImageZlibContext& zlib_ctx, ImageHuffman& h
 
 static void image_zlib_huffman_compute_codes(ImageZlibContext& zlib_ctx, Error& err)
 {
-  static const u8 code_length_indices[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+  static const u8 code_length_indices[19] =
+    {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
   Error error = SUCCESS;
 
   u32 hlit = image_zlib_read_bits(zlib_ctx, 5) + 257;
@@ -313,7 +327,11 @@ static void image_zlib_huffman_compute_codes(ImageZlibContext& zlib_ctx, Error& 
       {
         repeat_times = image_zlib_read_bits(zlib_ctx, 7) + 11;
       }
-      ERROR_ASSERT(total_iterations - iteration_idx >= repeat_times, err, IMAGE_ERROR_BAD_CODE_LENGTH, );
+      ERROR_ASSERT(
+        total_iterations - iteration_idx >= repeat_times,
+        err,
+        IMAGE_ERROR_BAD_CODE_LENGTH,
+      );
       mem_set(code_lengths + iteration_idx, fill, repeat_times);
       iteration_idx += repeat_times;
     }
@@ -342,8 +360,9 @@ static const u16 distance_code_to_base_length[32] = {
   1,   2,   3,   4,   5,    7,    9,    13,   17,   25,   33,   49,    65,    97,    129, 193,
   257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0,   0,
 };
-static const u8 distance_code_to_extra_bits[32] = {0, 0, 0, 0, 1, 1, 2, 2,  3,  3,  4,  4,  5,  5,  6,
-                                                   6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+static const u8 distance_code_to_extra_bits[32] = {0, 0, 0,  0,  1,  1,  2,  2,  3,  3,
+                                                   4, 4, 5,  5,  6,  6,  7,  7,  8,  8,
+                                                   9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
 static void image_zlib_huffman_parse_block(ImageZlibContext& zlib_ctx, Error& err)
 {
@@ -357,7 +376,11 @@ static void image_zlib_huffman_parse_block(ImageZlibContext& zlib_ctx, Error& er
     if (decoded_value == 256)
     {
       zlib_ctx.out = out;
-      ERROR_ASSERT(!(zlib_ctx.hit_eof_once && zlib_ctx.bits_buffered < 16), err, IMAGE_ERROR_UNEXPECTED_END, );
+      ERROR_ASSERT(
+        !(zlib_ctx.hit_eof_once && zlib_ctx.bits_buffered < 16),
+        err,
+        IMAGE_ERROR_UNEXPECTED_END,
+      );
       return;
     }
     else if (decoded_value < 256)
@@ -434,7 +457,8 @@ static i32 image_png_paeth_predictor(i32 a, i32 b, i32 c)
   }
 }
 
-static void image_png_create_rgba8(Image& img, ImageContext& ctx, u8* data, Allocator& allocator, Error& err)
+static void
+image_png_create_rgba8(Image& img, ImageContext& ctx, u8* data, Allocator& allocator, Error& err)
 {
   u8 channels = color_format_to_number_of_channels[ctx.color_format];
   u8 byte_depth = ctx.bit_depth == 16 ? 2 : 1;
@@ -514,10 +538,12 @@ static void image_png_create_rgba8(Image& img, ImageContext& ctx, u8* data, Allo
         }
         for (u32 i = data_bytes_per_pixel; i < data_bytes_per_line; ++i)
         {
-          curr[i] =
-            (u8) (data[i] +
-                  image_png_paeth_predictor(curr[i - data_bytes_per_pixel], prev[i], prev[i - data_bytes_per_pixel])) &
-            255;
+          curr[i] = (u8) (data[i] + image_png_paeth_predictor(
+                                      curr[i - data_bytes_per_pixel],
+                                      prev[i],
+                                      prev[i - data_bytes_per_pixel]
+                                    )) &
+                    255;
         }
       }
       break;
@@ -615,7 +641,8 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
         img.width = image_get32be(ctx);
         img.height = image_get32be(ctx);
         ERROR_ASSERT(
-          img.width < IMAGE_MAX_SIZE && img.width > 0 && img.height < IMAGE_MAX_SIZE && img.height > 0,
+          img.width < IMAGE_MAX_SIZE && img.width > 0 && img.height < IMAGE_MAX_SIZE &&
+            img.height > 0,
           err,
           IMAGE_ERROR_INVALID_IHDR,
           img
@@ -639,7 +666,8 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
         ERROR_ASSERT(filter == 0, err, IMAGE_ERROR_INVALID_IHDR, img);
         ctx.interlaced = image_get8(ctx);
         combined_idat_chunks = (u8*) alloc_start(scratch_arena.allocator);
-        combined_idat_chunks_size_limit = scratch_arena.allocator.size - scratch_arena.allocator.type_data.arena.offset;
+        combined_idat_chunks_size_limit =
+          scratch_arena.allocator.size - scratch_arena.allocator.type_data.arena.offset;
       }
       break;
 
@@ -653,7 +681,12 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
       {
         ERROR_ASSERT(!first, err, IMAGE_ERROR_IHDR_NOT_FIRST, img);
         ERROR_ASSERT(chunk.length <= IMAGE_MAX_IDAT_CHUNK_SIZE, err, IMAGE_ERROR_INVALID_IDAT, img);
-        ERROR_ASSERT(combined_idat_chunks_size < combined_idat_chunks_size_limit, err, GLOBAL_ERROR_OUT_OF_MEMORY, img);
+        ERROR_ASSERT(
+          combined_idat_chunks_size < combined_idat_chunks_size_limit,
+          err,
+          GLOBAL_ERROR_OUT_OF_MEMORY,
+          img
+        );
         mem_copy(combined_idat_chunks + combined_idat_chunks_size, ctx.data, chunk.length);
         combined_idat_chunks_size += chunk.length;
         ctx.data += chunk.length;
@@ -715,7 +748,12 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
               u16 len = (u16) (header[1] << 8) | header[0];
               u16 nlen = (u16) (header[3] << 8) | header[2];
               ERROR_ASSERT(nlen == (len ^ 0xFFFF), err, IMAGE_ERROR_CORRUPT_ZLIB, img);
-              ERROR_ASSERT(zlib_ctx.data + len <= zlib_ctx.data_end, err, IMAGE_ERROR_READ_PAST_BUFFER, img);
+              ERROR_ASSERT(
+                zlib_ctx.data + len <= zlib_ctx.data_end,
+                err,
+                IMAGE_ERROR_READ_PAST_BUFFER,
+                img
+              );
               mem_copy(zlib_ctx.out, zlib_ctx.data, len);
               zlib_ctx.data += len;
               zlib_ctx.out += len;
@@ -731,7 +769,12 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
                 error
               );
               ERROR_ASSERT(error == SUCCESS, err, error, img);
-              image_zlib_huffman_build(zlib_ctx.distance, image_zlib_fixed_huffman_distance_alphabet, 32, error);
+              image_zlib_huffman_build(
+                zlib_ctx.distance,
+                image_zlib_fixed_huffman_distance_alphabet,
+                32,
+                error
+              );
               ERROR_ASSERT(error == SUCCESS, err, error, img);
               image_zlib_huffman_parse_block(zlib_ctx, error);
               ERROR_ASSERT(error == SUCCESS, err, error, img);

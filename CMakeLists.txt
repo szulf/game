@@ -73,8 +73,11 @@ set(flags
   "$<$<AND:${compiler_clang},$<OR:${mode_release},${mode_release_no_assert}>>:${clang_flags_release}>"
 )
 
+set(include_dirs src)
+
 # NOTE(szulf): using unity build so thats the reason for just one source file
-add_library(game SHARED src/game.cpp)
+add_library(game SHARED src/game/game.cpp)
+target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags} -fPIC -fvisibility=hidden)
 target_compile_definitions(game PRIVATE ${definitions})
 
@@ -82,7 +85,8 @@ find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
 
 # NOTE(szulf): using unity build so thats the reason for just one source file
-add_executable(game_sdl3 src/sdl3_gl.cpp)
+add_executable(game_sdl3 src/platform/sdl3_gl.cpp)
+target_include_directories(game_sdl3 PRIVATE ${include_dirs})
 target_compile_options(game_sdl3 PRIVATE ${flags})
 target_compile_definitions(game_sdl3 PRIVATE ${definitions})
 target_link_libraries(game_sdl3 PRIVATE SDL3::SDL3 OpenGL)

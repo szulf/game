@@ -16,7 +16,4 @@ enum ShaderError
   SHADER_ERROR_LINKING,
 };
 
-ShaderHandle assets_set_shader(Shader shader);
-Shader assets_get_shader(ShaderHandle handle);
-
 #endif

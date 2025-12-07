@@ -4,27 +4,24 @@
 
 ## SMALL TODOS: (ordered)
 
-1. interpolate everything so its smooth
-2. bounding_box_from_model(ModelHandle model) or hardcode bounding boxes(why not both?)
-   - could specify in the file format if the bounding box is hardcoded or if i want to load it from the model itself
-   - because i might want invisible entities, so then i would need to hardcode it
-3. read entities from files(custom file format)
-4. read keymap from file
-5. change texture(?) of light bulb between lit and unlit when interacting
-6. player rotation
+1. read entities from files(custom file format)
+2. read keymap from file
+3. change texture(?) of light bulb between lit and unlit when interacting
+4. player rotation
    - will change automatically depending on which way you moved
-7. improve the movement system
+5. improve the movement system
    - when moving into a bad position and actually pressing two keys at the same time(W and D over an edge),
    - it should move you in the direction of the possible movement, and not stop the movement completely
    - also when moving into a bad position it shouldnt just stop me if the next position will be bad,
    - it should allow me to move the furthest i can
    - in the platform layer instead of setting move\_\* to a specific value, add it instead so if i press A and D at the same time i actually stay in one place
-8. resizability
-9. figure out stripping debug features from release builds
-    - or maybe dont strip them?
-10. phong/blinn-phong lighting
-11. shadow mapping or point shadows (?)
-12. tests?
+6. interpolate everything so its smooth
+7. resizability
+8. figure out stripping debug features from release builds
+   - or maybe dont strip them?
+9. phong/blinn-phong lighting
+10. shadow mapping or point shadows (?)
+11. tests?
     - what do i even test? and how?
     - do i want unit tests? or just in-game tests?
 
@@ -42,7 +39,22 @@
 # DOCS
 
 ### File Structure
-TODO: document the file structure
+
+This write-up talks about the structure inside of the 'src' directory.
+
+Top level directories are separate compilation units(with 'base' being the exception, it could be compiled as
+a static library, but instead every other unit just includes all of the source code). Each unit builds a
+single translation unit that gets compiled into the appropriate thing(unity builds).
+
+Inside those compilations units there are both loose source files, and modules. A module is simply more than one
+source files that can be conceptually grouped together. A module just like a compilation unit exposes a single
+translation unit that can then get included in the parents source.
+
+Inclusion of other source files only happens in the 'main' file of the module/unit, with the exception of
+including the associated header file.
+
+Modules and units can and do depend on other modules, all that means in practice is that the order of includes in
+the 'main' file matters.
 
 # EVERYTHING BELOW THIS LINE IS OUTDATED, PLEASE CHANGE IT!
 

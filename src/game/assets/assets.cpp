@@ -118,10 +118,6 @@ struct ObjContext
   usize pos_count;
   usize normal_count;
   usize uv_count;
-  // TODO(szulf): calculated just for hardcoding bounding boxes, should probably somehow actually
-  // calculate it from this
-  Vec3 max;
-  Vec3 min;
 };
 
 static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& out_error)
@@ -332,12 +328,6 @@ static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
             }
             Vec3 vec = {points[0], points[1], points[2]};
             array_push(ctx.positions, vec);
-            ctx.max.x = f32_max(ctx.max.x, vec.x);
-            ctx.min.x = f32_min(ctx.min.x, vec.x);
-            ctx.max.y = f32_max(ctx.max.y, vec.y);
-            ctx.min.y = f32_min(ctx.min.y, vec.y);
-            ctx.max.z = f32_max(ctx.max.z, vec.z);
-            ctx.min.z = f32_min(ctx.min.z, vec.z);
           }
           break;
 
@@ -408,8 +398,6 @@ ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out
   model.matrix = mat4_make();
   ObjContext ctx = {};
   ctx.allocator = &allocator;
-  ctx.max = {F32_MIN, F32_MIN, F32_MIN};
-  ctx.min = {F32_MAX, F32_MAX, F32_MAX};
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;

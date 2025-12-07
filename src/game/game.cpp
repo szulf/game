@@ -12,18 +12,6 @@ static RenderingAPI rendering;
 #include "camera.cpp"
 #include "entity.cpp"
 
-enum GameAction
-{
-  ACTION_MOVE_UP,
-  ACTION_MOVE_DOWN,
-  ACTION_MOVE_FRONT,
-  ACTION_MOVE_BACK,
-  ACTION_MOVE_LEFT,
-  ACTION_MOVE_RIGHT,
-  ACTION_TOGGLE_DEBUG_MODE,
-  ACTION_INTERACT,
-};
-
 struct Main
 {
   Allocator allocator;
@@ -67,7 +55,7 @@ dll_export INIT_FN(init)
   main.renderer_queue = array_make<DrawCall>(ARRAY_TYPE_DYNAMIC, 50, main.allocator);
   main.asset_manager = asset_manager_make(main.allocator);
   asset_manager_instance = &main.asset_manager;
-  // NOTE(szulf): init shaders
+
   {
     auto shader = assets_load_shader("shaders/shader.vert", "shaders/green.frag", error);
     ASSERT(error == SUCCESS && shader == SHADER_GREEN, "failed to initalize shader");
@@ -106,8 +94,7 @@ dll_export INIT_FN(init)
     player.has_model = true;
     player.model = player_model;
     player.type = ENTITY_TYPE_PLAYER;
-    player.bounding_box_width = 0.7f;
-    player.bounding_box_depth = 0.7f;
+    player.bounding_box = bounding_box_from_model(player_model);
     array_push(main.entities, player);
 
     auto ground_model = assets_load_model("assets/cube.obj", main.allocator, error);
@@ -135,12 +122,7 @@ dll_export INIT_FN(init)
     light_bulb.model = light_bulb_model;
     light_bulb.type = ENTITY_TYPE_INTERACTABLE;
     light_bulb.interactable_type = INTERACTABLE_TYPE_LIGHT_BULB;
-    // TODO(szulf): hardcoded for now, can i actually calculate this somehow?
-    // could calculate it from the vertices from the obj, same with the scale,
-    // but how do i integrate it with the api
-    // might just hand calculate it from the print max values from obj
-    light_bulb.bounding_box_width = 0.3f;
-    light_bulb.bounding_box_depth = 0.3f;
+    light_bulb.bounding_box = bounding_box_from_model(light_bulb_model);
     array_push(main.entities, light_bulb);
   }
 

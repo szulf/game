@@ -24,6 +24,14 @@ static const InteractableInfo interactable_info[] = {
   {1.0f},
 };
 
+struct BoundingBox
+{
+  f32 width;
+  f32 depth;
+};
+
+BoundingBox bounding_box_from_model(ModelHandle model);
+
 struct Entity
 {
   EntityType type;
@@ -32,8 +40,7 @@ struct Entity
   Vec3 position;
   f32 scale;
 
-  f32 bounding_box_width;
-  f32 bounding_box_depth;
+  BoundingBox bounding_box;
 
   bool has_model;
   ModelHandle model;

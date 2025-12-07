@@ -8,7 +8,4 @@ struct Material
   ShaderHandle shader;
 };
 
-Material& assets_get_material(MaterialHandle handle);
-MaterialHandle assets_set_material(const Material& material);
-
 #endif

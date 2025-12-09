@@ -1,9 +1,8 @@
 #include "string.h"
 
-force_inline char String::operator[](usize idx) const
+bool is_whitespace(char c)
 {
-  ASSERT(idx < size, "string index out of bounds");
-  return data[idx];
+  return c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\v' || c == '\f';
 }
 
 usize cstr_len(const char* cstr)
@@ -13,6 +12,12 @@ usize cstr_len(const char* cstr)
   {
   }
   return (usize) (s - cstr);
+}
+
+force_inline char String::operator[](usize idx) const
+{
+  ASSERT(idx < size, "string index out of bounds");
+  return data[idx];
 }
 
 String string_make(const char* cstr)
@@ -57,6 +62,18 @@ usize string_find_char(const String& str, char c, usize start_idx)
   return (usize) -1;
 }
 
+bool string_starts_with_cstr(const String& str, const char* cstr)
+{
+  auto cstr_size = cstr_len(cstr);
+  return str.size >= cstr_size && mem_equal(str.data, cstr, cstr_size);
+}
+
+bool string_ends_with_cstr(const String& str, const char* cstr)
+{
+  auto cstr_size = cstr_len(cstr);
+  return str.size >= cstr_size && mem_equal(str.data + str.size - cstr_size, cstr, cstr_size);
+}
+
 String string_append_cstr(const String& str, const char* cstr, Allocator& allocator)
 {
   usize cstr_size = cstr_len(cstr);
@@ -72,6 +89,15 @@ String string_append_str(const String& s1, const String& s2, Allocator& allocato
   mem_copy(out, s1.data, s1.size);
   mem_copy(out + s1.size, s2.data, s2.size);
   return string_make_len(out, s1.size + s2.size);
+}
+
+String string_prepend_cstr(const String& str, const char* cstr, Allocator& allocator)
+{
+  usize cstr_size = cstr_len(cstr);
+  char* out = (char*) alloc(allocator, str.size + cstr_size);
+  mem_copy(out, cstr, cstr_size);
+  mem_copy(out + cstr_size, str.data, str.size);
+  return string_make_len(out, str.size + cstr_size);
 }
 
 const char* string_to_cstr(const String& str, Allocator& allocator)
@@ -186,6 +212,23 @@ u32 string_parse_u32(const String& str, Error& out_error)
   }
 
   return val;
+}
+
+String string_trim_whitespace(const String& str)
+{
+  const char* s = str.data;
+  while (is_whitespace(*s))
+  {
+    ++s;
+  }
+
+  usize end_size = str.size;
+  while (is_whitespace(str[end_size - 1]))
+  {
+    --end_size;
+  }
+
+  return string_make_len(s, str.size - (str.size - end_size) - (usize) (s - str.data));
 }
 
 force_inline bool operator==(const String& s1, const String& s2)

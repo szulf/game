@@ -1,0 +1,2 @@
+model : assets/cube.obj
+type : STATIC_COLLISION

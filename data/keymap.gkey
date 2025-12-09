@@ -1,0 +1,7 @@
+move_front : W
+move_back : S
+move_left : A
+move_right : D
+interact : E
+toggle_camera_mode : F1
+toggle_display_bounding_boxes : F2

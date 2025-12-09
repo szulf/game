@@ -1,6 +1,34 @@
-void renderer_init()
+void renderer_init(Allocator& allocator, Error& out_error)
 {
+  Error error = SUCCESS;
   rendering.glEnable(GL_DEPTH_TEST);
+
+  auto shader = shader_from_file("shaders/shader.vert", "shaders/green.frag", error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, );
+  ASSERT(shader == SHADER_GREEN, "invalid shader loading");
+
+  shader = shader_from_file("shaders/shader.vert", "shaders/yellow.frag", error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, );
+  ASSERT(shader == SHADER_YELLOW, "invalid shader loading");
+
+  shader = shader_from_file("shaders/shader.vert", "shaders/shader.frag", error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, );
+  ASSERT(shader == SHADER_DEFAULT, "invalid shader loading");
+
+  static_model_init(
+    STATIC_MODEL_BOUNDING_BOX,
+    SHADER_GREEN,
+    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
+    array_from(bounding_box_indices, array_size(bounding_box_indices)),
+    allocator
+  );
+  static_model_init(
+    STATIC_MODEL_RING,
+    SHADER_YELLOW,
+    array_from(ring_vertices, array_size(ring_vertices)),
+    array_from(ring_indices, array_size(ring_indices)),
+    allocator
+  );
 }
 
 void renderer_clear_screen()

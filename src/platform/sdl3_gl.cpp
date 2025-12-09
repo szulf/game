@@ -5,31 +5,68 @@
 #include "gl_functions.cpp"
 
 static u32 g_width = 0;
-u32 get_width()
+GET_WIDTH_FN(get_width)
 {
   return g_width;
 }
+
 static u32 g_height = 0;
-u32 get_height()
+GET_HEIGHT_FN(get_height)
 {
   return g_height;
 }
 
-void* read_file(const char* filepath, Allocator* allocator, usize* out_size)
+READ_FILE_FN(read_file)
 {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
+  if (!storage)
+  {
+    ASSERT(false, "failed to load file");
+    return nullptr;
+  }
   defer(SDL_CloseStorage(storage));
 
-  if (!SDL_GetStorageFileSize(storage, filepath, out_size))
+  if (!SDL_GetStorageFileSize(storage, path, out_size))
   {
+    ASSERT(false, "failed to load file");
     return nullptr;
   }
   void* file = alloc(*allocator, *out_size);
-  if (!SDL_ReadStorageFile(storage, filepath, file, *out_size))
+  if (!SDL_ReadStorageFile(storage, path, file, *out_size))
   {
+    ASSERT(false, "failed to load file");
     return nullptr;
   }
   return file;
+}
+
+WRITE_FILE_FN(write_file)
+{
+  SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
+  if (!storage)
+  {
+    ASSERT(false, "failed to write file");
+    return;
+  }
+  defer(SDL_CloseStorage(storage));
+
+  while (!SDL_StorageReady(storage))
+  {
+    SDL_Delay(1);
+  }
+
+  auto scratch_arena = scratch_arena_get();
+  defer(scratch_arena_release(scratch_arena));
+
+  if (!SDL_WriteStorageFile(
+        storage,
+        path,
+        string_to_cstr(*string, scratch_arena.allocator),
+        string->size
+      ))
+  {
+    ASSERT(false, "failed to write file");
+  }
 }
 
 static SDL_SharedObject* so;
@@ -86,6 +123,7 @@ i32 main()
 
   PlatformAPI platform_api = {};
   platform_api.read_file = read_file;
+  platform_api.write_file = write_file;
   platform_api.get_width = get_width;
   platform_api.get_height = get_height;
 

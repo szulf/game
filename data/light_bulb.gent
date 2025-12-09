@@ -1,0 +1,4 @@
+model : assets/light_bulb.obj
+type : INTERACTABLE
+interactable_type : LIGHT_BULB
+bounding_box : *

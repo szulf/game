@@ -19,7 +19,7 @@ struct Map
 template <typename K, typename V>
 Map<K, V> map_make(usize cap, Allocator& allocator);
 template <typename K, typename V>
-V* map_get(const Map<K, V>& map, const K& key);
+const V* map_get(const Map<K, V>& map, const K& key);
 template <typename K, typename V>
 const MapEntry<K, V>* map_entry(const Map<K, V>& map, const K& key);
 template <typename K, typename V>

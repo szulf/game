@@ -1,33 +1,34 @@
-# CURRENT GOAL: FINISH ENGINE ARCHITECTURE
-
 ## BIG TODO: togglable light bulb (in preparation of first level)(requires interactions with objects, lights, shadows)
 
 ## SMALL TODOS: (ordered)
 
-1. read entities from files(custom file format)
-2. read keymap from file
-3. change texture(?) of light bulb between lit and unlit when interacting
-4. player rotation
+4. change texture(?) of light bulb between lit and unlit when interacting
+5. player rotation
    - will change automatically depending on which way you moved
-5. improve the movement system
+6. improve the movement system
    - when moving into a bad position and actually pressing two keys at the same time(W and D over an edge),
    - it should move you in the direction of the possible movement, and not stop the movement completely
    - also when moving into a bad position it shouldnt just stop me if the next position will be bad,
    - it should allow me to move the furthest i can
    - in the platform layer instead of setting move\_\* to a specific value, add it instead so if i press A and D at the same time i actually stay in one place
-6. interpolate everything so its smooth
-7. resizability
-8. figure out stripping debug features from release builds
+   - also finally fix the camera movement, make WASD not change the y position and only change that via SPACE/SHIFT
+7. interpolate everything(or switch to fixed frame rate idk yet, probably this) so its smooth
+8. resizability
+9. figure out stripping debug features from release builds
    - or maybe dont strip them?
-9. phong/blinn-phong lighting
-10. shadow mapping or point shadows (?)
-11. tests?
+10. phong/blinn-phong lighting
+11. shadow mapping or point shadows (?)
+12. tests?
     - what do i even test? and how?
     - do i want unit tests? or just in-game tests?
 
 ---
 
 ## NEXT BIG TODOS: (unordered)
+
+- free gpu resources
+  - static models should survive the freeing
+- consider orthographic projection
 
 - audio
 - inventory system
@@ -55,6 +56,10 @@ including the associated header file.
 
 Modules and units can and do depend on other modules, all that means in practice is that the order of includes in
 the 'main' file matters.
+
+### Custom File Formats
+
+TODO: document this
 
 # EVERYTHING BELOW THIS LINE IS OUTDATED, PLEASE CHANGE IT!
 

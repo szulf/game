@@ -41,7 +41,7 @@ TextureHandle assets_texture_handle_get(const String& key);
 void assets_texture_handle_set(const String& key, TextureHandle handle);
 bool assets_texture_handle_exists(const String& key);
 
-ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out_error);
-ShaderHandle assets_load_shader(const char* vert_path, const char* frag_path, Error& out_error);
+ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_error);
+ShaderHandle shader_from_file(const char* vert_path, const char* frag_path, Error& out_error);
 
 #endif

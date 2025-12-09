@@ -391,7 +391,7 @@ static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
   return mesh_make(mesh_vertices, mesh_indices, mesh_material_handle);
 }
 
-ModelHandle assets_load_model(const char* path, Allocator& allocator, Error& out_error)
+ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
   Model model = {};
@@ -604,7 +604,7 @@ static Shader shader_link(u32 vertex_shader, u32 fragment_shader, Error& out_err
 #  error Unknown rendering backend.
 #endif
 
-ShaderHandle assets_load_shader(const char* vert_path, const char* frag_path, Error& out_error)
+ShaderHandle shader_from_file(const char* vert_path, const char* frag_path, Error& out_error)
 {
   Error error = SUCCESS;
   auto vertex_shader = shader_load(vert_path, SHADER_TYPE_VERTEX, error);

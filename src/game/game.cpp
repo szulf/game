@@ -12,6 +12,8 @@ static RenderingAPI rendering;
 #include "camera.cpp"
 #include "entity.cpp"
 
+#include "data/data.cpp"
+
 struct Main
 {
   Allocator allocator;
@@ -51,86 +53,20 @@ dll_export INIT_FN(init)
   main.allocator.buffer = (u8*) memory->memory + sizeof(Main);
   main.allocator.type = ALLOCATOR_TYPE_ARENA;
 
-  renderer_init();
-  main.renderer_queue = array_make<DrawCall>(ARRAY_TYPE_DYNAMIC, 50, main.allocator);
   main.asset_manager = asset_manager_make(main.allocator);
   asset_manager_instance = &main.asset_manager;
+  main.renderer_queue = array_make<DrawCall>(ARRAY_TYPE_DYNAMIC, 50, main.allocator);
+  renderer_init(main.allocator, error);
+  ASSERT(error == SUCCESS, "couldnt initialize renderer");
 
-  {
-    auto shader = assets_load_shader("shaders/shader.vert", "shaders/green.frag", error);
-    ASSERT(error == SUCCESS && shader == SHADER_GREEN, "failed to initalize shader");
-
-    shader = assets_load_shader("shaders/shader.vert", "shaders/yellow.frag", error);
-    ASSERT(error == SUCCESS && shader == SHADER_YELLOW, "failed to initalize shader");
-
-    shader = assets_load_shader("shaders/shader.vert", "shaders/shader.frag", error);
-    ASSERT(error == SUCCESS && shader == SHADER_DEFAULT, "failed to initalize shader");
-  }
-
-  static_model_init(
-    STATIC_MODEL_BOUNDING_BOX,
-    SHADER_GREEN,
-    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
-    array_from(bounding_box_indices, array_size(bounding_box_indices)),
-    main.allocator
-  );
-  static_model_init(
-    STATIC_MODEL_RING,
-    SHADER_YELLOW,
-    array_from(ring_vertices, array_size(ring_vertices)),
-    array_from(ring_indices, array_size(ring_indices)),
-    main.allocator
-  );
-
-  main.entities = array_make<Entity>(ARRAY_TYPE_DYNAMIC, 30, main.allocator);
-
-  // TODO(szulf): load all entities from a file
-  {
-    Entity player = {};
-    auto player_model = assets_load_model("assets/bean.obj", main.allocator, error);
-    ASSERT(error == SUCCESS, "failed to load model");
-    player.position = {0.0f, 0.0f, 0.0f};
-    player.scale = 1.0f;
-    player.has_model = true;
-    player.model = player_model;
-    player.type = ENTITY_TYPE_PLAYER;
-    player.bounding_box = bounding_box_from_model(player_model);
-    array_push(main.entities, player);
-
-    auto ground_model = assets_load_model("assets/cube.obj", main.allocator, error);
-    ASSERT(error == SUCCESS, "failed to load model");
-    for (i32 row = -2; row < 3; ++row)
-    {
-      for (i32 column = -2; column < 2; ++column)
-      {
-        Entity ground = {};
-        ground.position = {(f32) row, -1.0f, (f32) column};
-        ground.scale = 1.0f;
-        ground.has_model = true;
-        ground.model = ground_model;
-        ground.type = ENTITY_TYPE_STATIC_COLLISION;
-        array_push(main.entities, ground);
-      }
-    }
-
-    Entity light_bulb = {};
-    auto light_bulb_model = assets_load_model("assets/light_bulb.obj", main.allocator, error);
-    ASSERT(error == SUCCESS, "failed to load model");
-    light_bulb.position = {-1.0f, 0.0f, 0.0f};
-    light_bulb.scale = 1.0f;
-    light_bulb.has_model = true;
-    light_bulb.model = light_bulb_model;
-    light_bulb.type = ENTITY_TYPE_INTERACTABLE;
-    light_bulb.interactable_type = INTERACTABLE_TYPE_LIGHT_BULB;
-    light_bulb.bounding_box = bounding_box_from_model(light_bulb_model);
-    array_push(main.entities, light_bulb);
-  }
+  main.entities = scene_from_file("data/main.gscn", main.allocator, error);
+  ASSERT(error == SUCCESS, "couldnt load scene");
 
   main.camera = {};
-  main.camera.pos = {0.0f, 5.0f, 5.0f};
+  main.camera.pos = {0.0f, 8.0f, 4.0f};
   main.camera.front = {0.0f, 0.0f, -1.0f};
   main.camera.yaw = -90.0f;
-  main.camera.pitch = -50.0f;
+  main.camera.pitch = -60.0f;
   main.camera.fov = 45.0f;
   main.camera.near_plane = 0.1f;
   main.camera.far_plane = 1000.0f;
@@ -138,14 +74,8 @@ dll_export INIT_FN(init)
   main.camera.viewport_height = platform.get_height();
   camera_update_vectors(main.camera);
 
-  // TODO(szulf): read from file
-  key_map->move_front = KEY_W;
-  key_map->move_back = KEY_S;
-  key_map->move_left = KEY_A;
-  key_map->move_right = KEY_D;
-  key_map->toggle_camera_mode = KEY_F1;
-  key_map->toggle_display_bounding_boxes = KEY_F2;
-  key_map->interact = KEY_E;
+  *keymap = keymap_from_file("data/keymap.gkey", error);
+  ASSERT(error == SUCCESS, "couldnt read keymap file");
 }
 
 dll_export POST_RELOAD_FN(post_reload)

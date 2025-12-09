@@ -7,20 +7,27 @@
 #  error Unknown rendering backend.
 #endif
 
-#define TPS 20
+#define TPS 60
 #define MSPT (1000 / TPS)
 
 extern "C"
 {
-  typedef void* (*ReadFileFN)(const char* path, Allocator* allocator, usize* out_size);
-  typedef u32 (*GetWidthFN)();
-  typedef u32 (*GetHeightFN)();
+  // TODO(szulf): actually handle errors from read_file and write_file
+#define READ_FILE_FN(name) void* name(const char* path, Allocator* allocator, usize* out_size)
+  typedef READ_FILE_FN(ReadFileFN);
+#define WRITE_FILE_FN(name) void name(const char* path, const String* string)
+  typedef WRITE_FILE_FN(WriteFileFN);
+#define GET_WIDTH_FN(name) u32 name()
+  typedef GET_WIDTH_FN(GetWidthFN);
+#define GET_HEIGHT_FN(name) u32 name()
+  typedef GET_HEIGHT_FN(GetHeightFN);
 
   struct PlatformAPI
   {
-    ReadFileFN read_file;
-    GetWidthFN get_width;
-    GetHeightFN get_height;
+    ReadFileFN* read_file;
+    WriteFileFN* write_file;
+    GetWidthFN* get_width;
+    GetHeightFN* get_height;
   };
 
   struct GameMemory
@@ -37,7 +44,7 @@ extern "C"
     usize memory_size;
   };
 
-  struct GameKeyMap
+  struct GameKeymap
   {
     Key move_front;
     Key move_back;
@@ -54,7 +61,7 @@ extern "C"
   // NOTE(szulf): game input needs to know what keys to check, since there are rebindable keys
   struct GameInput
   {
-    GameKeyMap key_map;
+    GameKeymap key_map;
 
     Vec3 move;
 
@@ -92,7 +99,7 @@ extern "C"
   typedef SPEC_FN(SpecFN);
 #define APIS_FN(name) void name(RenderingAPI* rendering_api, PlatformAPI* platform_api)
   typedef APIS_FN(APIsFN);
-#define INIT_FN(name) void name(GameMemory* memory, GameKeyMap* key_map)
+#define INIT_FN(name) void name(GameMemory* memory, GameKeymap* keymap)
   typedef INIT_FN(InitFN);
 #define POST_RELOAD_FN(name) void name(GameMemory* memory)
   typedef POST_RELOAD_FN(PostReloadFN);

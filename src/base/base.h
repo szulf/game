@@ -183,6 +183,13 @@ typedef u32 Error;
 template <typename T>
 usize hash(const T& value);
 
+#include "math.h"
+#include "memory.h"
+#include "array.h"
+#include "map.h"
+#include "string.h"
+#include "vertex.h"
+
 enum Key
 {
   KEY_W = 1,
@@ -195,5 +202,8 @@ enum Key
   KEY_SPACE,
   KEY_LSHIFT,
 };
+
+const char* key_to_cstr(Key key);
+Key string_to_key(const String& str, Error& out_error);
 
 #endif

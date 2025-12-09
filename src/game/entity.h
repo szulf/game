@@ -1,6 +1,8 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+// TODO(szulf): should entity be a module?
+
 #define PLAYER_SPEED 3.0f
 
 enum EntityType
@@ -10,10 +12,16 @@ enum EntityType
   ENTITY_TYPE_INTERACTABLE,
 };
 
+const char* entity_type_to_cstr(EntityType type);
+EntityType string_to_entity_type(const String& str, Error& out_error);
+
 enum InteractableType
 {
   INTERACTABLE_TYPE_LIGHT_BULB,
 };
+
+const char* interactable_type_to_cstr(InteractableType type);
+InteractableType string_to_interactable_type(const String& str, Error& out_error);
 
 struct InteractableInfo
 {
@@ -38,7 +46,6 @@ struct Entity
 
   // TODO(szulf): quaternions for orientation? or just euler angles?
   Vec3 position;
-  f32 scale;
 
   BoundingBox bounding_box;
 
@@ -46,6 +53,11 @@ struct Entity
   ModelHandle model;
 
   InteractableType interactable_type;
+
+  // NOTE(szulf): used for read/write
+  String name;
+  String model_path;
+  bool is_bounding_box_from_model;
 };
 
 bool collides(const Entity& ea, const Entity& eb);
@@ -53,5 +65,15 @@ bool collides(const Entity& ea, const Entity& eb);
 DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera);
+
+enum EntityReadError
+{
+  ENTITY_READ_ERROR_INVALID_POSITION = GLOBAL_ERROR_COUNT,
+  ENTITY_READ_ERROR_INVALID_MODEL,
+  ENTITY_READ_ERROR_INVALID_TYPE,
+  ENTITY_READ_ERROR_INVALID_INTERACTABLE_TYPE,
+  ENTITY_READ_ERROR_DYNAMIC_BOUNDING_BOX_NO_MODEL,
+  ENTITY_READ_ERROR_INVALID_PATH,
+};
 
 #endif

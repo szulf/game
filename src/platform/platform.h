@@ -7,7 +7,7 @@
 #  error Unknown rendering backend.
 #endif
 
-#define TPS 60
+#define TPS 165
 #define MSPT (1000 / TPS)
 
 extern "C"

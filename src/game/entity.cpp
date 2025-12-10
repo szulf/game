@@ -98,6 +98,7 @@ DrawCall draw_call_entity(const Entity& entity, const Camera& camera)
   mat4_translate(out.model, entity.position);
   out.view = camera_look_at(camera);
   out.projection = camera_projection(camera);
+  out.emissive = entity.light_bulb_emissive;
   return out;
 }
 

@@ -54,6 +54,9 @@ struct Entity
 
   InteractableType interactable_type;
 
+  // NOTE(szulf): light_bulb
+  bool light_bulb_emissive;
+
   // NOTE(szulf): used for read/write
   String name;
   String model_path;

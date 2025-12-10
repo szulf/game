@@ -7,3 +7,4 @@
    - could specify in the file format if the bounding box is hardcoded or if i want to load it from the model itself
    - because i might want invisible entities, so then i would need to hardcode it
 3. read entities and keymap from files(custom file format)
+4. change texture(?) of light bulb between lit and unlit when interacting

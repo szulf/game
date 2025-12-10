@@ -120,6 +120,29 @@ struct ObjContext
   usize uv_count;
 };
 
+static TextureHandle
+obj_get_texture_by_path(const String& path, Allocator& allocator, Error& out_error)
+{
+  Error error = SUCCESS;
+  auto scratch_arena = scratch_arena_get();
+  defer(scratch_arena_release(scratch_arena));
+
+  if (assets_texture_handle_exists(path))
+  {
+    return assets_texture_handle_get(path);
+  }
+
+  auto img =
+    image_from_file(string_to_cstr(path, scratch_arena.allocator), scratch_arena.allocator, error);
+  // TODO(szulf): do i want to initialize it with an error image here instead?
+  ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, (TextureHandle) 0);
+  auto texture = texture_make(img);
+  auto allocated_path = string_copy(path, allocator);
+  auto texture_handle = assets_set_texture(texture);
+  assets_texture_handle_set(allocated_path, texture_handle);
+  return texture_handle;
+}
+
 static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
@@ -177,35 +200,13 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
         {
           continue;
         }
-        if (parts[0] != "map_Kd")
-        {
-          continue;
-        }
         auto base_file_path = string_make("assets/");
         auto texture_file_path =
           string_append_str(base_file_path, parts[1], scratch_arena.allocator);
-        if (!assets_texture_handle_exists(texture_file_path))
+
+        if (parts[0] == "map_Kd")
         {
-          auto img = image_from_file(
-            string_to_cstr(texture_file_path, scratch_arena.allocator),
-            scratch_arena.allocator,
-            error
-          );
-          // TODO(szulf): do i want to initialize it with an error image here instead?
-          if (error != SUCCESS)
-          {
-            out_error = GLOBAL_ERROR_INVALID_DATA;
-            return;
-          }
-          auto texture = texture_make(img);
-          auto allocated_texture_file_path = string_copy(texture_file_path, allocator);
-          auto texture_handle = assets_set_texture(texture);
-          assets_texture_handle_set(allocated_texture_file_path, texture_handle);
-          material.texture = texture_handle;
-        }
-        else
-        {
-          auto texture_handle = assets_texture_handle_get(texture_file_path);
+          auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator, error);
           material.texture = texture_handle;
         }
       }

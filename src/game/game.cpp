@@ -49,7 +49,6 @@ dll_export INIT_FN(init)
   auto& main = *(Main*) memory->memory;
 
   main.allocator.size = GB(1);
-  // TODO(szulf): what about alignment here?
   main.allocator.buffer = (u8*) memory->memory + sizeof(Main);
   main.allocator.type = ALLOCATOR_TYPE_ARENA;
 
@@ -62,6 +61,9 @@ dll_export INIT_FN(init)
   main.entities = scene_from_file("data/main.gscn", main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt load scene");
 
+  *keymap = keymap_from_file("data/keymap.gkey", error);
+  ASSERT(error == SUCCESS, "couldnt read keymap file");
+
   main.camera = {};
   main.camera.pos = {0.0f, 8.0f, 4.0f};
   main.camera.front = {0.0f, 0.0f, -1.0f};
@@ -73,9 +75,6 @@ dll_export INIT_FN(init)
   main.camera.viewport_width = platform.get_width();
   main.camera.viewport_height = platform.get_height();
   camera_update_vectors(main.camera);
-
-  *keymap = keymap_from_file("data/keymap.gkey", error);
-  ASSERT(error == SUCCESS, "couldnt read keymap file");
 }
 
 dll_export POST_RELOAD_FN(post_reload)
@@ -184,7 +183,7 @@ dll_export UPDATE_FN(update)
       {
         if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
         {
-          print("interacted with light bulb\n");
+          interactable.light_bulb_emissive = !interactable.light_bulb_emissive;
         }
       }
     }

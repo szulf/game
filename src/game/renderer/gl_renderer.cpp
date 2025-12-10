@@ -57,22 +57,23 @@ void renderer_draw(Array<DrawCall>& queue)
     {
       auto& mesh = assets_get_mesh(model.meshes[mesh_idx]);
       auto& material = assets_get_material(mesh.material);
+      auto shader = assets_get_shader(material.shader);
 
       rendering.glUseProgram(assets_get_shader(material.shader));
       rendering.glUniformMatrix4fv(
-        rendering.glGetUniformLocation(assets_get_shader(material.shader), "model"),
+        rendering.glGetUniformLocation(shader, "model"),
         1,
         false,
         draw_call.model.data
       );
       rendering.glUniformMatrix4fv(
-        rendering.glGetUniformLocation(assets_get_shader(material.shader), "view"),
+        rendering.glGetUniformLocation(shader, "view"),
         1,
         false,
         draw_call.view.data
       );
       rendering.glUniformMatrix4fv(
-        rendering.glGetUniformLocation(assets_get_shader(material.shader), "proj"),
+        rendering.glGetUniformLocation(shader, "proj"),
         1,
         false,
         draw_call.projection.data
@@ -83,11 +84,11 @@ void renderer_draw(Array<DrawCall>& queue)
         auto texture_id = assets_get_texture(material.texture).id;
         rendering.glActiveTexture(GL_TEXTURE0);
         rendering.glBindTexture(GL_TEXTURE_2D, texture_id);
-        rendering.glUniform1i(
-          rendering.glGetUniformLocation(assets_get_shader(material.shader), "sampler"),
-          0
-        );
+        rendering.glUniform1i(rendering.glGetUniformLocation(shader, "sampler"), 0);
       }
+
+      rendering.glUniform1i(rendering.glGetUniformLocation(shader, "emissive"), draw_call.emissive);
+
       rendering.glBindVertexArray(mesh.vao);
 
       switch (draw_call.primitive)

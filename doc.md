@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-4. change texture(?) of light bulb between lit and unlit when interacting
 5. player rotation
    - will change automatically depending on which way you moved
 6. improve the movement system
@@ -17,8 +16,9 @@
 9. figure out stripping debug features from release builds
    - or maybe dont strip them?
 10. phong/blinn-phong lighting
-11. shadow mapping or point shadows (?)
-12. tests?
+11. emissive maps for light bulb?
+12. shadow mapping or point shadows (?)
+13. tests?
     - what do i even test? and how?
     - do i want unit tests? or just in-game tests?
 

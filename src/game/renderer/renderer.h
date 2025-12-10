@@ -29,6 +29,7 @@ struct DrawCall
 
   ModelHandle model_handle;
 
+  bool emissive;
   bool wireframe;
   Primitive primitive;
 };

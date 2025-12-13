@@ -1,8 +1,8 @@
 #include "gkey.h"
 
-GameKeymap keymap_from_file(const char* path, Error& out_error)
+GameInput keymap_from_file(const char* path, Error& out_error)
 {
-  GameKeymap key_map = {};
+  GameInput input = {};
   Error error = SUCCESS;
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
@@ -16,58 +16,70 @@ GameKeymap keymap_from_file(const char* path, Error& out_error)
   {
     auto& line = lines[line_idx];
     auto parts = string_split(line, ':', scratch_arena.allocator);
-    ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, key_map);
+    ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, input);
 
     auto action = string_trim_whitespace(parts[0]);
     auto key_str = string_trim_whitespace(parts[1]);
     auto key = string_to_key(key_str, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, key_map);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, input);
 
     if (action == "move_front")
     {
-      key_map.move_front = key;
+      input.move_front.key = key;
     }
     else if (action == "move_back")
     {
-      key_map.move_back = key;
+      input.move_back.key = key;
     }
     else if (action == "move_left")
     {
-      key_map.move_left = key;
+      input.move_left.key = key;
     }
     else if (action == "move_right")
     {
-      key_map.move_right = key;
+      input.move_right.key = key;
     }
     else if (action == "interact")
     {
-      key_map.interact = key;
+      input.interact.key = key;
     }
     else if (action == "toggle_camera_mode")
     {
-      key_map.toggle_camera_mode = key;
+      input.toggle_camera_mode.key = key;
     }
     else if (action == "toggle_display_bounding_boxes")
     {
-      key_map.toggle_display_bounding_boxes = key;
+      input.toggle_display_bounding_boxes.key = key;
+    }
+    else if (action == "camera_move_up")
+    {
+      input.camera_move_up.key = key;
+    }
+    else if (action == "camera_move_down")
+    {
+      input.camera_move_down.key = key;
     }
     else
     {
       out_error = GLOBAL_ERROR_INVALID_DATA;
-      return key_map;
+      return input;
     }
   }
 
-  return key_map;
+  return input;
 }
 
-void keymap_to_file(const char* path, GameKeymap& key_map)
+void keymap_to_file(const char* path, GameInput& input)
 {
-#define WRITE_KEY(key)                                                                             \
+#define WRITE_KEY(key_state)                                                                       \
   do                                                                                               \
   {                                                                                                \
-    written +=                                                                                     \
-      fmt(buf + written, sizeof(buf) - (usize) written, #key " : %s\n", key_to_cstr(key_map.key)); \
+    written += fmt(                                                                                \
+      buf + written,                                                                               \
+      sizeof(buf) - (usize) written,                                                               \
+      #key_state " : %s\n",                                                                        \
+      key_to_cstr(input.key_state.key)                                                             \
+    );                                                                                             \
   }                                                                                                \
   while (false)
 

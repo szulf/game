@@ -169,23 +169,18 @@ i32 main()
   memory.memory = malloc(memory.size);
   mem_set(memory.memory, 0, memory.size);
 
-  GameInput input = {};
-
   SDL_PathInfo game_lib_info = {};
   SDL_GetPathInfo("./build/libgame.so", &game_lib_info);
 
+  GameInput input = {};
+
   game.apis(&gl_api, &platform_api);
-  game.init(&memory, &input.key_map);
+  game.init(&memory, &input);
 
   bool running = true;
-  u64 accumulator = 0;
-  auto last_time = SDL_GetTicks();
   while (running)
   {
-    auto time = SDL_GetTicks();
-    auto dt = time - last_time;
-    last_time = time;
-    accumulator += dt;
+    auto start_ms = SDL_GetTicks();
 
     SDL_WarpMouseInWindow(window, (f32) g_width / 2.0f, (f32) g_height / 2.0f);
 
@@ -208,6 +203,11 @@ i32 main()
     }
 #endif
 
+    for (usize i = 0; i < array_size(input.states); ++i)
+    {
+      input.states[i].transition_count = 0;
+    }
+
     SDL_Event e;
     while (SDL_PollEvent(&e))
     {
@@ -229,19 +229,15 @@ i32 main()
           game.event(&memory, &event);
         }
         break;
+        case SDL_EVENT_KEY_UP:
         case SDL_EVENT_KEY_DOWN:
         {
-          if (e.key.key == sdlk_from_key(input.key_map.toggle_camera_mode))
+          for (usize i = 0; i < array_size(input.states); ++i)
           {
-            input.toggle_camera_mode = true;
-          }
-          else if (e.key.key == sdlk_from_key(input.key_map.interact))
-          {
-            input.interact = true;
-          }
-          else if (e.key.key == sdlk_from_key(input.key_map.toggle_display_bounding_boxes))
-          {
-            input.toggle_display_bounding_boxes = true;
+            if (e.key.key == sdlk_from_key(input.states[i].key))
+            {
+              ++input.states[i].transition_count;
+            }
           }
         }
         break;
@@ -255,37 +251,40 @@ i32 main()
 
     {
       const bool* key_states = SDL_GetKeyboardState(nullptr);
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_front), nullptr)])
-      {
-        input.move.z = -1.0f;
-      }
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_back), nullptr)])
-      {
-        input.move.z = 1.0f;
-      }
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_left), nullptr)])
-      {
-        input.move.x = -1.0f;
-      }
-      if (key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.key_map.move_right), nullptr)])
-      {
-        input.move.x = 1.0f;
-      }
-      input.move = vec3_normalize(input.move);
+      input.move_front.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_front.key), nullptr)];
+      input.move_back.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_back.key), nullptr)];
+      input.move_left.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_left.key), nullptr)];
+      input.move_right.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_right.key), nullptr)];
+
+      input.interact.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.interact.key), nullptr)];
+
+      input.camera_move_up.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.camera_move_up.key), nullptr)];
+      input.camera_move_down.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.camera_move_down.key), nullptr)];
+
+      input.toggle_camera_mode.ended_down =
+        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.toggle_camera_mode.key), nullptr)];
+      input.toggle_display_bounding_boxes.ended_down = key_states
+        [SDL_GetScancodeFromKey(sdlk_from_key(input.toggle_display_bounding_boxes.key), nullptr)];
     }
 
-    while (accumulator >= MSPT)
-    {
-      game.update(&memory, &input, 1.0f / TPS);
-      accumulator -= MSPT;
-
-      auto key_map = input.key_map;
-      input = {};
-      input.key_map = key_map;
-    }
+    game.update(&memory, &input, 1.0f / (f32) FPS);
 
     game.render(&memory);
     SDL_GL_SwapWindow(window);
+
+    auto end_ms = SDL_GetTicks();
+    auto ms_in_frame = end_ms - start_ms;
+    if (ms_in_frame < MSPF)
+    {
+      SDL_Delay((u32) (MSPF - ms_in_frame));
+    }
   }
 
   return 0;

@@ -440,9 +440,9 @@ static const u8 first_line_filter_method[5] = {
 static i32 image_png_paeth_predictor(i32 a, i32 b, i32 c)
 {
   i32 p = a + b - c;
-  i32 pa = (i32) i32_abs(p - a);
-  i32 pb = (i32) i32_abs(p - b);
-  i32 pc = (i32) i32_abs(p - c);
+  i32 pa = (i32) abs(p - a);
+  i32 pb = (i32) abs(p - b);
+  i32 pc = (i32) abs(p - c);
   if (pa <= pb && pa <= pc)
   {
     return a;

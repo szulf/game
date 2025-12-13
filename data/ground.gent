@@ -1,2 +1,3 @@
 model : assets/cube.obj
 type : STATIC_COLLISION
+bounding_box : *

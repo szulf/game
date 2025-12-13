@@ -3,7 +3,7 @@
 
 // TODO(szulf): should entity be a module?
 
-#define PLAYER_SPEED 3.0f
+#define PLAYER_SPEED 8.0f
 
 enum EntityType
 {
@@ -46,6 +46,7 @@ struct Entity
 
   // TODO(szulf): quaternions for orientation? or just euler angles?
   Vec3 position;
+  Vec3 velocity;
 
   BoundingBox bounding_box;
 
@@ -63,20 +64,10 @@ struct Entity
   bool is_bounding_box_from_model;
 };
 
-bool collides(const Entity& ea, const Entity& eb);
+bool entities_collide(const Entity& ea, const Entity& eb);
 
 DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera);
-
-enum EntityReadError
-{
-  ENTITY_READ_ERROR_INVALID_POSITION = GLOBAL_ERROR_COUNT,
-  ENTITY_READ_ERROR_INVALID_MODEL,
-  ENTITY_READ_ERROR_INVALID_TYPE,
-  ENTITY_READ_ERROR_INVALID_INTERACTABLE_TYPE,
-  ENTITY_READ_ERROR_DYNAMIC_BOUNDING_BOX_NO_MODEL,
-  ENTITY_READ_ERROR_INVALID_PATH,
-};
 
 #endif

@@ -10,28 +10,25 @@
 #define U64_FNV_OFFSET 14695981039346656037UL
 #define U64_FNV_PRIME 1099511628211UL
 
-#define SQUARE(x) (x * x)
+usize pow(usize base, usize exponent);
 
-usize usize_pow(usize base, usize exponent);
+i32 abs(i32 value);
 
-i32 i32_abs(i32 value);
-
-f32 f32_max(f32 a, f32 b);
-f32 f32_min(f32 a, f32 b);
-f32 f32_clamp(f32 val, f32 a, f32 b);
-f32 f32_abs(f32 value);
-f32 f32_floor(f32 value);
-f32 f32_ceil(f32 value);
-f32 f32_round(f32 value);
-f32 f32_sqrt(f32 value);
-f32 f32_sin(f32 value);
-f32 f32_cos(f32 value);
-f32 f32_tan(f32 value);
-f32 f32_radians(f32 deg);
+f32 max(f32 a, f32 b);
+f32 min(f32 a, f32 b);
+f32 clamp(f32 val, f32 a, f32 b);
+f32 abs(f32 value);
+f32 floor(f32 value);
+f32 ceil(f32 value);
+f32 round(f32 value);
+f32 sqrt(f32 value);
+f32 sin(f32 value);
+f32 cos(f32 value);
+f32 tan(f32 value);
+f32 radians(f32 deg);
+f32 square(f32 value);
 
 bool f32_equal(f32 a, f32 b);
-
-u64 u64_random();
 
 struct Vec2
 {
@@ -51,22 +48,25 @@ struct Vec3
 Vec3 operator-(const Vec3& vec);
 Vec3 operator+(const Vec3& va, const Vec3& vb);
 Vec3 operator-(const Vec3& va, const Vec3& vb);
-Vec3 operator*(const Vec3& va, f32 scalar);
-Vec3 operator/(const Vec3& va, f32 scalar);
+Vec3 operator*(const Vec3& vec, f32 scalar);
+Vec3 operator*(f32 scalar, const Vec3& vec);
+Vec3 operator*(const Vec3& va, const Vec3& vb);
+Vec3 operator/(const Vec3& vec, f32 scalar);
 Vec3& operator+=(Vec3& va, const Vec3& vb);
 Vec3& operator-=(Vec3& va, const Vec3& vb);
-Vec3& operator*=(const Vec3& va, f32 scalar);
+Vec3& operator*=(Vec3& va, f32 scalar);
+Vec3& operator*=(Vec3& va, const Vec3& vb);
 Vec3& operator/=(Vec3& va, f32 scalar);
 
-f32 vec3_len2(const Vec3& vec);
-f32 vec3_len(const Vec3& vec);
-Vec3 vec3_normalize(const Vec3& vec);
-Vec3 vec3_abs(const Vec3& vec);
-f32 vec3_dot(const Vec3& va, const Vec3& vb);
-Vec3 vec3_cross(const Vec3& va, const Vec3& vb);
-Vec3 vec3_multiply(const Vec3& va, const Vec3& vb);
+f32 length(const Vec3& vec);
+f32 length2(const Vec3& vec);
+Vec3 normalize(const Vec3& vec);
+Vec3 abs(const Vec3& vec);
+f32 dot(const Vec3& va, const Vec3& vb);
+Vec3 cross(const Vec3& va, const Vec3& vb);
 
 bool operator==(const Vec3& va, const Vec3& vb);
+bool operator!=(const Vec3& va, const Vec3& vb);
 
 struct Mat4
 {

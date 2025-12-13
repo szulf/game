@@ -1,6 +1,6 @@
 #include "math.h"
 
-usize usize_pow(usize base, usize exponent)
+usize pow(usize base, usize exponent)
 {
   usize val = 1;
   for (usize i = 0; i < exponent; ++i)
@@ -10,12 +10,16 @@ usize usize_pow(usize base, usize exponent)
   return val;
 }
 
-i32 i32_abs(i32 value)
+i32 abs(i32 value)
 {
-  return ::abs(value);
+  if (value < 0)
+  {
+    return -value;
+  }
+  return value;
 }
 
-f32 f32_max(f32 a, f32 b)
+f32 max(f32 a, f32 b)
 {
   if (a > b)
   {
@@ -24,7 +28,7 @@ f32 f32_max(f32 a, f32 b)
   return b;
 }
 
-f32 f32_min(f32 a, f32 b)
+f32 min(f32 a, f32 b)
 {
   if (a > b)
   {
@@ -33,7 +37,7 @@ f32 f32_min(f32 a, f32 b)
   return a;
 }
 
-f32 f32_clamp(f32 val, f32 lower, f32 upper)
+f32 clamp(f32 val, f32 lower, f32 upper)
 {
   if (val < lower)
   {
@@ -46,21 +50,21 @@ f32 f32_clamp(f32 val, f32 lower, f32 upper)
   return val;
 }
 
-f32 f32_abs(f32 value)
+f32 abs(f32 value)
 {
   return ::fabsf(value);
 }
 
 // NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
 // lose it anyway
-f32 f32_floor(f32 value)
+f32 floor(f32 value)
 {
   return (f32) (i32) value;
 }
 
 // NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
 // lose it anyway
-f32 f32_ceil(f32 value)
+f32 ceil(f32 value)
 {
   if (value - (f32) ((i32) value) > 0)
   {
@@ -69,7 +73,7 @@ f32 f32_ceil(f32 value)
   return (f32) (i32) value;
 }
 
-f32 f32_round(f32 value)
+f32 round(f32 value)
 {
   auto int_value = (f32) ((i32) value);
   auto t = value - int_value;
@@ -84,41 +88,39 @@ f32 f32_round(f32 value)
   return int_value;
 }
 
-f32 f32_sqrt(f32 value)
+f32 sqrt(f32 value)
 {
   return ::sqrtf(value);
 }
 
-f32 f32_sin(f32 value)
+f32 sin(f32 value)
 {
   return ::sinf(value);
 }
 
-f32 f32_cos(f32 value)
+f32 cos(f32 value)
 {
   return ::cosf(value);
 }
 
-f32 f32_tan(f32 value)
+f32 tan(f32 value)
 {
   return ::tanf(value);
 }
 
-f32 f32_radians(f32 deg)
+f32 radians(f32 deg)
 {
   return deg * 0.01745329251994329576923690768489f;
 }
 
-bool f32_equal(f32 a, f32 b)
+f32 square(f32 value)
 {
-  return f32_abs(a - b) <= (F32_EPSILON * f32_max(f32_abs(a), f32_abs(b)));
+  return value * value;
 }
 
-thread_local static u64 random_seed = 98127419834;
-u64 u64_random()
+bool f32_equal(f32 a, f32 b)
 {
-  random_seed = random_seed * 1664525 + 1013904223;
-  return random_seed;
+  return abs(a - b) <= (F32_EPSILON * max(abs(a), abs(b)));
 }
 
 bool operator==(const Vec2& va, const Vec2& vb)
@@ -144,6 +146,16 @@ Vec3 operator-(const Vec3& va, const Vec3& vb)
 Vec3 operator*(const Vec3& vec, f32 scalar)
 {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+}
+
+Vec3 operator*(f32 scalar, const Vec3& vec)
+{
+  return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
+}
+
+Vec3 operator*(const Vec3& va, const Vec3& vb)
+{
+  return {va.x * vb.x, va.y * vb.y, va.z * vb.z};
 }
 
 Vec3 operator/(const Vec3& va, f32 scalar)
@@ -175,6 +187,14 @@ Vec3& operator*=(Vec3& vec, f32 scalar)
   return vec;
 }
 
+Vec3& operator*=(Vec3& va, const Vec3& vb)
+{
+  va.x *= vb.x;
+  va.y *= vb.y;
+  va.z *= vb.z;
+  return va;
+}
+
 Vec3& operator/=(Vec3& va, f32 scalar)
 {
   va.x /= scalar;
@@ -183,19 +203,19 @@ Vec3& operator/=(Vec3& va, f32 scalar)
   return va;
 }
 
-f32 vec3_len2(const Vec3& vec)
+f32 length(const Vec3& vec)
 {
-  return SQUARE(vec.x) + SQUARE(vec.y) + SQUARE(vec.z);
+  return sqrt(square(vec.x) + square(vec.y) + square(vec.z));
 }
 
-f32 vec3_len(const Vec3& vec)
+f32 length2(const Vec3& vec)
 {
-  return f32_sqrt(SQUARE(vec.x) + SQUARE(vec.y) + SQUARE(vec.z));
+  return square(vec.x) + square(vec.y) + square(vec.z);
 }
 
-Vec3 vec3_normalize(const Vec3& vec)
+Vec3 normalize(const Vec3& vec)
 {
-  auto len = vec3_len(vec);
+  auto len = length(vec);
   if (f32_equal(len, 0))
   {
     return {};
@@ -207,17 +227,17 @@ Vec3 vec3_normalize(const Vec3& vec)
   return out;
 }
 
-Vec3 vec3_abs(const Vec3& vec)
+Vec3 abs(const Vec3& vec)
 {
-  return {f32_abs(vec.x), f32_abs(vec.y), f32_abs(vec.z)};
+  return {abs(vec.x), abs(vec.y), abs(vec.z)};
 }
 
-f32 vec3_dot(const Vec3& va, const Vec3& vb)
+f32 dot(const Vec3& va, const Vec3& vb)
 {
   return va.x * vb.x + va.y * vb.y + va.z * vb.z;
 }
 
-Vec3 vec3_cross(const Vec3& va, const Vec3& vb)
+Vec3 cross(const Vec3& va, const Vec3& vb)
 {
   return {
     (va.y * vb.z) - (va.z * vb.y),
@@ -226,14 +246,14 @@ Vec3 vec3_cross(const Vec3& va, const Vec3& vb)
   };
 }
 
-Vec3 vec3_multiply(const Vec3& va, const Vec3& vb)
-{
-  return {va.x * vb.x, va.y * vb.y, va.z * vb.z};
-}
-
 bool operator==(const Vec3& va, const Vec3& vb)
 {
   return f32_equal(va.x, vb.x) && f32_equal(va.y, vb.y) && f32_equal(va.z, vb.z);
+}
+
+bool operator!=(const Vec3& va, const Vec3& vb)
+{
+  return !(va == vb);
 }
 
 Mat4 mat4_make()
@@ -249,7 +269,7 @@ Mat4 mat4_make()
 Mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far)
 {
   Mat4 out = {};
-  f32 right = near * f32_tan(fov / 2.0f);
+  f32 right = near * tan(fov / 2.0f);
   f32 top = right / aspect;
   out.data[0] = near / right;
   out.data[5] = near / top;

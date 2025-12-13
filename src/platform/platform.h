@@ -7,8 +7,8 @@
 #  error Unknown rendering backend.
 #endif
 
-#define TPS 165
-#define MSPT (1000 / TPS)
+static u32 FPS = 165;
+#define MSPF (1000 / FPS)
 
 extern "C"
 {
@@ -44,35 +44,36 @@ extern "C"
     usize memory_size;
   };
 
-  struct GameKeymap
+  struct KeyState
   {
-    Key move_front;
-    Key move_back;
-    Key move_left;
-    Key move_right;
-
-    Key interact;
-
-    // NOTE(szulf): debug keybinds
-    Key toggle_camera_mode;
-    Key toggle_display_bounding_boxes;
+    Key key;
+    u32 transition_count;
+    bool ended_down;
   };
 
-  // NOTE(szulf): game input needs to know what keys to check, since there are rebindable keys
   struct GameInput
   {
-    GameKeymap key_map;
+    union
+    {
+      KeyState states[9];
+      struct
+      {
+        KeyState move_front;
+        KeyState move_back;
+        KeyState move_left;
+        KeyState move_right;
+        KeyState interact;
 
-    Vec3 move;
-
-    bool interact;
+        KeyState camera_move_up;
+        KeyState camera_move_down;
+        KeyState toggle_camera_mode;
+        KeyState toggle_display_bounding_boxes;
+      };
+    };
 
     Vec2 mouse_pos;
     Vec2 mouse_relative;
     Vec2 mouse_pos_last;
-
-    bool toggle_camera_mode;
-    bool toggle_display_bounding_boxes;
   };
 
   enum EventType
@@ -99,7 +100,7 @@ extern "C"
   typedef SPEC_FN(SpecFN);
 #define APIS_FN(name) void name(RenderingAPI* rendering_api, PlatformAPI* platform_api)
   typedef APIS_FN(APIsFN);
-#define INIT_FN(name) void name(GameMemory* memory, GameKeymap* keymap)
+#define INIT_FN(name) void name(GameMemory* memory, GameInput* input)
   typedef INIT_FN(InitFN);
 #define POST_RELOAD_FN(name) void name(GameMemory* memory)
   typedef POST_RELOAD_FN(PostReloadFN);

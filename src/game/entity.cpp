@@ -54,8 +54,8 @@ InteractableType string_to_interactable_type(const String& str, Error& out_error
 
 BoundingBox bounding_box_from_model(ModelHandle handle)
 {
-  Vec3 max = {F32_MIN, 0, F32_MIN};
-  Vec3 min = {F32_MAX, 0, F32_MAX};
+  Vec3 max_corner = {F32_MIN, 0, F32_MIN};
+  Vec3 min_corner = {F32_MAX, 0, F32_MAX};
   auto& model = assets_get_model(handle);
   for (usize mesh_idx = 0; mesh_idx < model.meshes.size; ++mesh_idx)
   {
@@ -63,16 +63,16 @@ BoundingBox bounding_box_from_model(ModelHandle handle)
     for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size; ++vertex_idx)
     {
       auto& vertex = mesh.vertices[vertex_idx];
-      max.x = f32_max(max.x, vertex.position.x);
-      min.x = f32_min(min.x, vertex.position.x);
-      max.z = f32_max(max.z, vertex.position.z);
-      min.z = f32_min(min.z, vertex.position.z);
+      max_corner.x = max(max_corner.x, vertex.position.x);
+      min_corner.x = min(min_corner.x, vertex.position.x);
+      max_corner.z = max(max_corner.z, vertex.position.z);
+      min_corner.z = min(min_corner.z, vertex.position.z);
     }
   }
-  return {max.x - min.x, max.z - min.z};
+  return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
 }
 
-bool collides(const Entity& ea, const Entity& eb)
+bool entities_collide(const Entity& ea, const Entity& eb)
 {
   auto& ax = ea.position.x;
   auto& az = ea.position.z;
@@ -116,6 +116,7 @@ DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camer
   return out;
 }
 
+// TODO(szulf): this ring is not right! it off by a little bit
 DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera)
 {
   DrawCall out = {};

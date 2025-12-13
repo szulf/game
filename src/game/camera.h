@@ -3,7 +3,7 @@
 
 static const Vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
 #define CAMERA_SPEED 4.0f
-#define CAMERA_SENSITIVITY 1.5f
+#define CAMERA_SENSITIVITY 0.8f
 
 struct Camera
 {

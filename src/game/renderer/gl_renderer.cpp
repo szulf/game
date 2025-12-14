@@ -53,6 +53,8 @@ void renderer_draw(Array<DrawCall>& queue)
     }
     auto& model = assets_get_model(draw_call.model_handle);
 
+    // TODO(szulf): this just sucks, when trying to render a mesh with no texture, it just renders
+    // the last texture on it
     for (usize mesh_idx = 0; mesh_idx < model.meshes.size; ++mesh_idx)
     {
       auto& mesh = assets_get_mesh(model.meshes[mesh_idx]);

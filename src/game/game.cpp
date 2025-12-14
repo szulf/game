@@ -148,6 +148,12 @@ dll_export UPDATE_FN(update)
     acceleration.x += 1.0f;
   }
   acceleration = normalize(acceleration);
+  // TODO(szulf): some transition or something between rotations?
+  if (acceleration != Vec3{})
+  {
+    auto rot = atan2(-acceleration.x, acceleration.z);
+    player->rotation = rot;
+  }
 
   if (main.camera_mode)
   {
@@ -259,9 +265,11 @@ dll_export UPDATE_FN(update)
     for (usize i = 0; i < interactables.size; ++i)
     {
       auto& interactable = *interactables[i];
-      // TODO(szulf): also check for the orientation of the player?
-      f32 dist = length2(player->position - interactable.position);
-      if (dist < interactable_info[interactable.interactable_type].radius2)
+      auto vec = interactable.position - player->position;
+      f32 dist = length2(vec);
+      f32 orientation = atan2(-vec.x, vec.z);
+      if (dist < interactable_info[interactable.interactable_type].radius2 &&
+          (abs(player->rotation - orientation) < 1.0f))
       {
         if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
         {

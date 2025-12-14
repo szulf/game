@@ -44,7 +44,7 @@ struct Entity
 {
   EntityType type;
 
-  // TODO(szulf): quaternions for orientation? or just euler angles?
+  f32 rotation;
   Vec3 position;
   Vec3 velocity;
 

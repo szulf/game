@@ -96,6 +96,7 @@ DrawCall draw_call_entity(const Entity& entity, const Camera& camera)
   out.model_handle = entity.model;
   out.model = mat4_make();
   mat4_translate(out.model, entity.position);
+  mat4_rotate(out.model, entity.rotation, {0.0f, 1.0f, 0.0f});
   out.view = camera_look_at(camera);
   out.projection = camera_projection(camera);
   out.emissive = entity.light_bulb_emissive;

@@ -25,6 +25,9 @@ f32 sqrt(f32 value);
 f32 sin(f32 value);
 f32 cos(f32 value);
 f32 tan(f32 value);
+f32 asin(f32 value);
+f32 acos(f32 value);
+f32 atan2(f32 y, f32 x);
 f32 radians(f32 deg);
 f32 square(f32 value);
 

@@ -90,22 +90,37 @@ f32 round(f32 value)
 
 f32 sqrt(f32 value)
 {
-  return ::sqrtf(value);
+  return sqrtf(value);
 }
 
 f32 sin(f32 value)
 {
-  return ::sinf(value);
+  return sinf(value);
 }
 
 f32 cos(f32 value)
 {
-  return ::cosf(value);
+  return cosf(value);
 }
 
 f32 tan(f32 value)
 {
-  return ::tanf(value);
+  return tanf(value);
+}
+
+f32 asin(f32 value)
+{
+  return asinf(value);
+}
+
+f32 acos(f32 value)
+{
+  return acosf(value);
+}
+
+f32 atan2(f32 y, f32 x)
+{
+  return atan2f(y, x);
 }
 
 f32 radians(f32 deg)
@@ -316,4 +331,24 @@ void mat4_translate(Mat4& mat, const Vec3& position)
   mat.data[12] = position.x;
   mat.data[13] = position.y;
   mat.data[14] = position.z;
+}
+
+void mat4_rotate(Mat4& mat, f32 rad, const Vec3& axis)
+{
+  f32 s = sin(rad);
+  f32 c = cos(rad);
+  f32 t = 1.0f - c;
+  Vec3 u = normalize(axis);
+
+  mat.data[0] = (u.x * u.x) * t + c;
+  mat.data[1] = (u.x * u.y) * t - u.z * s;
+  mat.data[2] = (u.x * u.z) * t + u.y * s;
+
+  mat.data[4] = (u.x * u.y) * t + u.z * s;
+  mat.data[5] = (u.y * u.y) * t + c;
+  mat.data[6] = (u.y * u.z) * t - u.x * s;
+
+  mat.data[8] = (u.x * u.z) * t - u.y * s;
+  mat.data[9] = (u.y * u.z) * t + u.x * s;
+  mat.data[10] = (u.z * u.z) * t + c;
 }

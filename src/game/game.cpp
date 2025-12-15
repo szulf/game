@@ -148,12 +148,14 @@ dll_export UPDATE_FN(update)
     acceleration.x += 1.0f;
   }
   acceleration = normalize(acceleration);
-  // TODO(szulf): some transition or something between rotations?
   if (acceleration != Vec3{})
   {
     auto rot = atan2(-acceleration.x, acceleration.z);
-    player->rotation = rot;
+    player->target_rotation = rot;
   }
+  f32 direction = wrap_to_neg_pi_to_pi(player->target_rotation - player->rotation);
+  player->rotation += direction * PLAYER_ROTATE_SPEED * dt;
+  player->rotation = wrap_to_neg_pi_to_pi(player->rotation);
 
   if (main.camera_mode)
   {
@@ -182,7 +184,7 @@ dll_export UPDATE_FN(update)
   }
   else
   {
-    acceleration *= PLAYER_SPEED;
+    acceleration *= PLAYER_MOVEMENT_SPEED;
     // TODO(szulf): just a hack friction, change to proper sometime
     acceleration += -5.0f * player->velocity;
     auto new_position = 0.5f * acceleration * square(dt) + player->velocity * dt + player->position;

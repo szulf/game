@@ -123,6 +123,11 @@ f32 atan2(f32 y, f32 x)
   return atan2f(y, x);
 }
 
+f32 wrap_to_neg_pi_to_pi(f32 value)
+{
+  return atan2(sin(value), cos(value));
+}
+
 f32 radians(f32 deg)
 {
   return deg * 0.01745329251994329576923690768489f;

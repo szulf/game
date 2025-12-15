@@ -2,9 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-6. player rotation
-   - will change automatically depending on which way you moved
-7. interpolate everything(or switch to fixed frame rate idk yet, probably this) so its smooth
 8. resizability
 9. figure out stripping debug features from release builds
    - or maybe dont strip them?
@@ -27,12 +24,14 @@
 - inventory system
 - render instancing
 
-- read the projection matrix article [https://www.songho.ca/opengl/gl_projectionmatrix.html#fov]
-- read the look at matrix article [https://morning-flow.com/2023/02/06/the-math-behind-the-lookat-transform/]
+- read the projection [matrix article](https://www.songho.ca/opengl/gl_projectionmatrix.html#fov)
+- read the look at [matrix article](https://morning-flow.com/2023/02/06/the-math-behind-the-lookat-transform/)
+
+---
 
 # DOCS
 
-### File Structure
+## File Structure
 
 This write-up talks about the structure inside of the 'src' directory.
 
@@ -50,9 +49,36 @@ including the associated header file.
 Modules and units can and do depend on other modules, all that means in practice is that the order of includes in
 the 'main' file matters.
 
-### Custom File Formats
+---
 
-TODO: document this
+## Custom File Formats
+
+Currently there are 3 custom file formats, all are in the whitespace agnostic format that looks like this:
+
+```
+key : value
+```
+
+Sometimes instead of an actual value there is a '\*' character, which means a dynamic value.
+This value is calculated by the parsing code. An example of this is entity bounding boxes,
+they can be either hardcoded (which could be useful for invisible, but collidable entities) or defined
+as dynamic, in which case they are calculated based on the model.
+
+The formats are '.gent', '.gkey', '.gscn' for entities, keymaps and scenes respectively.
+
+### .gent
+
+TODO: finish.
+
+### .gkey
+
+TODO: finish.
+
+### .gscn
+
+TODO: finish.
+
+---
 
 # EVERYTHING BELOW THIS LINE IS OUTDATED, PLEASE CHANGE IT!
 

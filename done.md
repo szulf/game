@@ -16,3 +16,6 @@
    - in the platform layer instead of setting move\_\* to a specific value, add it instead so if i press A and D at the same time i actually stay in one place
    - the movement should be smoother, not starting at full speed, and not finishing instantly
    - also finally fix the camera movement, make WASD not change the y position and only change that via SPACE/SHIFT
+6. player rotation
+   - will change automatically depending on which way you moved
+7. interpolate everything(or switch to fixed frame rate idk yet, probably this) so its smooth

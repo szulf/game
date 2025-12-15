@@ -3,7 +3,9 @@
 
 // TODO(szulf): should entity be a module?
 
-#define PLAYER_SPEED 8.0f
+// TODO(szulf): should these be here?
+#define PLAYER_MOVEMENT_SPEED 8.0f
+#define PLAYER_ROTATE_SPEED (3 * F32_PI)
 
 enum EntityType
 {
@@ -45,6 +47,7 @@ struct Entity
   EntityType type;
 
   f32 rotation;
+  f32 target_rotation;
   Vec3 position;
   Vec3 velocity;
 

@@ -5,8 +5,16 @@ static const Vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
 #define CAMERA_SPEED 4.0f
 #define CAMERA_SENSITIVITY 0.8f
 
+enum CameraType
+{
+  CAMERA_TYPE_PERSPECTIVE,
+  CAMERA_TYPE_ORTHOGRAPHIC,
+};
+
 struct Camera
 {
+  CameraType type;
+
   Vec3 pos;
   Vec3 front;
   Vec3 up;
@@ -15,7 +23,7 @@ struct Camera
   f32 yaw;
   f32 pitch;
 
-  f32 fov;
+  f32 vertical_fov;
   f32 near_plane;
   f32 far_plane;
 

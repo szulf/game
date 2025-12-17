@@ -24,7 +24,10 @@ struct Main
   bool camera_mode;
   bool display_bounding_boxes;
 
-  Camera camera;
+  Camera* main_camera;
+  Camera gameplay_camera;
+  Camera debug_camera;
+
   // TODO(szulf): is a map to an array of entities by their type a good idea?
   Array<Entity> entities;
 };
@@ -64,16 +67,24 @@ dll_export INIT_FN(init)
   *input = keymap_from_file("data/keymap.gkey", error);
   ASSERT(error == SUCCESS, "couldnt read keymap file");
 
-  main.camera = {};
-  main.camera.pos = {0.0f, 8.0f, 4.0f};
-  main.camera.yaw = -90.0f;
-  main.camera.pitch = -60.0f;
-  main.camera.fov = 45.0f;
-  main.camera.near_plane = 0.1f;
-  main.camera.far_plane = 1000.0f;
-  main.camera.viewport_width = platform.get_width();
-  main.camera.viewport_height = platform.get_height();
-  camera_update_vectors(main.camera);
+  main.gameplay_camera = {};
+  main.gameplay_camera.type = CAMERA_TYPE_ORTHOGRAPHIC;
+  main.gameplay_camera.pos = {-0.5f, 2.0f, 0.0f};
+  main.gameplay_camera.yaw = -90.0f;
+  main.gameplay_camera.pitch = -60.0f;
+  main.gameplay_camera.near_plane = 0.1f;
+  main.gameplay_camera.far_plane = 1000.0f;
+  main.gameplay_camera.viewport_width = platform.get_width();
+  main.gameplay_camera.viewport_height = platform.get_height();
+  camera_update_vectors(main.gameplay_camera);
+
+  main.debug_camera = main.gameplay_camera;
+  main.debug_camera.pos = {-0.5f, 8.0f, 4.0f};
+  main.debug_camera.type = CAMERA_TYPE_PERSPECTIVE;
+  main.debug_camera.vertical_fov = 0.25f * F32_PI;
+  camera_update_vectors(main.debug_camera);
+
+  main.main_camera = &main.gameplay_camera;
 }
 
 dll_export POST_RELOAD_FN(post_reload)
@@ -153,12 +164,14 @@ dll_export UPDATE_FN(update)
     auto rot = atan2(-acceleration.x, acceleration.z);
     player->target_rotation = rot;
   }
+  // TODO(szulf): player rotates when in camera_mode
   f32 direction = wrap_to_neg_pi_to_pi(player->target_rotation - player->rotation);
   player->rotation += direction * PLAYER_ROTATE_SPEED * dt;
   player->rotation = wrap_to_neg_pi_to_pi(player->rotation);
 
   if (main.camera_mode)
   {
+    main.main_camera = &main.debug_camera;
     if (input->camera_move_up.ended_down)
     {
       acceleration.y += 1.0f;
@@ -170,20 +183,21 @@ dll_export UPDATE_FN(update)
 
     f32 x_offset = input->mouse_relative.x * CAMERA_SENSITIVITY;
     f32 y_offset = input->mouse_relative.y * CAMERA_SENSITIVITY;
-    main.camera.yaw += x_offset;
-    main.camera.pitch -= y_offset;
-    main.camera.pitch = clamp(main.camera.pitch, -89.0f, 89.0f);
-    camera_update_vectors(main.camera);
+    main.debug_camera.yaw += x_offset;
+    main.debug_camera.pitch -= y_offset;
+    main.debug_camera.pitch = clamp(main.debug_camera.pitch, -89.0f, 89.0f);
+    camera_update_vectors(main.debug_camera);
 
     // TODO(szulf): i dont know if there is a better way to get this vector,
     // when i just use main.camera.front the movement gets slower the higher/lower you look
-    auto forward = cross(CAMERA_WORLD_UP, main.camera.right);
-    main.camera.pos += forward * (-acceleration.z * CAMERA_SPEED * dt);
-    main.camera.pos += main.camera.right * (acceleration.x * CAMERA_SPEED * dt);
-    main.camera.pos += CAMERA_WORLD_UP * (acceleration.y * CAMERA_SPEED * dt);
+    auto forward = cross(CAMERA_WORLD_UP, main.debug_camera.right);
+    main.debug_camera.pos += forward * (-acceleration.z * CAMERA_SPEED * dt);
+    main.debug_camera.pos += main.debug_camera.right * (acceleration.x * CAMERA_SPEED * dt);
+    main.debug_camera.pos += CAMERA_WORLD_UP * (acceleration.y * CAMERA_SPEED * dt);
   }
   else
   {
+    main.main_camera = &main.gameplay_camera;
     acceleration *= PLAYER_MOVEMENT_SPEED;
     // TODO(szulf): just a hack friction, change to proper sometime
     acceleration += -5.0f * player->velocity;
@@ -269,6 +283,9 @@ dll_export UPDATE_FN(update)
       auto& interactable = *interactables[i];
       auto vec = interactable.position - player->position;
       f32 dist = length2(vec);
+      // TODO(szulf): this orientation is kind of annoying,
+      // either increase the accepted rad difference,
+      // or just remove the whole thing
       f32 orientation = atan2(-vec.x, vec.z);
       if (dist < interactable_info[interactable.interactable_type].radius2 &&
           (abs(player->rotation - orientation) < 1.0f))
@@ -297,15 +314,15 @@ dll_export RENDER_FN(render)
     }
     if (main.display_bounding_boxes)
     {
-      auto bounding_box_call = draw_call_entity_bounding_box(entity, main.camera);
+      auto bounding_box_call = draw_call_entity_bounding_box(entity, *main.main_camera);
       renderer_queue_draw_call(main.renderer_queue, bounding_box_call);
       if (entity.type == ENTITY_TYPE_INTERACTABLE)
       {
-        auto radius_call = draw_call_entity_interactable_radius(entity, main.camera);
+        auto radius_call = draw_call_entity_interactable_radius(entity, *main.main_camera);
         renderer_queue_draw_call(main.renderer_queue, radius_call);
       }
     }
-    auto draw_call = draw_call_entity(entity, main.camera);
+    auto draw_call = draw_call_entity(entity, *main.main_camera);
     renderer_queue_draw_call(main.renderer_queue, draw_call);
   }
 
@@ -321,8 +338,10 @@ dll_export EVENT_FN(event)
     case EVENT_TYPE_WINDOW_RESIZE:
     {
       renderer_window_resize(event->data.window_resize.width, event->data.window_resize.height);
-      main.camera.viewport_width = event->data.window_resize.width;
-      main.camera.viewport_height = event->data.window_resize.height;
+      main.gameplay_camera.viewport_width = event->data.window_resize.width;
+      main.gameplay_camera.viewport_height = event->data.window_resize.height;
+      main.debug_camera.viewport_width = event->data.window_resize.width;
+      main.debug_camera.viewport_height = event->data.window_resize.height;
     }
     break;
   }

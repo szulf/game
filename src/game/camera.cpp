@@ -43,10 +43,33 @@ Mat4 camera_look_at(const Camera& camera)
 
 Mat4 camera_projection(const Camera& camera)
 {
-  return mat4_perspective(
-    camera.fov,
-    (f32) camera.viewport_width / (f32) camera.viewport_height,
-    camera.near_plane,
-    camera.far_plane
-  );
+  switch (camera.type)
+  {
+    case CAMERA_TYPE_PERSPECTIVE:
+    {
+      return mat4_vertical_perspective(
+        camera.vertical_fov,
+        (f32) camera.viewport_width / (f32) camera.viewport_height,
+        camera.near_plane,
+        camera.far_plane
+      );
+    }
+    break;
+    case CAMERA_TYPE_ORTHOGRAPHIC:
+    {
+      static const f32 world_height = 10.0f;
+      static const f32 half_height = world_height * 0.5f;
+      f32 half_width = half_height * ((f32) camera.viewport_width / (f32) camera.viewport_height);
+
+      return mat4_orthographic(
+        half_width,
+        -half_width,
+        half_height,
+        -half_height,
+        camera.near_plane,
+        camera.far_plane
+      );
+    }
+    break;
+  }
 }

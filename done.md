@@ -19,3 +19,4 @@
 6. player rotation
    - will change automatically depending on which way you moved
 7. interpolate everything(or switch to fixed frame rate idk yet, probably this) so its smooth
+8. resizability

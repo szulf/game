@@ -52,7 +52,7 @@ f32 clamp(f32 val, f32 lower, f32 upper)
 
 f32 abs(f32 value)
 {
-  return ::fabsf(value);
+  return fabsf(value);
 }
 
 // NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
@@ -286,17 +286,31 @@ Mat4 mat4_make()
   return out;
 }
 
-Mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far)
+Mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far)
 {
+  f32 tangent = tan(vertical_fov / 2.0f);
+  f32 top = tangent * near;
+  f32 right = top * aspect;
   Mat4 out = {};
-  f32 right = near * tan(fov / 2.0f);
-  f32 top = right / aspect;
   out.data[0] = near / right;
   out.data[5] = near / top;
   out.data[10] = -(far + near) / (far - near);
-  out.data[11] = -1.0f;
-  out.data[14] = -(2.0f * far * near) / (far - near);
-  out.data[15] = 0.0f;
+  out.data[11] = -1;
+  out.data[14] = -(2 * near * far) / (far - near);
+  out.data[15] = 0;
+  return out;
+}
+
+Mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
+{
+  Mat4 out = {};
+  out.data[0] = 2 / (right - left);
+  out.data[5] = 2 / (top - bottom);
+  out.data[10] = -2 / (far - near);
+  out.data[12] = -(right + left) / (right - left);
+  out.data[13] = -(top + bottom) / (top - bottom);
+  out.data[14] = -(far + near) / (far - near);
+  out.data[15] = 1;
   return out;
 }
 

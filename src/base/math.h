@@ -78,7 +78,8 @@ struct Mat4
 };
 
 Mat4 mat4_make();
-Mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far);
+Mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far);
+Mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
 
 void mat4_scale(Mat4& mat, f32 scale);
 void mat4_scale(Mat4& mat, const Vec3& scale);

@@ -72,5 +72,6 @@ bool entities_collide(const Entity& ea, const Entity& eb);
 DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
 DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera);
+// TODO(szulf): draw a line pointing the rotation of the player
 
 #endif

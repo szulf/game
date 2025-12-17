@@ -159,15 +159,6 @@ dll_export UPDATE_FN(update)
     acceleration.x += 1.0f;
   }
   acceleration = normalize(acceleration);
-  if (acceleration != Vec3{})
-  {
-    auto rot = atan2(-acceleration.x, acceleration.z);
-    player->target_rotation = rot;
-  }
-  // TODO(szulf): player rotates when in camera_mode
-  f32 direction = wrap_to_neg_pi_to_pi(player->target_rotation - player->rotation);
-  player->rotation += direction * PLAYER_ROTATE_SPEED * dt;
-  player->rotation = wrap_to_neg_pi_to_pi(player->rotation);
 
   if (main.camera_mode)
   {
@@ -198,101 +189,121 @@ dll_export UPDATE_FN(update)
   else
   {
     main.main_camera = &main.gameplay_camera;
-    acceleration *= PLAYER_MOVEMENT_SPEED;
-    // TODO(szulf): just a hack friction, change to proper sometime
-    acceleration += -5.0f * player->velocity;
-    auto new_position = 0.5f * acceleration * square(dt) + player->velocity * dt + player->position;
-    player->velocity = acceleration * dt + player->velocity;
 
-    Vec3 collision_normal = {};
-    bool collided = false;
-    for (usize i = 0; i < collidables.size; ++i)
+    // NOTE(szulf): rotation
     {
-      auto& c = *collidables[i];
-      if (c.position.y != 0.0f)
+      if (acceleration != Vec3{})
       {
-        continue;
+        auto rot = atan2(-acceleration.x, acceleration.z);
+        player->target_rotation = rot;
       }
-      Vec3 rounded_pos = {round(new_position.x), 0.0f, round(new_position.z)};
-      if ((c.position.x > rounded_pos.x + 1.0f || c.position.x < rounded_pos.x - 1.0f) ||
-          (c.position.z > rounded_pos.z + 1.0f || c.position.z < rounded_pos.z - 1.0f))
-      {
-        continue;
-      }
-
-      Entity p = {};
-      p.position = new_position;
-      p.bounding_box = player->bounding_box;
-
-      if (!entities_collide(p, c))
-      {
-        continue;
-      }
-
-      auto collidable_front = c.position.z + (0.5f * c.bounding_box.depth);
-      auto collidable_back = c.position.z - (0.5f * c.bounding_box.depth);
-      auto collidable_left = c.position.x - (0.5f * c.bounding_box.width);
-      auto collidable_right = c.position.x + (0.5f * c.bounding_box.width);
-
-      auto player_front = p.position.z + (0.5f * p.bounding_box.depth);
-      auto player_back = p.position.z - (0.5f * p.bounding_box.depth);
-      auto player_left = p.position.x - (0.5f * p.bounding_box.width);
-      auto player_right = p.position.x + (0.5f * p.bounding_box.width);
-
-      auto back_overlap = abs(player_back - collidable_front);
-      auto front_overlap = abs(player_front - collidable_back);
-      auto left_overlap = abs(player_left - collidable_right);
-      auto right_overlap = abs(player_right - collidable_left);
-
-      auto collision_overlap =
-        min(min(min(back_overlap, front_overlap), left_overlap), right_overlap);
-
-      if (f32_equal(collision_overlap, back_overlap))
-      {
-        collision_normal.z = -1.0f;
-      }
-      else if (f32_equal(collision_overlap, front_overlap))
-      {
-        collision_normal.z = 1.0f;
-      }
-      else if (f32_equal(collision_overlap, left_overlap))
-      {
-        collision_normal.x = 1.0f;
-      }
-      else if (f32_equal(collision_overlap, right_overlap))
-      {
-        collision_normal.x = -1.0f;
-      }
-      collided = true;
+      f32 direction = wrap_to_neg_pi_to_pi(player->target_rotation - player->rotation);
+      player->rotation += direction * PLAYER_ROTATE_SPEED * dt;
+      player->rotation = wrap_to_neg_pi_to_pi(player->rotation);
     }
 
-    auto abs_collision_normal = abs(collision_normal);
-    auto collision_normal_inverted = Vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
-    player->position =
-      (abs_collision_normal * player->position) + (new_position * collision_normal_inverted);
-    if (collided)
+    // NOTE(szulf): movement and collisions
     {
-      player->velocity -= dot(player->velocity, collision_normal) * collision_normal;
-    }
-  }
+      acceleration *= PLAYER_MOVEMENT_SPEED;
+      // TODO(szulf): just a hack friction, change to proper sometime
+      acceleration += -5.0f * player->velocity;
+      auto new_position =
+        0.5f * acceleration * square(dt) + player->velocity * dt + player->position;
+      player->velocity = acceleration * dt + player->velocity;
 
-  if (input->interact.ended_down && input->interact.transition_count != 0)
-  {
-    for (usize i = 0; i < interactables.size; ++i)
-    {
-      auto& interactable = *interactables[i];
-      auto vec = interactable.position - player->position;
-      f32 dist = length2(vec);
-      // TODO(szulf): this orientation is kind of annoying,
-      // either increase the accepted rad difference,
-      // or just remove the whole thing
-      f32 orientation = atan2(-vec.x, vec.z);
-      if (dist < interactable_info[interactable.interactable_type].radius2 &&
-          (abs(player->rotation - orientation) < 1.0f))
+      Vec3 collision_normal = {};
+      bool collided = false;
+      for (usize i = 0; i < collidables.size; ++i)
       {
-        if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
+        auto& c = *collidables[i];
+        if (c.position.y != 0.0f)
         {
-          interactable.light_bulb_emissive = !interactable.light_bulb_emissive;
+          continue;
+        }
+        Vec3 rounded_pos = {round(new_position.x), 0.0f, round(new_position.z)};
+        if ((c.position.x > rounded_pos.x + 1.0f || c.position.x < rounded_pos.x - 1.0f) ||
+            (c.position.z > rounded_pos.z + 1.0f || c.position.z < rounded_pos.z - 1.0f))
+        {
+          continue;
+        }
+
+        Entity p = {};
+        p.position = new_position;
+        p.bounding_box = player->bounding_box;
+
+        if (!entities_collide(p, c))
+        {
+          continue;
+        }
+
+        auto collidable_front = c.position.z + (0.5f * c.bounding_box.depth);
+        auto collidable_back = c.position.z - (0.5f * c.bounding_box.depth);
+        auto collidable_left = c.position.x - (0.5f * c.bounding_box.width);
+        auto collidable_right = c.position.x + (0.5f * c.bounding_box.width);
+
+        auto player_front = p.position.z + (0.5f * p.bounding_box.depth);
+        auto player_back = p.position.z - (0.5f * p.bounding_box.depth);
+        auto player_left = p.position.x - (0.5f * p.bounding_box.width);
+        auto player_right = p.position.x + (0.5f * p.bounding_box.width);
+
+        auto back_overlap = abs(player_back - collidable_front);
+        auto front_overlap = abs(player_front - collidable_back);
+        auto left_overlap = abs(player_left - collidable_right);
+        auto right_overlap = abs(player_right - collidable_left);
+
+        auto collision_overlap =
+          min(min(min(back_overlap, front_overlap), left_overlap), right_overlap);
+
+        if (f32_equal(collision_overlap, back_overlap))
+        {
+          collision_normal.z = -1.0f;
+        }
+        else if (f32_equal(collision_overlap, front_overlap))
+        {
+          collision_normal.z = 1.0f;
+        }
+        else if (f32_equal(collision_overlap, left_overlap))
+        {
+          collision_normal.x = 1.0f;
+        }
+        else if (f32_equal(collision_overlap, right_overlap))
+        {
+          collision_normal.x = -1.0f;
+        }
+        collided = true;
+      }
+
+      auto abs_collision_normal = abs(collision_normal);
+      auto collision_normal_inverted = Vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
+      player->position =
+        (abs_collision_normal * player->position) + (new_position * collision_normal_inverted);
+      if (collided)
+      {
+        player->velocity -= dot(player->velocity, collision_normal) * collision_normal;
+      }
+    }
+
+    // NOTE(szulf): interactions
+    {
+      if (input->interact.ended_down && input->interact.transition_count != 0)
+      {
+        for (usize i = 0; i < interactables.size; ++i)
+        {
+          auto& interactable = *interactables[i];
+          auto vec = interactable.position - player->position;
+          f32 dist = length2(vec);
+          // TODO(szulf): this orientation is kind of annoying,
+          // either increase the accepted rad difference,
+          // or just remove the whole thing
+          f32 orientation = atan2(-vec.x, vec.z);
+          if (dist < interactable_info[interactable.interactable_type].radius2 &&
+              (abs(player->rotation - orientation) < 1.0f))
+          {
+            if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
+            {
+              interactable.light_bulb_emissive = !interactable.light_bulb_emissive;
+            }
+          }
         }
       }
     }

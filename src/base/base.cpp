@@ -1,5 +1,12 @@
 #include "base.h"
 
+#include "math.cpp"
+#include "memory.cpp"
+#include "array.cpp"
+#include "map.cpp"
+#include "string.cpp"
+#include "vertex.cpp"
+
 const char* key_to_cstr(Key key)
 {
   switch (key)
@@ -67,10 +74,3 @@ Key string_to_key(const String& str, Error& out_error)
   out_error = GLOBAL_ERROR_INVALID_DATA;
   return (Key) 0;
 }
-
-#include "math.cpp"
-#include "memory.cpp"
-#include "array.cpp"
-#include "map.cpp"
-#include "string.cpp"
-#include "vertex.cpp"

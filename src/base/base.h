@@ -84,7 +84,7 @@ typedef double f64;
     }                                                                                              \
     while (false)
 #else
-#  define ASSERT(expr, msg)
+#  define ASSERT(expr, ...)
 #endif
 
 template <typename T>

@@ -16,7 +16,6 @@ struct Array
   usize size;
   Allocator* allocator;
   ArrayType type;
-  // TODO(szulf): do i want these fields in release builds
   bool dynamic_active;
 
   force_inline T& operator[](usize idx);

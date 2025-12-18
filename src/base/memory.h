@@ -20,7 +20,6 @@ enum AllocatorType
 struct ArenaData
 {
   usize offset;
-  // TODO(szulf): do i want this field in release builds?
   bool dynamic_active;
 };
 

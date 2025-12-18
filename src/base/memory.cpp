@@ -179,13 +179,11 @@ void scratch_arena_release(ScratchArena& sa)
   // for now i just want to move on
   if (sa.top_caller)
   {
-#ifdef MODE_DEBUG
     mem_set(
       (u8*) scratch_arena_.buffer + sa.start_offset,
       0,
       scratch_arena_.type_data.arena.offset - sa.start_offset
     );
-#endif
     scratch_arena_.type_data.arena.offset = sa.start_offset;
     scratch_arena_top_caller_used_ = false;
   }

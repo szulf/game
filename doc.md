@@ -79,6 +79,16 @@ TODO: finish.
 
 ---
 
+## Debug Features
+
+Debug Features are included in release builds of the game. Mainly because I dont want to deal with stripping them out,
+but also the main player base (if you can call it that) will be my friends and I do want to show them these cool
+features.
+
+Only if later the game will be too slow in release (which I highly doubt) i will try to strip the debug features.
+
+---
+
 # EVERYTHING BELOW THIS LINE IS OUTDATED, PLEASE CHANGE IT!
 
 # Platform Layer

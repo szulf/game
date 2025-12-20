@@ -1,5 +1,8 @@
 #include "gent.h"
 
+namespace data
+{
+
 Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
@@ -21,7 +24,8 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
   entity.name = string_copy(p, allocator);
 
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size);
+  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
   auto file = string_make_len((const char*) file_ptr, file_size);
 
   auto lines = string_split(file, '\n', scratch_arena.allocator);
@@ -50,7 +54,7 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     {
       entity.has_model = true;
       entity.model_path = string_copy(value, allocator);
-      entity.model = model_from_file(
+      entity.model = assets::model_from_file(
         string_to_cstr(entity.model_path, scratch_arena.allocator),
         allocator,
         error
@@ -99,8 +103,9 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
   return entity;
 }
 
-void entity_to_file(const Entity& entity)
+void entity_to_file(const Entity& entity, Error& out_error)
 {
+  Error error = SUCCESS;
   // TODO(szulf): i dont like this, i will surely exceed this at some point
   char buf[1024];
   int written = 0;
@@ -154,5 +159,8 @@ void entity_to_file(const Entity& entity)
     ".gent",
     scratch_arena.allocator
   );
-  platform.write_file(string_to_cstr(path, scratch_arena.allocator), &str);
+  platform.write_file(string_to_cstr(path, scratch_arena.allocator), &str, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, );
+}
+
 }

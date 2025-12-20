@@ -1,6 +1,9 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+namespace renderer
+{
+
 enum StaticModel
 {
   STATIC_MODEL_BOUNDING_BOX = 1,
@@ -9,35 +12,38 @@ enum StaticModel
 
 void static_model_init(
   StaticModel static_model,
-  ShaderHandle shader,
+  assets::ShaderHandle shader,
   const Array<Vertex>& vertices,
   const Array<u32>& indices,
+  assets::Primitive primitive,
+  bool wireframe,
   Allocator& allocator
 );
 
-enum Primitive
-{
-  PRIMITIVE_TRIANGLES,
-  PRIMITIVE_LINE_STRIP,
-};
-
-struct DrawCall
+struct Item
 {
   Mat4 model;
-  Mat4 view;
-  Mat4 projection;
-
-  ModelHandle model_handle;
-
+  assets::MeshHandle mesh;
+  assets::MaterialHandle material;
+  // TODO(szulf): get rid of this later
   bool emissive;
-  bool wireframe;
-  Primitive primitive;
 };
 
-void renderer_init(Allocator& allocator, Error& out_error);
-void renderer_clear_screen();
-void renderer_window_resize(u32 width, u32 height);
-void renderer_queue_draw_call(const Array<DrawCall>& queue, const DrawCall& scene);
-void renderer_draw(const Array<DrawCall>& queue);
+struct Pass
+{
+  Array<Item> items;
+  Mat4 view;
+  Mat4 projection;
+};
+
+Pass pass_make(Allocator& allocator);
+
+void init(Allocator& allocator, Error& out_error);
+void clear_screen();
+void window_resize(u32 width, u32 height);
+void queue_items(Pass& pass, const Array<Item>& render_items);
+void draw(const Pass& pass);
+
+}
 
 #endif

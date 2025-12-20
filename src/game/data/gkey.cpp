@@ -1,5 +1,8 @@
 #include "gkey.h"
 
+namespace data
+{
+
 GameInput keymap_from_file(const char* path, Error& out_error)
 {
   GameInput input = {};
@@ -8,7 +11,8 @@ GameInput keymap_from_file(const char* path, Error& out_error)
   defer(scratch_arena_release(scratch_arena));
 
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size);
+  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, input);
   auto file = string_make_len((const char*) file_ptr, file_size);
 
   auto lines = string_split(file, '\n', scratch_arena.allocator);
@@ -69,7 +73,7 @@ GameInput keymap_from_file(const char* path, Error& out_error)
   return input;
 }
 
-void keymap_to_file(const char* path, GameInput& input)
+void keymap_to_file(const char* path, GameInput& input, Error& out_error)
 {
 #define WRITE_KEY(key_state)                                                                       \
   do                                                                                               \
@@ -83,6 +87,7 @@ void keymap_to_file(const char* path, GameInput& input)
   }                                                                                                \
   while (false)
 
+  Error error = SUCCESS;
   // TODO(szulf): i dont like this, will definitely exceed this limit
   char buf[1024];
   int written = 0;
@@ -96,5 +101,8 @@ void keymap_to_file(const char* path, GameInput& input)
   WRITE_KEY(toggle_display_bounding_boxes);
 
   auto s = string_make_len(buf, (usize) written);
-  platform.write_file(path, &s);
+  platform.write_file(path, &s, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, );
+}
+
 }

@@ -1,6 +1,9 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
+namespace assets
+{
+
 typedef usize TextureHandle;
 struct Texture
 {
@@ -8,5 +11,7 @@ struct Texture
 };
 
 Texture texture_make(const Image& img);
+
+}
 
 #endif

@@ -52,14 +52,15 @@ InteractableType string_to_interactable_type(const String& str, Error& out_error
   return (InteractableType) 0;
 }
 
-BoundingBox bounding_box_from_model(ModelHandle handle)
+BoundingBox bounding_box_from_model(assets::ModelHandle handle)
 {
   Vec3 max_corner = {F32_MIN, 0, F32_MIN};
   Vec3 min_corner = {F32_MAX, 0, F32_MAX};
-  auto& model = assets_get_model(handle);
-  for (usize mesh_idx = 0; mesh_idx < model.meshes.size; ++mesh_idx)
+  auto& model = assets::model_get(handle);
+
+  for (usize mesh_idx = 0; mesh_idx < model.parts.size; ++mesh_idx)
   {
-    auto& mesh = assets_get_mesh(model.meshes[mesh_idx]);
+    auto& mesh = assets::mesh_get(model.parts[mesh_idx].mesh);
     for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size; ++vertex_idx)
     {
       auto& vertex = mesh.vertices[vertex_idx];
@@ -85,53 +86,62 @@ bool entities_collide(const Entity& ea, const Entity& eb)
          az + (ea.bounding_box.depth / 2.0f) > bz - (eb.bounding_box.depth / 2.0f);
 }
 
-DrawCall draw_call_entity(const Entity& entity, const Camera& camera)
+Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allocator)
 {
-  if (!entity.has_model)
+  auto& model = assets::model_get(entity.model);
+  auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, model.parts.size, allocator);
+  for (usize part_idx = 0; part_idx < model.parts.size; ++part_idx)
   {
-    return {};
+    auto& part = model.parts[part_idx];
+    renderer::Item renderer_item = {};
+    renderer_item.model = mat4_make();
+    mat4_translate(renderer_item.model, entity.position);
+    mat4_rotate(renderer_item.model, entity.rotation, {0.0f, 1.0f, 0.0f});
+    renderer_item.mesh = part.mesh;
+    renderer_item.material = part.material;
+    if (entity.type == ENTITY_TYPE_INTERACTABLE &&
+        entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
+    {
+      renderer_item.emissive = entity.light_bulb_emissive;
+    }
+    array_push(out, renderer_item);
   }
-  DrawCall out = {};
-  out.primitive = PRIMITIVE_TRIANGLES;
-  out.model_handle = entity.model;
-  out.model = mat4_make();
-  mat4_translate(out.model, entity.position);
-  mat4_rotate(out.model, entity.rotation, {0.0f, 1.0f, 0.0f});
-  out.view = camera_look_at(camera);
-  out.projection = camera_projection(camera);
-  out.emissive = entity.light_bulb_emissive;
   return out;
 }
 
-DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera)
+Array<renderer::Item> renderer_item_entity_bounding_box(const Entity& entity, Allocator& allocator)
 {
-  DrawCall out = {};
-  out.primitive = PRIMITIVE_TRIANGLES;
-  out.wireframe = true;
-  out.model_handle = STATIC_MODEL_BOUNDING_BOX;
-  out.model = mat4_make();
-  mat4_scale(out.model, {entity.bounding_box.width, 1.0f, entity.bounding_box.depth});
-  mat4_translate(out.model, entity.position);
-  out.view = camera_look_at(camera);
-  out.projection = camera_projection(camera);
+  auto& model = assets::model_get(renderer::STATIC_MODEL_BOUNDING_BOX);
+  auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, 1, allocator);
+  auto& part = model.parts[0];
+  renderer::Item renderer_item = {};
+  renderer_item.mesh = part.mesh;
+  renderer_item.material = part.material;
+  renderer_item.model = mat4_make();
+  mat4_scale(renderer_item.model, {entity.bounding_box.width, 1.0f, entity.bounding_box.depth});
+  mat4_translate(renderer_item.model, entity.position);
+  array_push(out, renderer_item);
   return out;
 }
 
 // TODO(szulf): this ring is not right! it off by a little bit
-DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera)
+Array<renderer::Item>
+renderer_item_entity_interactable_radius(const Entity& entity, Allocator& allocator)
 {
-  DrawCall out = {};
-  out.primitive = PRIMITIVE_LINE_STRIP;
-  out.model_handle = STATIC_MODEL_RING;
-  out.model = mat4_make();
+  auto& model = assets::model_get(renderer::STATIC_MODEL_RING);
+  auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, 1, allocator);
+  auto& part = model.parts[0];
+  renderer::Item renderer_item = {};
+  renderer_item.mesh = part.mesh;
+  renderer_item.material = part.material;
+  renderer_item.model = mat4_make();
   mat4_scale(
-    out.model,
+    renderer_item.model,
     {interactable_info[entity.interactable_type].radius2,
      1.0f,
      interactable_info[entity.interactable_type].radius2}
   );
-  mat4_translate(out.model, entity.position);
-  out.view = camera_look_at(camera);
-  out.projection = camera_projection(camera);
+  mat4_translate(renderer_item.model, entity.position);
+  array_push(out, renderer_item);
   return out;
 }

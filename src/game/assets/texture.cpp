@@ -1,5 +1,8 @@
 #include "texture.h"
 
+namespace assets
+{
+
 Texture texture_make(const Image& img)
 {
   Texture out = {};
@@ -25,4 +28,6 @@ Texture texture_make(const Image& img)
   );
   rendering.glGenerateMipmap(GL_TEXTURE_2D);
   return out;
+}
+
 }

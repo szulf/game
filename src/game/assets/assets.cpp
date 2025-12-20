@@ -6,9 +6,12 @@ usize hash(const u64& value)
   return (usize) value;
 }
 
-AssetManager asset_manager_make(Allocator& allocator)
+namespace assets
 {
-  AssetManager out = {};
+
+Manager manager_make(Allocator& allocator)
+{
+  Manager out = {};
   out.shaders = array_make<u32>(ARRAY_TYPE_STATIC, 100, allocator);
   out.textures = array_make<Texture>(ARRAY_TYPE_STATIC, 100, allocator);
   out.materials = array_make<Material>(ARRAY_TYPE_STATIC, 100, allocator);
@@ -20,89 +23,89 @@ AssetManager asset_manager_make(Allocator& allocator)
   return out;
 }
 
-ShaderHandle assets_set_shader(Shader shader)
+ShaderHandle shader_set(Shader shader)
 {
-  array_push(asset_manager_instance->shaders, shader);
-  return (ShaderHandle) (asset_manager_instance->shaders.size - 1);
+  array_push(manager_instance->shaders, shader);
+  return (ShaderHandle) (manager_instance->shaders.size - 1);
 }
 
-Shader assets_get_shader(ShaderHandle handle)
+Shader shader_get(ShaderHandle handle)
 {
-  return asset_manager_instance->shaders[handle];
+  return manager_instance->shaders[handle];
 }
 
-Texture& assets_get_texture(TextureHandle handle)
+Texture& texture_get(TextureHandle handle)
 {
-  return asset_manager_instance->textures[handle - 1];
+  return manager_instance->textures[handle];
 }
 
-TextureHandle assets_set_texture(const Texture& texture)
+TextureHandle texture_set(const Texture& texture)
 {
-  array_push(asset_manager_instance->textures, texture);
-  return asset_manager_instance->textures.size;
+  array_push(manager_instance->textures, texture);
+  return manager_instance->textures.size - 1;
 }
 
-Mesh& assets_get_mesh(MeshHandle handle)
+Mesh& mesh_get(MeshHandle handle)
 {
-  return asset_manager_instance->meshes[handle - 1];
+  return manager_instance->meshes[handle - 1];
 }
 
-MeshHandle assets_set_mesh(const Mesh& mesh)
+MeshHandle mesh_set(const Mesh& mesh)
 {
-  array_push(asset_manager_instance->meshes, mesh);
-  return asset_manager_instance->meshes.size;
+  array_push(manager_instance->meshes, mesh);
+  return manager_instance->meshes.size;
 }
 
-Model& assets_get_model(ModelHandle handle)
+Model& model_get(ModelHandle handle)
 {
-  return asset_manager_instance->models[handle - 1];
+  return manager_instance->models[handle - 1];
 }
 
-ModelHandle assets_set_model(const Model& model)
+ModelHandle model_set(const Model& model)
 {
-  array_push(asset_manager_instance->models, model);
-  return asset_manager_instance->models.size;
+  array_push(manager_instance->models, model);
+  return manager_instance->models.size;
 }
 
-Material& assets_get_material(MaterialHandle handle)
+Material& material_get(MaterialHandle handle)
 {
-  return asset_manager_instance->materials[handle - 1];
+  return manager_instance->materials[handle - 1];
 }
 
-MaterialHandle assets_set_material(const Material& material)
+MaterialHandle material_set(const Material& material)
 {
-  array_push(asset_manager_instance->materials, material);
-  return asset_manager_instance->materials.size;
+  array_push(manager_instance->materials, material);
+  return manager_instance->materials.size;
 }
 
-MaterialHandle assets_material_handle_get(const String& key)
+MaterialHandle material_handle_get(const String& key)
 {
-  return *map_get(asset_manager_instance->material_handles, key);
+  return *map_get(manager_instance->material_handles, key);
 }
 
-void assets_material_handle_set(const String& key, MaterialHandle handle)
+void material_handle_set(const String& key, MaterialHandle handle)
 {
-  map_set(asset_manager_instance->material_handles, key, handle);
+  map_set(manager_instance->material_handles, key, handle);
 }
 
-bool assets_material_handle_exists(const String& key)
+bool material_handle_exists(const String& key)
 {
-  return map_contains(asset_manager_instance->material_handles, key);
+  return map_contains(manager_instance->material_handles, key);
 }
 
-TextureHandle assets_texture_handle_get(const String& key)
+TextureHandle texture_handle_get(const String& key)
 {
-  return *map_get(asset_manager_instance->texture_handles, key);
+  return *map_get(manager_instance->texture_handles, key);
 }
 
-void assets_texture_handle_set(const String& key, TextureHandle handle)
+void texture_handle_set(const String& key, TextureHandle handle)
 {
-  map_set(asset_manager_instance->texture_handles, key, handle);
+  map_set(manager_instance->texture_handles, key, handle);
 }
 
-bool assets_texture_handle_exists(const String& key)
+bool texture_handle_exists(const String& key)
 {
-  return map_contains(asset_manager_instance->texture_handles, key);
+  return map_contains(manager_instance->texture_handles, key);
 }
 
 struct ObjContext
@@ -127,19 +130,22 @@ obj_get_texture_by_path(const String& path, Allocator& allocator, Error& out_err
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
 
-  if (assets_texture_handle_exists(path))
+  if (texture_handle_exists(path))
   {
-    return assets_texture_handle_get(path);
+    return texture_handle_get(path);
   }
 
   auto img =
     image_from_file(string_to_cstr(path, scratch_arena.allocator), scratch_arena.allocator, error);
-  // TODO(szulf): do i want to initialize it with an error image here instead?
-  ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, (TextureHandle) 0);
+  if (error != SUCCESS)
+  {
+    img = image_error_placeholder();
+    out_error = GLOBAL_ERROR_INVALID_DATA;
+  }
   auto texture = texture_make(img);
   auto allocated_path = string_copy(path, allocator);
-  auto texture_handle = assets_set_texture(texture);
-  assets_texture_handle_set(allocated_path, texture_handle);
+  auto texture_handle = texture_set(texture);
+  texture_handle_set(allocated_path, texture_handle);
   return texture_handle;
 }
 
@@ -150,7 +156,8 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size);
+  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, );
   auto file = string_make_len((const char*) file_ptr, file_size);
   auto lines = string_split(file, '\n', scratch_arena.allocator);
 
@@ -173,14 +180,14 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
         {
           continue;
         }
-        if (!assets_material_handle_exists(parts[1]))
+        if (!material_handle_exists(parts[1]))
         {
           if (parsing)
           {
             // TODO(szulf): how to correctly initialize the shader in the future? for now hardcoded
             material.shader = SHADER_DEFAULT;
-            auto material_handle = assets_set_material(material);
-            assets_material_handle_set(material_name, material_handle);
+            auto material_handle = material_set(material);
+            material_handle_set(material_name, material_handle);
           }
 
           parsing = true;
@@ -216,8 +223,8 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
 
   // TODO(szulf): how to correctly initialize the shader in the future? for now hardcoded
   material.shader = SHADER_DEFAULT;
-  auto material_handle = assets_set_material(material);
-  assets_material_handle_set(material_name, material_handle);
+  auto material_handle = material_set(material);
+  material_handle_set(material_name, material_handle);
 }
 
 static void obj_parse_vertex(f32* points, usize points_size, const String& line, Error& out_error)
@@ -239,7 +246,7 @@ static void obj_parse_vertex(f32* points, usize points_size, const String& line,
   }
 }
 
-static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
+static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
 {
   Error error = SUCCESS;
   usize indices_amount = 0;
@@ -265,7 +272,7 @@ static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
   ctx.idx = idx_old;
   auto mesh_indices = array_make<u32>(ARRAY_TYPE_STATIC, indices_amount, *ctx.allocator);
   auto mesh_vertices = array_make<Vertex>(ARRAY_TYPE_DYNAMIC, 1, *ctx.allocator);
-  MaterialHandle mesh_material_handle = {};
+  MaterialHandle material_handle = {};
 
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
@@ -370,11 +377,11 @@ static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
           return {};
         }
         ASSERT(
-          assets_material_handle_exists(parts[1]),
+          material_handle_exists(parts[1]),
           "material with name %s does not exist",
           string_to_cstr(parts[1], scratch_arena.allocator)
         );
-        mesh_material_handle = assets_material_handle_get(parts[1]);
+        material_handle = material_handle_get(parts[1]);
       }
       break;
 
@@ -389,25 +396,23 @@ static Mesh obj_parse_object(ObjContext& ctx, Error& out_error)
     back_idx = ctx.idx;
   }
 
-  return mesh_make(mesh_vertices, mesh_indices, mesh_material_handle);
+  return {
+    mesh_set(mesh_make(mesh_vertices, mesh_indices, PRIMITIVE_TRIANGLES)),
+    material_handle,
+  };
 }
 
 ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
   Model model = {};
-  model.matrix = mat4_make();
   ObjContext ctx = {};
   ctx.allocator = &allocator;
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size);
-  if (file_ptr == nullptr)
-  {
-    out_error = GLOBAL_ERROR_NOT_FOUND;
-    return {};
-  }
+  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   auto file = string_make_len((const char*) file_ptr, file_size);
   ctx.lines = string_split(file, '\n', scratch_arena.allocator);
 
@@ -458,7 +463,7 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
     }
   }
 
-  model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, ctx.mesh_count, allocator);
+  model.parts = array_make<MeshMaterialPair>(ARRAY_TYPE_STATIC, ctx.mesh_count, allocator);
   ctx.positions = array_make<Vec3>(ARRAY_TYPE_STATIC, ctx.pos_count, scratch_arena.allocator);
   ctx.normals = array_make<Vec3>(ARRAY_TYPE_STATIC, ctx.normal_count, scratch_arena.allocator);
   ctx.uvs = array_make<Vec2>(ARRAY_TYPE_STATIC, ctx.uv_count, scratch_arena.allocator);
@@ -473,14 +478,13 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
       case 'g':
       {
         ++ctx.idx;
-        auto mesh = obj_parse_object(ctx, error);
+        auto mesh_material_pair = obj_parse_object(ctx, error);
         if (error != SUCCESS)
         {
           out_error = error;
           return {};
         }
-        auto mesh_handle = assets_set_mesh(mesh);
-        array_push(model.meshes, mesh_handle);
+        array_push(model.parts, mesh_material_pair);
         --ctx.idx;
       }
       break;
@@ -510,7 +514,7 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
     }
   }
 
-  return assets_set_model(model);
+  return model_set(model);
 }
 
 enum ShaderType
@@ -524,10 +528,12 @@ enum ShaderType
 
 static u32 shader_load(const char* path, ShaderType shader_type, Error& out_error)
 {
+  Error error = SUCCESS;
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size);
+  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
 
   u32 shader;
   switch (shader_type)
@@ -614,7 +620,9 @@ ShaderHandle shader_from_file(const char* vert_path, const char* frag_path, Erro
   ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
   auto shader = shader_link(vertex_shader, fragment_shader, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-  return assets_set_shader(shader);
+  return shader_set(shader);
+}
+
 }
 
 #include "shader.cpp"

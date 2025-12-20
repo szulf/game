@@ -18,17 +18,19 @@ struct Main
 {
   Allocator allocator;
 
-  AssetManager asset_manager;
-  Array<DrawCall> renderer_queue;
+  assets::Manager assets_manager;
 
   bool camera_mode;
   bool display_bounding_boxes;
 
   Camera* main_camera;
-  Camera gameplay_camera;
   Camera debug_camera;
+  // TODO(szulf): which one do i want to take
+  Camera gameplay_orthographic_camera;
+  Camera gameplay_perspective_camera;
 
   // TODO(szulf): is a map to an array of entities by their type a good idea?
+  // it might really be, turns out jon blow uses that
   Array<Entity> entities;
 };
 
@@ -55,42 +57,43 @@ dll_export INIT_FN(init)
   main.allocator.buffer = (u8*) memory->memory + sizeof(Main);
   main.allocator.type = ALLOCATOR_TYPE_ARENA;
 
-  main.asset_manager = asset_manager_make(main.allocator);
-  asset_manager_instance = &main.asset_manager;
-  main.renderer_queue = array_make<DrawCall>(ARRAY_TYPE_DYNAMIC, 50, main.allocator);
-  renderer_init(main.allocator, error);
+  main.assets_manager = assets::manager_make(main.allocator);
+  assets::manager_instance = &main.assets_manager;
+  renderer::init(main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt initialize renderer");
 
-  main.entities = scene_from_file("data/main.gscn", main.allocator, error);
+  main.entities = data::scene_from_file("data/main.gscn", main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt load scene");
 
-  *input = keymap_from_file("data/keymap.gkey", error);
+  *input = data::keymap_from_file("data/keymap.gkey", error);
   ASSERT(error == SUCCESS, "couldnt read keymap file");
 
-  main.gameplay_camera = {};
-  main.gameplay_camera.type = CAMERA_TYPE_ORTHOGRAPHIC;
-  main.gameplay_camera.pos = {-0.5f, 2.0f, 0.0f};
-  main.gameplay_camera.yaw = -90.0f;
-  main.gameplay_camera.pitch = -60.0f;
-  main.gameplay_camera.near_plane = 0.1f;
-  main.gameplay_camera.far_plane = 1000.0f;
-  main.gameplay_camera.viewport_width = platform.get_width();
-  main.gameplay_camera.viewport_height = platform.get_height();
-  camera_update_vectors(main.gameplay_camera);
+  main.gameplay_perspective_camera = {};
+  main.gameplay_perspective_camera.type = CAMERA_TYPE_PERSPECTIVE;
+  main.gameplay_perspective_camera.pos = {-0.5f, 12.0f, 8.0f};
+  main.gameplay_perspective_camera.yaw = -90.0f;
+  main.gameplay_perspective_camera.pitch = -55.0f;
+  main.gameplay_perspective_camera.near_plane = 0.1f;
+  main.gameplay_perspective_camera.far_plane = 1000.0f;
+  main.gameplay_perspective_camera.viewport_width = platform.get_width();
+  main.gameplay_perspective_camera.viewport_height = platform.get_height();
+  main.gameplay_perspective_camera.vertical_fov = 0.25f * F32_PI;
+  camera_update_vectors(main.gameplay_perspective_camera);
 
-  main.debug_camera = main.gameplay_camera;
-  main.debug_camera.pos = {-0.5f, 8.0f, 4.0f};
-  main.debug_camera.type = CAMERA_TYPE_PERSPECTIVE;
-  main.debug_camera.vertical_fov = 0.25f * F32_PI;
-  camera_update_vectors(main.debug_camera);
+  main.gameplay_orthographic_camera = main.gameplay_perspective_camera;
+  main.gameplay_orthographic_camera.pos = {-0.5f, 2.0f, 0.0f};
+  main.gameplay_orthographic_camera.type = CAMERA_TYPE_ORTHOGRAPHIC;
+  camera_update_vectors(main.gameplay_orthographic_camera);
 
-  main.main_camera = &main.gameplay_camera;
+  main.debug_camera = main.gameplay_perspective_camera;
+
+  main.main_camera = &main.gameplay_perspective_camera;
 }
 
 dll_export POST_RELOAD_FN(post_reload)
 {
   auto& main = *(Main*) memory->memory;
-  asset_manager_instance = &main.asset_manager;
+  assets::manager_instance = &main.assets_manager;
 }
 
 dll_export UPDATE_FN(update)
@@ -188,7 +191,8 @@ dll_export UPDATE_FN(update)
   }
   else
   {
-    main.main_camera = &main.gameplay_camera;
+    // main.main_camera = &main.gameplay_orthographic_camera;
+    main.main_camera = &main.gameplay_perspective_camera;
 
     // NOTE(szulf): rotation
     {
@@ -314,30 +318,38 @@ dll_export RENDER_FN(render)
 {
   auto& main = *(Main*) memory->memory;
 
-  renderer_clear_screen();
+  // TODO(szulf): switch this to the frame arena
+  auto scratch_arena = scratch_arena_get();
+  defer(scratch_arena_release(scratch_arena));
+
+  renderer::clear_screen();
+
+  auto pass = renderer::pass_make(scratch_arena.allocator);
+  pass.view = camera_look_at(*main.main_camera);
+  pass.projection = camera_projection(*main.main_camera);
 
   for (usize i = 0; i < main.entities.size; ++i)
   {
     auto& entity = main.entities[i];
-    if (!entity.has_model)
+    if (entity.has_model)
     {
-      continue;
+      auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
+      renderer::queue_items(pass, renderer_items);
     }
     if (main.display_bounding_boxes)
     {
-      auto bounding_box_call = draw_call_entity_bounding_box(entity, *main.main_camera);
-      renderer_queue_draw_call(main.renderer_queue, bounding_box_call);
+      auto bounding_box_items = renderer_item_entity_bounding_box(entity, scratch_arena.allocator);
+      renderer::queue_items(pass, bounding_box_items);
       if (entity.type == ENTITY_TYPE_INTERACTABLE)
       {
-        auto radius_call = draw_call_entity_interactable_radius(entity, *main.main_camera);
-        renderer_queue_draw_call(main.renderer_queue, radius_call);
+        auto radius_items =
+          renderer_item_entity_interactable_radius(entity, scratch_arena.allocator);
+        renderer::queue_items(pass, radius_items);
       }
     }
-    auto draw_call = draw_call_entity(entity, *main.main_camera);
-    renderer_queue_draw_call(main.renderer_queue, draw_call);
   }
 
-  renderer_draw(main.renderer_queue);
+  renderer::draw(pass);
 }
 
 dll_export EVENT_FN(event)
@@ -348,9 +360,11 @@ dll_export EVENT_FN(event)
   {
     case EVENT_TYPE_WINDOW_RESIZE:
     {
-      renderer_window_resize(event->data.window_resize.width, event->data.window_resize.height);
-      main.gameplay_camera.viewport_width = event->data.window_resize.width;
-      main.gameplay_camera.viewport_height = event->data.window_resize.height;
+      renderer::window_resize(event->data.window_resize.width, event->data.window_resize.height);
+      main.gameplay_perspective_camera.viewport_width = event->data.window_resize.width;
+      main.gameplay_perspective_camera.viewport_height = event->data.window_resize.height;
+      main.gameplay_orthographic_camera.viewport_width = event->data.window_resize.width;
+      main.gameplay_orthographic_camera.viewport_height = event->data.window_resize.height;
       main.debug_camera.viewport_width = event->data.window_resize.width;
       main.debug_camera.viewport_height = event->data.window_resize.height;
     }

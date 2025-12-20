@@ -1,30 +1,43 @@
 #include "renderer.h"
 
+namespace renderer
+{
+
 void static_model_init(
   StaticModel static_model,
-  ShaderHandle shader,
+  assets::ShaderHandle shader,
   const Array<Vertex>& vertices,
   const Array<u32>& indices,
+  assets::Primitive primitive,
+  bool wireframe,
   Allocator& allocator
 )
 {
-  Material material = {};
+  assets::Material material = {};
   material.shader = shader;
-  auto material_handle = assets_set_material(material);
-  Mesh mesh = mesh_make(vertices, indices, material_handle);
-  auto mesh_handle = assets_set_mesh(mesh);
-  Model model = {};
-  model.matrix = mat4_make();
-  model.meshes = array_make<MeshHandle>(ARRAY_TYPE_STATIC, 1, allocator);
-  array_push(model.meshes, mesh_handle);
-  auto handle = assets_set_model(model);
+  material.wireframe = wireframe;
+  auto mesh_handle = assets::mesh_set(assets::mesh_make(vertices, indices, primitive));
+  auto material_handle = material_set(material);
+  assets::Model model = {};
+  model.parts = array_make<assets::MeshMaterialPair>(ARRAY_TYPE_STATIC, 1, allocator);
+  array_push(model.parts, {mesh_handle, material_handle});
+  auto handle = assets::model_set(model);
   ASSERT(handle == static_model, "failed to initalize a static model");
 }
 
-void renderer_queue_draw_call(Array<DrawCall>& queue, const DrawCall& draw_call)
+Pass pass_make(Allocator& allocator)
 {
-  // TODO(szulf): for now just pushing into the array, later actually try to sort it in place
-  array_push(queue, draw_call);
+  Pass out = {};
+  out.items = array_make<Item>(ARRAY_TYPE_DYNAMIC, 50, allocator);
+  return out;
+}
+
+void queue_items(Pass& pass, const Array<Item>& render_items)
+{
+  for (usize i = 0; i < render_items.size; ++i)
+  {
+    array_push(pass.items, render_items[i]);
+  }
 }
 
 static Vertex bounding_box_vertices[] = {
@@ -96,6 +109,8 @@ static Vertex ring_vertices[] = {
 
 static u32 ring_indices[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
                              17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0};
+
+}
 
 #ifdef RENDERER_OPENGL
 #  include "gl_renderer.cpp"

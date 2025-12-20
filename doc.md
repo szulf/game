@@ -2,8 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-9. figure out stripping debug features from release builds
-   - or maybe dont strip them?
 10. phong/blinn-phong lighting
 11. emissive maps for light bulb?
 12. shadow mapping or point shadows (?)

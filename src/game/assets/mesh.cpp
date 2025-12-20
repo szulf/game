@@ -1,11 +1,16 @@
 #include "mesh.h"
 
-Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, MaterialHandle material)
+namespace assets
+{
+
+#ifdef RENDERER_OPENGL
+
+Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, Primitive primitive)
 {
   Mesh out = {};
   out.vertices = vertices;
-  out.indices = indices;
-  out.material = material;
+  out.index_count = indices.size;
+  out.primitive = primitive;
 
   rendering.glGenVertexArrays(1, &out.vao);
   rendering.glBindVertexArray(out.vao);
@@ -22,8 +27,8 @@ Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, Materia
   rendering.glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out.ebo);
   rendering.glBufferData(
     GL_ELEMENT_ARRAY_BUFFER,
-    (GLsizei) (out.indices.size * sizeof(u32)),
-    out.indices.data,
+    (GLsizei) (indices.size * sizeof(u32)),
+    indices.data,
     GL_STATIC_DRAW
   );
 
@@ -50,4 +55,8 @@ Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, Materia
   rendering.glEnableVertexAttribArray(2);
 
   return out;
+}
+
+#endif
+
 }

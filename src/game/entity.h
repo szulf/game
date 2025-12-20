@@ -40,7 +40,7 @@ struct BoundingBox
   f32 depth;
 };
 
-BoundingBox bounding_box_from_model(ModelHandle model);
+BoundingBox bounding_box_from_model(assets::ModelHandle model);
 
 struct Entity
 {
@@ -54,7 +54,7 @@ struct Entity
   BoundingBox bounding_box;
 
   bool has_model;
-  ModelHandle model;
+  assets::ModelHandle model;
 
   InteractableType interactable_type;
 
@@ -69,9 +69,10 @@ struct Entity
 
 bool entities_collide(const Entity& ea, const Entity& eb);
 
-DrawCall draw_call_entity(const Entity& entity, const Camera& camera);
-DrawCall draw_call_entity_bounding_box(const Entity& entity, const Camera& camera);
-DrawCall draw_call_entity_interactable_radius(const Entity& entity, const Camera& camera);
+Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allocator);
+Array<renderer::Item> renderer_item_entity_bounding_box(const Entity& entity, Allocator& allocator);
+Array<renderer::Item>
+renderer_item_entity_interactable_radius(const Entity& entity, Allocator& allocator);
 // TODO(szulf): draw a line pointing the rotation of the player
 
 #endif

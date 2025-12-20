@@ -19,35 +19,21 @@ GET_HEIGHT_FN(get_height)
 READ_FILE_FN(read_file)
 {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
-  if (!storage)
-  {
-    ASSERT(false, "failed to load file");
-    return nullptr;
-  }
+  ERROR_ASSERT(storage, *out_error, GLOBAL_ERROR_FILE_READING, nullptr);
   defer(SDL_CloseStorage(storage));
 
-  if (!SDL_GetStorageFileSize(storage, path, out_size))
-  {
-    ASSERT(false, "failed to load file");
-    return nullptr;
-  }
+  auto file_size_success = SDL_GetStorageFileSize(storage, path, out_size);
+  ERROR_ASSERT(file_size_success, *out_error, GLOBAL_ERROR_FILE_READING, nullptr);
   void* file = alloc(*allocator, *out_size);
-  if (!SDL_ReadStorageFile(storage, path, file, *out_size))
-  {
-    ASSERT(false, "failed to load file");
-    return nullptr;
-  }
+  auto read_file_success = SDL_ReadStorageFile(storage, path, file, *out_size);
+  ERROR_ASSERT(read_file_success, *out_error, GLOBAL_ERROR_FILE_READING, nullptr);
   return file;
 }
 
 WRITE_FILE_FN(write_file)
 {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
-  if (!storage)
-  {
-    ASSERT(false, "failed to write file");
-    return;
-  }
+  ERROR_ASSERT(storage, *out_error, GLOBAL_ERROR_FILE_WRITING, );
   defer(SDL_CloseStorage(storage));
 
   while (!SDL_StorageReady(storage))
@@ -58,15 +44,13 @@ WRITE_FILE_FN(write_file)
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
 
-  if (!SDL_WriteStorageFile(
-        storage,
-        path,
-        string_to_cstr(*string, scratch_arena.allocator),
-        string->size
-      ))
-  {
-    ASSERT(false, "failed to write file");
-  }
+  auto write_file_success = SDL_WriteStorageFile(
+    storage,
+    path,
+    string_to_cstr(*string, scratch_arena.allocator),
+    string->size
+  );
+  ERROR_ASSERT(write_file_success, *out_error, GLOBAL_ERROR_FILE_WRITING, );
 }
 
 static SDL_SharedObject* so;

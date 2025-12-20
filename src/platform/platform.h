@@ -12,10 +12,10 @@ static u32 FPS = 165;
 
 extern "C"
 {
-  // TODO(szulf): actually handle errors from read_file and write_file
-#define READ_FILE_FN(name) void* name(const char* path, Allocator* allocator, usize* out_size)
+#define READ_FILE_FN(name)                                                                         \
+  void* name(const char* path, Allocator* allocator, usize* out_size, Error* out_error)
   typedef READ_FILE_FN(ReadFileFN);
-#define WRITE_FILE_FN(name) void name(const char* path, const String* string)
+#define WRITE_FILE_FN(name) void name(const char* path, const String* string, Error* out_error)
   typedef WRITE_FILE_FN(WriteFileFN);
 #define GET_WIDTH_FN(name) u32 name()
   typedef GET_WIDTH_FN(GetWidthFN);

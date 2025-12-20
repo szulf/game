@@ -604,7 +604,8 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size);
+  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  ERROR_ASSERT(error == SUCCESS, err, error, img);
   if (file == nullptr)
   {
     err = GLOBAL_ERROR_NOT_FOUND;
@@ -829,4 +830,22 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
 
   err = SUCCESS;
   return img;
+}
+
+static u8 error_placeholder_data[] = {
+  // clang-format off
+  0x00, 0x00, 0x00, 0xFF,
+  0xFC, 0x0F, 0xC0, 0xFF,
+  0xFC, 0x0F, 0xC0, 0xFF,
+  0x00, 0x00, 0x00, 0xFF,
+  // clang-format on
+};
+
+Image image_error_placeholder()
+{
+  Image out = {};
+  out.width = 2;
+  out.height = 2;
+  out.data = error_placeholder_data;
+  return out;
 }

@@ -46,6 +46,8 @@ extern "C" struct RenderingAPI
   PFNGLDELETEBUFFERSPROC glDeleteBuffers;
   PFNGLGETERRORPROC glGetError;
   PFNGLPOLYGONMODEPROC glPolygonMode;
+  PFNGLBINDBUFFERBASEPROC glBindBufferBase;
+  PFNGLBUFFERSUBDATAPROC glBufferSubData;
 };
 void setup_gl_functions(RenderingAPI* api);
 

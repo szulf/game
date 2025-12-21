@@ -51,6 +51,8 @@ void setup_gl_functions(RenderingAPI* api)
   api->glDeleteBuffers = (PFNGLDELETEBUFFERSPROC) SDL_GL_GetProcAddress("glDeleteBuffers");
   api->glGetError = (PFNGLGETERRORPROC) SDL_GL_GetProcAddress("glGetError");
   api->glPolygonMode = (PFNGLPOLYGONMODEPROC) SDL_GL_GetProcAddress("glPolygonMode");
+  api->glBindBufferBase = (PFNGLBINDBUFFERBASEPROC) SDL_GL_GetProcAddress("glBindBufferBase");
+  api->glBufferSubData = (PFNGLBUFFERSUBDATAPROC) SDL_GL_GetProcAddress("glBufferSubData");
 }
 
 #  ifdef MODE_DEBUG

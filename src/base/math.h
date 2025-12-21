@@ -72,6 +72,14 @@ vec3 cross(const vec3& va, const vec3& vb);
 bool operator==(const vec3& va, const vec3& vb);
 bool operator!=(const vec3& va, const vec3& vb);
 
+struct vec4
+{
+  f32 x;
+  f32 y;
+  f32 z;
+  f32 w;
+};
+
 struct mat4
 {
   f32 data[16];

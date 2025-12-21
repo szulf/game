@@ -1,6 +1,26 @@
 namespace renderer
 {
 
+struct STD140Light
+{
+  vec4 pos;
+  vec4 color;
+
+  f32 constant;
+  f32 linear;
+  f32 quadratic;
+  f32 _pad;
+};
+
+struct STD140Lights
+{
+  int light_count;
+  vec3 _pad;
+  STD140Light lights[MAX_LIGHTS];
+};
+
+static GLuint lights_ubo;
+
 void init(Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
@@ -38,6 +58,11 @@ void init(Allocator& allocator, Error& out_error)
   auto error_texture = assets::texture_make(image_error_placeholder());
   auto error_texture_handle = assets::texture_set(error_texture);
   ASSERT(error_texture_handle == 0, "error loading error texture");
+
+  rendering.glGenBuffers(1, &lights_ubo);
+  rendering.glBindBuffer(GL_UNIFORM_BUFFER, lights_ubo);
+  rendering.glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Lights), nullptr, GL_DYNAMIC_DRAW);
+  rendering.glBindBufferBase(GL_UNIFORM_BUFFER, 0, lights_ubo);
 }
 
 void clear_screen()
@@ -123,22 +148,19 @@ void draw(const Pass& pass)
     }
 
     {
-      rendering.glUniform3f(
-        rendering.glGetUniformLocation(shader, "light.pos"),
-        pass.light.pos.x,
-        pass.light.pos.y,
-        pass.light.pos.z
-      );
-      rendering.glUniform3f(
-        rendering.glGetUniformLocation(shader, "light.color"),
-        pass.light.color.x,
-        pass.light.color.y,
-        pass.light.color.z
-      );
-      // TODO(szulf): for now hardcoded
-      rendering.glUniform1f(rendering.glGetUniformLocation(shader, "light.constant"), 1.0f);
-      rendering.glUniform1f(rendering.glGetUniformLocation(shader, "light.linear"), 0.14f);
-      rendering.glUniform1f(rendering.glGetUniformLocation(shader, "light.quadratic"), 0.07f);
+      STD140Lights lights = {};
+      lights.light_count = (int) pass.lights.size;
+      for (usize light_idx = 0; light_idx < pass.lights.size; ++light_idx)
+      {
+        auto& light = pass.lights[light_idx];
+        lights.lights[light_idx].pos = {light.pos.x, light.pos.y, light.pos.z, 1.0f};
+        lights.lights[light_idx].color = {light.color.x, light.color.y, light.color.z, 1.0f};
+        lights.lights[light_idx].constant = 1.0f;
+        lights.lights[light_idx].linear = 0.14f;
+        lights.lights[light_idx].quadratic = 0.07f;
+      }
+      rendering.glBindBuffer(GL_UNIFORM_BUFFER, lights_ubo);
+      rendering.glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(lights), &lights);
     }
 
     rendering.glUniform3f(

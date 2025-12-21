@@ -31,6 +31,7 @@ Pass pass_make(Allocator& allocator)
 {
   Pass out = {};
   out.items = array_make<Item>(ARRAY_TYPE_DYNAMIC, 50, allocator);
+  out.lights = array_make<Light>(ARRAY_TYPE_STATIC, MAX_LIGHTS, allocator);
   return out;
 }
 

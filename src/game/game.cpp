@@ -293,12 +293,10 @@ dll_export UPDATE_FN(update)
           // or just remove the whole thing
           f32 orientation = atan2(-vec.x, vec.z);
           if (dist < interactable_info[interactable.interactable_type].radius2 &&
-              (abs(player->rotation - orientation) < 1.0f))
+              abs(player->rotation - orientation) < 1.0f &&
+              interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
           {
-            if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
-            {
-              interactable.light_bulb_on = !interactable.light_bulb_on;
-            }
+            interactable.light_bulb_on = !interactable.light_bulb_on;
           }
         }
       }
@@ -332,8 +330,10 @@ dll_export RENDER_FN(render)
     if (entity.type == ENTITY_TYPE_INTERACTABLE &&
         entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB && entity.light_bulb_on)
     {
-      pass.light.pos = entity.position;
-      pass.light.color = entity.light_bulb_color;
+      renderer::Light light = {};
+      light.pos = entity.position;
+      light.color = entity.light_bulb_color;
+      array_push(pass.lights, light);
     }
     if (main.display_bounding_boxes)
     {

@@ -27,6 +27,7 @@ struct Item
   assets::MaterialHandle material;
 };
 
+#define MAX_LIGHTS 32
 struct Light
 {
   vec3 pos;
@@ -36,8 +37,7 @@ struct Light
 struct Pass
 {
   Array<Item> items;
-  // TODO(szulf): make this an array in the future
-  Light light;
+  Array<Light> lights;
   mat4 view;
   mat4 projection;
   vec3 view_pos;

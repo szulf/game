@@ -2,9 +2,7 @@
 
 ## SMALL TODOS: (ordered)
 
-10. phong/blinn-phong lighting
-11. emissive maps for light bulb?
-12. shadow mapping or point shadows (?)
+11. shadow mapping or point shadows (?)
 
 ---
 

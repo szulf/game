@@ -25,9 +25,7 @@ struct Main
 
   Camera* main_camera;
   Camera debug_camera;
-  // TODO(szulf): which one do i want to take
-  Camera gameplay_orthographic_camera;
-  Camera gameplay_perspective_camera;
+  Camera gameplay_camera;
 
   // TODO(szulf): is a map to an array of entities by their type a good idea?
   // it might really be, turns out jon blow uses that
@@ -68,26 +66,21 @@ dll_export INIT_FN(init)
   *input = data::keymap_from_file("data/keymap.gkey", error);
   ASSERT(error == SUCCESS, "couldnt read keymap file");
 
-  main.gameplay_perspective_camera = {};
-  main.gameplay_perspective_camera.type = CAMERA_TYPE_PERSPECTIVE;
-  main.gameplay_perspective_camera.pos = {-0.5f, 12.0f, 8.0f};
-  main.gameplay_perspective_camera.yaw = -90.0f;
-  main.gameplay_perspective_camera.pitch = -55.0f;
-  main.gameplay_perspective_camera.near_plane = 0.1f;
-  main.gameplay_perspective_camera.far_plane = 1000.0f;
-  main.gameplay_perspective_camera.viewport_width = platform.get_width();
-  main.gameplay_perspective_camera.viewport_height = platform.get_height();
-  main.gameplay_perspective_camera.vertical_fov = 0.25f * F32_PI;
-  camera_update_vectors(main.gameplay_perspective_camera);
+  main.gameplay_camera = {};
+  main.gameplay_camera.type = CAMERA_TYPE_PERSPECTIVE;
+  main.gameplay_camera.pos = {-0.5f, 12.0f, 8.0f};
+  main.gameplay_camera.yaw = -90.0f;
+  main.gameplay_camera.pitch = -55.0f;
+  main.gameplay_camera.near_plane = 0.1f;
+  main.gameplay_camera.far_plane = 1000.0f;
+  main.gameplay_camera.viewport_width = platform.get_width();
+  main.gameplay_camera.viewport_height = platform.get_height();
+  main.gameplay_camera.vertical_fov = 0.25f * F32_PI;
+  camera_update_vectors(main.gameplay_camera);
 
-  main.gameplay_orthographic_camera = main.gameplay_perspective_camera;
-  main.gameplay_orthographic_camera.pos = {-0.5f, 2.0f, 0.0f};
-  main.gameplay_orthographic_camera.type = CAMERA_TYPE_ORTHOGRAPHIC;
-  camera_update_vectors(main.gameplay_orthographic_camera);
+  main.debug_camera = main.gameplay_camera;
 
-  main.debug_camera = main.gameplay_perspective_camera;
-
-  main.main_camera = &main.gameplay_perspective_camera;
+  main.main_camera = &main.gameplay_camera;
 }
 
 dll_export POST_RELOAD_FN(post_reload)
@@ -144,7 +137,7 @@ dll_export UPDATE_FN(update)
     main.display_bounding_boxes = !main.display_bounding_boxes;
   }
 
-  Vec3 acceleration = {};
+  vec3 acceleration = {};
   if (input->move_front.ended_down)
   {
     acceleration.z += -1.0f;
@@ -191,12 +184,11 @@ dll_export UPDATE_FN(update)
   }
   else
   {
-    // main.main_camera = &main.gameplay_orthographic_camera;
-    main.main_camera = &main.gameplay_perspective_camera;
+    main.main_camera = &main.gameplay_camera;
 
     // NOTE(szulf): rotation
     {
-      if (acceleration != Vec3{})
+      if (acceleration != vec3{0.0f, 0.0f, 0.0f})
       {
         auto rot = atan2(-acceleration.x, acceleration.z);
         player->target_rotation = rot;
@@ -215,7 +207,7 @@ dll_export UPDATE_FN(update)
         0.5f * acceleration * square(dt) + player->velocity * dt + player->position;
       player->velocity = acceleration * dt + player->velocity;
 
-      Vec3 collision_normal = {};
+      vec3 collision_normal = {};
       bool collided = false;
       for (usize i = 0; i < collidables.size; ++i)
       {
@@ -224,7 +216,7 @@ dll_export UPDATE_FN(update)
         {
           continue;
         }
-        Vec3 rounded_pos = {round(new_position.x), 0.0f, round(new_position.z)};
+        vec3 rounded_pos = {round(new_position.x), 0.0f, round(new_position.z)};
         if ((c.position.x > rounded_pos.x + 1.0f || c.position.x < rounded_pos.x - 1.0f) ||
             (c.position.z > rounded_pos.z + 1.0f || c.position.z < rounded_pos.z - 1.0f))
         {
@@ -278,7 +270,7 @@ dll_export UPDATE_FN(update)
       }
 
       auto abs_collision_normal = abs(collision_normal);
-      auto collision_normal_inverted = Vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
+      auto collision_normal_inverted = vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
       player->position =
         (abs_collision_normal * player->position) + (new_position * collision_normal_inverted);
       if (collided)
@@ -305,7 +297,7 @@ dll_export UPDATE_FN(update)
           {
             if (interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
             {
-              interactable.light_bulb_emissive = !interactable.light_bulb_emissive;
+              interactable.light_bulb_on = !interactable.light_bulb_on;
             }
           }
         }
@@ -326,6 +318,7 @@ dll_export RENDER_FN(render)
 
   auto pass = renderer::pass_make(scratch_arena.allocator);
   pass.view = camera_look_at(*main.main_camera);
+  pass.view_pos = main.main_camera->pos;
   pass.projection = camera_projection(*main.main_camera);
 
   for (usize i = 0; i < main.entities.size; ++i)
@@ -335,6 +328,12 @@ dll_export RENDER_FN(render)
     {
       auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
       renderer::queue_items(pass, renderer_items);
+    }
+    if (entity.type == ENTITY_TYPE_INTERACTABLE &&
+        entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB && entity.light_bulb_on)
+    {
+      pass.light.pos = entity.position;
+      pass.light.color = entity.light_bulb_color;
     }
     if (main.display_bounding_boxes)
     {
@@ -361,10 +360,8 @@ dll_export EVENT_FN(event)
     case EVENT_TYPE_WINDOW_RESIZE:
     {
       renderer::window_resize(event->data.window_resize.width, event->data.window_resize.height);
-      main.gameplay_perspective_camera.viewport_width = event->data.window_resize.width;
-      main.gameplay_perspective_camera.viewport_height = event->data.window_resize.height;
-      main.gameplay_orthographic_camera.viewport_width = event->data.window_resize.width;
-      main.gameplay_orthographic_camera.viewport_height = event->data.window_resize.height;
+      main.gameplay_camera.viewport_width = event->data.window_resize.width;
+      main.gameplay_camera.viewport_height = event->data.window_resize.height;
       main.debug_camera.viewport_width = event->data.window_resize.width;
       main.debug_camera.viewport_height = event->data.window_resize.height;
     }

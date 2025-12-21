@@ -54,8 +54,8 @@ InteractableType string_to_interactable_type(const String& str, Error& out_error
 
 BoundingBox bounding_box_from_model(assets::ModelHandle handle)
 {
-  Vec3 max_corner = {F32_MIN, 0, F32_MIN};
-  Vec3 min_corner = {F32_MAX, 0, F32_MAX};
+  vec3 max_corner = {F32_MIN, 0, F32_MIN};
+  vec3 min_corner = {F32_MAX, 0, F32_MAX};
   auto& model = assets::model_get(handle);
 
   for (usize mesh_idx = 0; mesh_idx < model.parts.size; ++mesh_idx)
@@ -99,11 +99,6 @@ Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allo
     mat4_rotate(renderer_item.model, entity.rotation, {0.0f, 1.0f, 0.0f});
     renderer_item.mesh = part.mesh;
     renderer_item.material = part.material;
-    if (entity.type == ENTITY_TYPE_INTERACTABLE &&
-        entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
-    {
-      renderer_item.emissive = entity.light_bulb_emissive;
-    }
     array_push(out, renderer_item);
   }
   return out;

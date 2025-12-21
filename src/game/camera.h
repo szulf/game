@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-static const Vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
+static const vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
 #define CAMERA_SPEED 4.0f
 #define CAMERA_SENSITIVITY 0.8f
 
@@ -15,10 +15,10 @@ struct Camera
 {
   CameraType type;
 
-  Vec3 pos;
-  Vec3 front;
-  Vec3 up;
-  Vec3 right;
+  vec3 pos;
+  vec3 front;
+  vec3 up;
+  vec3 right;
 
   f32 yaw;
   f32 pitch;
@@ -33,7 +33,7 @@ struct Camera
 
 void camera_update_vectors(Camera& camera);
 
-Mat4 camera_look_at(const Camera& camera);
-Mat4 camera_projection(const Camera& camera);
+mat4 camera_look_at(const Camera& camera);
+mat4 camera_projection(const Camera& camera);
 
 #endif

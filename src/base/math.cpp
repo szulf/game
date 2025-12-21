@@ -143,47 +143,47 @@ bool f32_equal(f32 a, f32 b)
   return abs(a - b) <= (F32_EPSILON * max(abs(a), abs(b)));
 }
 
-bool operator==(const Vec2& va, const Vec2& vb)
+bool operator==(const vec2& va, const vec2& vb)
 {
   return f32_equal(va.x, vb.x) && f32_equal(va.y, vb.y);
 }
 
-Vec3 operator-(const Vec3& vec)
+vec3 operator-(const vec3& vec)
 {
   return {-vec.x, -vec.y, -vec.z};
 }
 
-Vec3 operator+(const Vec3& va, const Vec3& vb)
+vec3 operator+(const vec3& va, const vec3& vb)
 {
   return {va.x + vb.x, va.y + vb.y, va.z + vb.z};
 }
 
-Vec3 operator-(const Vec3& va, const Vec3& vb)
+vec3 operator-(const vec3& va, const vec3& vb)
 {
   return {va.x - vb.x, va.y - vb.y, va.z - vb.z};
 }
 
-Vec3 operator*(const Vec3& vec, f32 scalar)
+vec3 operator*(const vec3& vec, f32 scalar)
 {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
-Vec3 operator*(f32 scalar, const Vec3& vec)
+vec3 operator*(f32 scalar, const vec3& vec)
 {
   return {vec.x * scalar, vec.y * scalar, vec.z * scalar};
 }
 
-Vec3 operator*(const Vec3& va, const Vec3& vb)
+vec3 operator*(const vec3& va, const vec3& vb)
 {
   return {va.x * vb.x, va.y * vb.y, va.z * vb.z};
 }
 
-Vec3 operator/(const Vec3& va, f32 scalar)
+vec3 operator/(const vec3& va, f32 scalar)
 {
   return {va.x / scalar, va.y / scalar, va.z / scalar};
 }
 
-Vec3& operator+=(Vec3& va, const Vec3& vb)
+vec3& operator+=(vec3& va, const vec3& vb)
 {
   va.x += vb.x;
   va.y += vb.y;
@@ -191,7 +191,7 @@ Vec3& operator+=(Vec3& va, const Vec3& vb)
   return va;
 }
 
-Vec3& operator-=(Vec3& va, const Vec3& vb)
+vec3& operator-=(vec3& va, const vec3& vb)
 {
   va.x -= vb.x;
   va.y -= vb.y;
@@ -199,7 +199,7 @@ Vec3& operator-=(Vec3& va, const Vec3& vb)
   return va;
 }
 
-Vec3& operator*=(Vec3& vec, f32 scalar)
+vec3& operator*=(vec3& vec, f32 scalar)
 {
   vec.x *= scalar;
   vec.y *= scalar;
@@ -207,7 +207,7 @@ Vec3& operator*=(Vec3& vec, f32 scalar)
   return vec;
 }
 
-Vec3& operator*=(Vec3& va, const Vec3& vb)
+vec3& operator*=(vec3& va, const vec3& vb)
 {
   va.x *= vb.x;
   va.y *= vb.y;
@@ -215,7 +215,7 @@ Vec3& operator*=(Vec3& va, const Vec3& vb)
   return va;
 }
 
-Vec3& operator/=(Vec3& va, f32 scalar)
+vec3& operator/=(vec3& va, f32 scalar)
 {
   va.x /= scalar;
   va.y /= scalar;
@@ -223,41 +223,41 @@ Vec3& operator/=(Vec3& va, f32 scalar)
   return va;
 }
 
-f32 length(const Vec3& vec)
+f32 length(const vec3& vec)
 {
   return sqrt(square(vec.x) + square(vec.y) + square(vec.z));
 }
 
-f32 length2(const Vec3& vec)
+f32 length2(const vec3& vec)
 {
   return square(vec.x) + square(vec.y) + square(vec.z);
 }
 
-Vec3 normalize(const Vec3& vec)
+vec3 normalize(const vec3& vec)
 {
   auto len = length(vec);
   if (f32_equal(len, 0))
   {
     return {};
   }
-  Vec3 out = {};
+  vec3 out = {};
   out.x = vec.x / len;
   out.y = vec.y / len;
   out.z = vec.z / len;
   return out;
 }
 
-Vec3 abs(const Vec3& vec)
+vec3 abs(const vec3& vec)
 {
   return {abs(vec.x), abs(vec.y), abs(vec.z)};
 }
 
-f32 dot(const Vec3& va, const Vec3& vb)
+f32 dot(const vec3& va, const vec3& vb)
 {
   return va.x * vb.x + va.y * vb.y + va.z * vb.z;
 }
 
-Vec3 cross(const Vec3& va, const Vec3& vb)
+vec3 cross(const vec3& va, const vec3& vb)
 {
   return {
     (va.y * vb.z) - (va.z * vb.y),
@@ -266,19 +266,19 @@ Vec3 cross(const Vec3& va, const Vec3& vb)
   };
 }
 
-bool operator==(const Vec3& va, const Vec3& vb)
+bool operator==(const vec3& va, const vec3& vb)
 {
   return f32_equal(va.x, vb.x) && f32_equal(va.y, vb.y) && f32_equal(va.z, vb.z);
 }
 
-bool operator!=(const Vec3& va, const Vec3& vb)
+bool operator!=(const vec3& va, const vec3& vb)
 {
   return !(va == vb);
 }
 
-Mat4 mat4_make()
+mat4 mat4_make()
 {
-  Mat4 out = {};
+  mat4 out = {};
   out.data[0] = 1.0f;
   out.data[5] = 1.0f;
   out.data[10] = 1.0f;
@@ -286,12 +286,12 @@ Mat4 mat4_make()
   return out;
 }
 
-Mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far)
+mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far)
 {
   f32 tangent = tan(vertical_fov / 2.0f);
   f32 top = tangent * near;
   f32 right = top * aspect;
-  Mat4 out = {};
+  mat4 out = {};
   out.data[0] = near / right;
   out.data[5] = near / top;
   out.data[10] = -(far + near) / (far - near);
@@ -301,9 +301,9 @@ Mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far)
   return out;
 }
 
-Mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
+mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
 {
-  Mat4 out = {};
+  mat4 out = {};
   out.data[0] = 2 / (right - left);
   out.data[5] = 2 / (top - bottom);
   out.data[10] = -2 / (far - near);
@@ -314,7 +314,7 @@ Mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 f
   return out;
 }
 
-void mat4_scale(Mat4& mat, f32 scale)
+void mat4_scale(mat4& mat, f32 scale)
 {
   mat.data[0] *= scale;
   mat.data[4] *= scale;
@@ -330,7 +330,7 @@ void mat4_scale(Mat4& mat, f32 scale)
 }
 
 // TODO(szulf): no idea if this is correct, could be very wrong
-void mat4_scale(Mat4& mat, const Vec3& scale)
+void mat4_scale(mat4& mat, const vec3& scale)
 {
   mat.data[0] *= scale.x;
   mat.data[4] *= scale.x;
@@ -345,19 +345,19 @@ void mat4_scale(Mat4& mat, const Vec3& scale)
   mat.data[10] *= scale.z;
 }
 
-void mat4_translate(Mat4& mat, const Vec3& position)
+void mat4_translate(mat4& mat, const vec3& position)
 {
   mat.data[12] = position.x;
   mat.data[13] = position.y;
   mat.data[14] = position.z;
 }
 
-void mat4_rotate(Mat4& mat, f32 rad, const Vec3& axis)
+void mat4_rotate(mat4& mat, f32 rad, const vec3& axis)
 {
   f32 s = sin(rad);
   f32 c = cos(rad);
   f32 t = 1.0f - c;
-  Vec3 u = normalize(axis);
+  vec3 u = normalize(axis);
 
   mat.data[0] = (u.x * u.x) * t + c;
   mat.data[1] = (u.x * u.y) * t - u.z * s;

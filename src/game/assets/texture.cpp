@@ -9,7 +9,7 @@ Texture texture_make(const Image& img)
   rendering.glGenTextures(1, &out.id);
   rendering.glBindTexture(GL_TEXTURE_2D, out.id);
 
-  // TODO(szulf): do i want to customize these
+  // TODO(szulf): do i want to customize these? i do for example for the error texture
   rendering.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   rendering.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   rendering.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);

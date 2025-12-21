@@ -10,12 +10,14 @@ void static_model_init(
   const Array<u32>& indices,
   assets::Primitive primitive,
   bool wireframe,
+  vec3 color,
   Allocator& allocator
 )
 {
   assets::Material material = {};
   material.shader = shader;
   material.wireframe = wireframe;
+  material.diffuse_color = color;
   auto mesh_handle = assets::mesh_set(assets::mesh_make(vertices, indices, primitive));
   auto material_handle = material_set(material);
   assets::Model model = {};

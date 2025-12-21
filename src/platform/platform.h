@@ -71,9 +71,9 @@ extern "C"
       };
     };
 
-    Vec2 mouse_pos;
-    Vec2 mouse_relative;
-    Vec2 mouse_pos_last;
+    vec2 mouse_pos;
+    vec2 mouse_relative;
+    vec2 mouse_pos_last;
   };
 
   enum EventType

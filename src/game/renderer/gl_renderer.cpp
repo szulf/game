@@ -6,35 +6,32 @@ void init(Allocator& allocator, Error& out_error)
   Error error = SUCCESS;
   rendering.glEnable(GL_DEPTH_TEST);
 
-  auto shader = assets::shader_from_file("shaders/shader.vert", "shaders/shader.frag", error);
+  auto shader = assets::shader_from_file("shaders/shader.vert", "shaders/default.frag", error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
   ASSERT(shader == assets::SHADER_DEFAULT, "invalid shader loading");
 
-  shader = assets::shader_from_file("shaders/shader.vert", "shaders/green.frag", error);
+  shader = assets::shader_from_file("shaders/shader.vert", "shaders/lighting.frag", error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
-  ASSERT(shader == assets::SHADER_GREEN, "invalid shader loading");
+  ASSERT(shader == assets::SHADER_LIGHTING, "invalid shader loading");
 
-  shader = assets::shader_from_file("shaders/shader.vert", "shaders/yellow.frag", error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, );
-  ASSERT(shader == assets::SHADER_YELLOW, "invalid shader loading");
-
-  // TODO(szulf): change the SHADER_GREEN/YELLOW to a diffuse color in the material
   static_model_init(
     STATIC_MODEL_BOUNDING_BOX,
-    assets::SHADER_GREEN,
+    assets::SHADER_DEFAULT,
     array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
     array_from(bounding_box_indices, array_size(bounding_box_indices)),
     assets::PRIMITIVE_TRIANGLES,
     true,
+    {0.0f, 1.0f, 0.0f},
     allocator
   );
   static_model_init(
     STATIC_MODEL_RING,
-    assets::SHADER_YELLOW,
+    assets::SHADER_DEFAULT,
     array_from(ring_vertices, array_size(ring_vertices)),
     array_from(ring_indices, array_size(ring_indices)),
     assets::PRIMITIVE_LINE_STRIP,
     false,
+    {1.0f, 1.0f, 0.0f},
     allocator
   );
 
@@ -73,7 +70,7 @@ void draw(const Pass& pass)
     auto& mesh = assets::mesh_get(item.mesh);
     auto& material = assets::material_get(item.material);
     auto shader = assets::shader_get(material.shader);
-    auto texture_id = assets::texture_get(material.texture).id;
+    auto diffuse_map_id = assets::texture_get(material.diffuse_map).id;
 
     if (material.wireframe)
     {
@@ -96,12 +93,60 @@ void draw(const Pass& pass)
       pass.projection.data
     );
 
-    rendering.glActiveTexture(GL_TEXTURE0);
-    rendering.glBindTexture(GL_TEXTURE_2D, texture_id);
-    rendering.glUniform1i(rendering.glGetUniformLocation(shader, "sampler"), 0);
+    {
+      rendering.glUniform3f(
+        rendering.glGetUniformLocation(shader, "material.ambient"),
+        material.ambient_color.x,
+        material.ambient_color.y,
+        material.ambient_color.z
+      );
+      rendering.glUniform3f(
+        rendering.glGetUniformLocation(shader, "material.diffuse"),
+        material.diffuse_color.x,
+        material.diffuse_color.y,
+        material.diffuse_color.z
+      );
+      rendering.glUniform3f(
+        rendering.glGetUniformLocation(shader, "material.specular"),
+        material.specular_color.x,
+        material.specular_color.y,
+        material.specular_color.z
+      );
+      rendering.glUniform1f(
+        rendering.glGetUniformLocation(shader, "material.specular_exponent"),
+        material.specular_exponent
+      );
 
-    // TODO(szulf): change this when actually doing light
-    rendering.glUniform1i(rendering.glGetUniformLocation(shader, "emissive"), item.emissive);
+      rendering.glActiveTexture(GL_TEXTURE0);
+      rendering.glBindTexture(GL_TEXTURE_2D, diffuse_map_id);
+      rendering.glUniform1i(rendering.glGetUniformLocation(shader, "material.diffuse_map"), 0);
+    }
+
+    {
+      rendering.glUniform3f(
+        rendering.glGetUniformLocation(shader, "light.pos"),
+        pass.light.pos.x,
+        pass.light.pos.y,
+        pass.light.pos.z
+      );
+      rendering.glUniform3f(
+        rendering.glGetUniformLocation(shader, "light.color"),
+        pass.light.color.x,
+        pass.light.color.y,
+        pass.light.color.z
+      );
+      // TODO(szulf): for now hardcoded
+      rendering.glUniform1f(rendering.glGetUniformLocation(shader, "light.constant"), 1.0f);
+      rendering.glUniform1f(rendering.glGetUniformLocation(shader, "light.linear"), 0.14f);
+      rendering.glUniform1f(rendering.glGetUniformLocation(shader, "light.quadratic"), 0.07f);
+    }
+
+    rendering.glUniform3f(
+      rendering.glGetUniformLocation(shader, "view_pos"),
+      pass.view_pos.x,
+      pass.view_pos.y,
+      pass.view_pos.z
+    );
 
     rendering.glBindVertexArray(mesh.vao);
 

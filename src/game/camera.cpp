@@ -11,12 +11,12 @@ void camera_update_vectors(Camera& camera)
   camera.up = normalize(cross(camera.right, camera.front));
 }
 
-Mat4 camera_look_at(const Camera& camera)
+mat4 camera_look_at(const Camera& camera)
 {
-  Vec3 s = normalize(cross(camera.front, camera.up));
-  Vec3 u = cross(s, camera.front);
+  vec3 s = normalize(cross(camera.front, camera.up));
+  vec3 u = cross(s, camera.front);
 
-  Mat4 look_at = {};
+  mat4 look_at = {};
 
   look_at.data[0] = s.x;
   look_at.data[4] = s.y;
@@ -41,7 +41,7 @@ Mat4 camera_look_at(const Camera& camera)
   return look_at;
 }
 
-Mat4 camera_projection(const Camera& camera)
+mat4 camera_projection(const Camera& camera)
 {
   switch (camera.type)
   {

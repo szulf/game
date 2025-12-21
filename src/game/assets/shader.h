@@ -8,10 +8,7 @@ typedef u32 Shader;
 enum ShaderHandle
 {
   SHADER_DEFAULT,
-  SHADER_GREEN,
-  SHADER_YELLOW,
-
-  SHADER_COUNT,
+  SHADER_LIGHTING,
 };
 
 // TODO(szulf): switch to a game error struct instead?

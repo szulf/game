@@ -113,9 +113,9 @@ struct ObjContext
   Array<String> lines;
   usize idx;
   Map<Vertex, usize> vertex_map;
-  Array<Vec3> positions;
-  Array<Vec3> normals;
-  Array<Vec2> uvs;
+  Array<vec3> positions;
+  Array<vec3> normals;
+  Array<vec2> uvs;
   Allocator* allocator;
   usize mesh_count;
   usize pos_count;
@@ -149,6 +149,30 @@ obj_get_texture_by_path(const String& path, Allocator& allocator, Error& out_err
   return texture_handle;
 }
 
+static vec3 obj_color_from_parts(const Array<String>& parts, Error& out_error)
+{
+  Error error = SUCCESS;
+  f32 r = string_parse_f32(parts[1], error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
+  f32 g = string_parse_f32(parts[2], error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
+  f32 b = string_parse_f32(parts[3], error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
+  return {r, g, b};
+}
+
+static void obj_set_shader(Material& material, const String& material_name)
+{
+  if (material_name == "light_bulb")
+  {
+    material.shader = SHADER_DEFAULT;
+  }
+  else
+  {
+    material.shader = SHADER_LIGHTING;
+  }
+}
+
 static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
@@ -163,66 +187,62 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
 
   String material_name = {};
   Material material = {};
+  // TODO(szulf): material ambient color should be supplied by the scene??? or something
+  material.ambient_color = {0.1f, 0.1f, 0.1f};
   for (usize i = 0; i < lines.size; ++i)
   {
     const auto& line = lines[i];
-    switch (line[0])
+    auto parts = string_split(line, ' ', scratch_arena.allocator);
+
+    if (parts[0] == "newmtl")
     {
-      case 'n':
+      ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      if (!material_handle_exists(parts[1]))
       {
-        auto parts = string_split(line, ' ', scratch_arena.allocator);
-        if (parts.size != 2)
+        if (parsing)
         {
-          out_error = GLOBAL_ERROR_INVALID_DATA;
-          return;
+          obj_set_shader(material, material_name);
+          auto material_handle = material_set(material);
+          material_handle_set(material_name, material_handle);
         }
-        if (parts[0] != "newmtl")
-        {
-          continue;
-        }
-        if (!material_handle_exists(parts[1]))
-        {
-          if (parsing)
-          {
-            // TODO(szulf): how to correctly initialize the shader in the future? for now hardcoded
-            material.shader = SHADER_DEFAULT;
-            auto material_handle = material_set(material);
-            material_handle_set(material_name, material_handle);
-          }
 
-          parsing = true;
-          material_name = string_copy(parts[1], allocator);
-        }
+        parsing = true;
+        material_name = string_copy(parts[1], allocator);
       }
-      break;
+    }
+    else if (parts[0] == "map_Kd")
+    {
+      ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      auto base_file_path = string_make("assets/");
+      auto texture_file_path = string_append_str(base_file_path, parts[1], scratch_arena.allocator);
 
-      case 'm':
-      {
-        if (!parsing)
-        {
-          continue;
-        }
-        auto parts = string_split(line, ' ', scratch_arena.allocator);
-        if (parts.size != 2)
-        {
-          continue;
-        }
-        auto base_file_path = string_make("assets/");
-        auto texture_file_path =
-          string_append_str(base_file_path, parts[1], scratch_arena.allocator);
-
-        if (parts[0] == "map_Kd")
-        {
-          auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator, error);
-          material.texture = texture_handle;
-        }
-      }
-      break;
+      auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator, error);
+      material.diffuse_map = texture_handle;
+    }
+    else if (parts[0] == "Kd")
+    {
+      ERROR_ASSERT(parts.size == 4, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      vec3 color = obj_color_from_parts(parts, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, );
+      material.diffuse_color = color;
+    }
+    else if (parts[0] == "Ks")
+    {
+      ERROR_ASSERT(parts.size == 4, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      vec3 color = obj_color_from_parts(parts, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, );
+      material.specular_color = color;
+    }
+    else if (parts[0] == "Ns")
+    {
+      ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      f32 exponent = string_parse_f32(parts[1], error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, );
+      material.specular_exponent = exponent;
     }
   }
 
-  // TODO(szulf): how to correctly initialize the shader in the future? for now hardcoded
-  material.shader = SHADER_DEFAULT;
+  obj_set_shader(material, material_name);
   auto material_handle = material_set(material);
   material_handle_set(material_name, material_handle);
 }
@@ -334,7 +354,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
               out_error = error;
               return {};
             }
-            Vec3 vec = {points[0], points[1], points[2]};
+            vec3 vec = {points[0], points[1], points[2]};
             array_push(ctx.positions, vec);
           }
           break;
@@ -464,9 +484,9 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
   }
 
   model.parts = array_make<MeshMaterialPair>(ARRAY_TYPE_STATIC, ctx.mesh_count, allocator);
-  ctx.positions = array_make<Vec3>(ARRAY_TYPE_STATIC, ctx.pos_count, scratch_arena.allocator);
-  ctx.normals = array_make<Vec3>(ARRAY_TYPE_STATIC, ctx.normal_count, scratch_arena.allocator);
-  ctx.uvs = array_make<Vec2>(ARRAY_TYPE_STATIC, ctx.uv_count, scratch_arena.allocator);
+  ctx.positions = array_make<vec3>(ARRAY_TYPE_STATIC, ctx.pos_count, scratch_arena.allocator);
+  ctx.normals = array_make<vec3>(ARRAY_TYPE_STATIC, ctx.normal_count, scratch_arena.allocator);
+  ctx.uvs = array_make<vec2>(ARRAY_TYPE_STATIC, ctx.uv_count, scratch_arena.allocator);
   ctx.vertex_map = map_make<Vertex, usize>(vertex_count * 3, scratch_arena.allocator);
 
   for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx)

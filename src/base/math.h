@@ -34,55 +34,55 @@ f32 square(f32 value);
 
 bool f32_equal(f32 a, f32 b);
 
-struct Vec2
+struct vec2
 {
   f32 x;
   f32 y;
 };
 
-bool operator==(const Vec2& va, const Vec2& vb);
+bool operator==(const vec2& va, const vec2& vb);
 
-struct Vec3
+struct vec3
 {
   f32 x;
   f32 y;
   f32 z;
 };
 
-Vec3 operator-(const Vec3& vec);
-Vec3 operator+(const Vec3& va, const Vec3& vb);
-Vec3 operator-(const Vec3& va, const Vec3& vb);
-Vec3 operator*(const Vec3& vec, f32 scalar);
-Vec3 operator*(f32 scalar, const Vec3& vec);
-Vec3 operator*(const Vec3& va, const Vec3& vb);
-Vec3 operator/(const Vec3& vec, f32 scalar);
-Vec3& operator+=(Vec3& va, const Vec3& vb);
-Vec3& operator-=(Vec3& va, const Vec3& vb);
-Vec3& operator*=(Vec3& va, f32 scalar);
-Vec3& operator*=(Vec3& va, const Vec3& vb);
-Vec3& operator/=(Vec3& va, f32 scalar);
+vec3 operator-(const vec3& vec);
+vec3 operator+(const vec3& va, const vec3& vb);
+vec3 operator-(const vec3& va, const vec3& vb);
+vec3 operator*(const vec3& vec, f32 scalar);
+vec3 operator*(f32 scalar, const vec3& vec);
+vec3 operator*(const vec3& va, const vec3& vb);
+vec3 operator/(const vec3& vec, f32 scalar);
+vec3& operator+=(vec3& va, const vec3& vb);
+vec3& operator-=(vec3& va, const vec3& vb);
+vec3& operator*=(vec3& va, f32 scalar);
+vec3& operator*=(vec3& va, const vec3& vb);
+vec3& operator/=(vec3& va, f32 scalar);
 
-f32 length(const Vec3& vec);
-f32 length2(const Vec3& vec);
-Vec3 normalize(const Vec3& vec);
-Vec3 abs(const Vec3& vec);
-f32 dot(const Vec3& va, const Vec3& vb);
-Vec3 cross(const Vec3& va, const Vec3& vb);
+f32 length(const vec3& vec);
+f32 length2(const vec3& vec);
+vec3 normalize(const vec3& vec);
+vec3 abs(const vec3& vec);
+f32 dot(const vec3& va, const vec3& vb);
+vec3 cross(const vec3& va, const vec3& vb);
 
-bool operator==(const Vec3& va, const Vec3& vb);
-bool operator!=(const Vec3& va, const Vec3& vb);
+bool operator==(const vec3& va, const vec3& vb);
+bool operator!=(const vec3& va, const vec3& vb);
 
-struct Mat4
+struct mat4
 {
   f32 data[16];
 };
 
-Mat4 mat4_make();
-Mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far);
-Mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
+mat4 mat4_make();
+mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far);
+mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
 
-void mat4_scale(Mat4& mat, f32 scale);
-void mat4_scale(Mat4& mat, const Vec3& scale);
-void mat4_translate(Mat4& mat, const Vec3& position);
+void mat4_scale(mat4& mat, f32 scale);
+void mat4_scale(mat4& mat, const vec3& scale);
+void mat4_translate(mat4& mat, const vec3& position);
 
 #endif

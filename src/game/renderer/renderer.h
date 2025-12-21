@@ -22,18 +22,25 @@ void static_model_init(
 
 struct Item
 {
-  Mat4 model;
+  mat4 model;
   assets::MeshHandle mesh;
   assets::MaterialHandle material;
-  // TODO(szulf): get rid of this later
-  bool emissive;
+};
+
+struct Light
+{
+  vec3 pos;
+  vec3 color;
 };
 
 struct Pass
 {
   Array<Item> items;
-  Mat4 view;
-  Mat4 projection;
+  // TODO(szulf): make this an array in the future
+  Light light;
+  mat4 view;
+  mat4 projection;
+  vec3 view_pos;
 };
 
 Pass pass_make(Allocator& allocator);

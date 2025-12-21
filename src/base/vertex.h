@@ -3,9 +3,9 @@
 
 struct Vertex
 {
-  Vec3 position;
-  Vec3 normal;
-  Vec2 uv;
+  vec3 position;
+  vec3 normal;
+  vec2 uv;
 };
 
 template <>

@@ -125,6 +125,7 @@ i32 main()
     SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL
   );
   ASSERT(window, "failed to create sdl3 window");
+  SDL_HideCursor();
 
 #ifdef GAME_DEBUG
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
@@ -164,6 +165,8 @@ i32 main()
   while (running)
   {
     auto start_ms = SDL_GetTicks();
+
+    SDL_WarpMouseInWindow(window, (f32) g_width / 2.0f, (f32) g_height / 2.0f);
 
     // TODO(szulf): maybe dont do this every frame, but once every 5/10 frames or so
     SDL_PathInfo new_game_lib_info = {};

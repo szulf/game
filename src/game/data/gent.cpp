@@ -68,6 +68,10 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     }
     else if (key == "interactable_type")
     {
+      ASSERT(
+        entity.type == ENTITY_TYPE_INTERACTABLE,
+        "cannot set interactable_type on non interactable entity"
+      );
       entity.interactable_type = string_to_interactable_type(value, error);
       ERROR_ASSERT(
         error == SUCCESS,
@@ -93,6 +97,22 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
       {
         ASSERT(false, "[TODO] load hardcoded bounding box");
       }
+    }
+    else if (key == "light_bulb_color")
+    {
+      ASSERT(
+        entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB,
+        "cannot set light_bulb_color on non light_bulb entity"
+      );
+      auto values = string_split(value, ' ', scratch_arena.allocator);
+      ERROR_ASSERT(values.size == 3, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
+
+      entity.light_bulb_color.x = string_parse_f32(values[0], error);
+      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
+      entity.light_bulb_color.y = string_parse_f32(values[1], error);
+      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
+      entity.light_bulb_color.z = string_parse_f32(values[2], error);
+      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
     }
     else
     {

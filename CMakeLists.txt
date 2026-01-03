@@ -91,3 +91,19 @@ target_include_directories(game_sdl3 PRIVATE ${include_dirs})
 target_compile_options(game_sdl3 PRIVATE ${flags})
 target_compile_definitions(game_sdl3 PRIVATE ${definitions})
 target_link_libraries(game_sdl3 PRIVATE SDL3::SDL3 OpenGL)
+
+# NOTE(szulf): run a python script to check for missing error handling
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  find_package(Python3 REQUIRED)
+  set(FIND_ERROR_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_error.py")
+
+  add_custom_target(
+        run_find_error ALL
+        COMMAND ${Python3_EXECUTABLE} "${FIND_ERROR_SCRIPT}"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Error handling check (find_error.py)"
+        VERBATIM
+    )
+
+  add_dependencies(run_find_error game_sdl3)
+endif()

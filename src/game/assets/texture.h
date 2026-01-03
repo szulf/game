@@ -10,7 +10,7 @@ struct Texture
   u32 id;
 };
 
-Texture texture_make(const Image& img);
+Texture texture_from_image(const Image& img);
 
 }
 

@@ -45,7 +45,12 @@ void texture_handle_set(const String& key, TextureHandle handle);
 bool texture_handle_exists(const String& key);
 
 ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_error);
-ShaderHandle shader_from_file(const char* vert_path, const char* frag_path, Error& out_error);
+ShaderHandle shader_from_file(
+  const char* vert_path,
+  const char* frag_path,
+  const char* geom_path,
+  Error& out_error
+);
 
 }
 

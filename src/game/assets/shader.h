@@ -9,6 +9,7 @@ enum ShaderHandle
 {
   SHADER_DEFAULT,
   SHADER_LIGHTING,
+  SHADER_SHADOW_DEPTH,
 };
 
 // TODO(szulf): switch to a game error struct instead?

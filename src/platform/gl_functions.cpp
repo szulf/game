@@ -2,14 +2,18 @@
 
 #  include "gl_functions.h"
 
+#  define LOAD_SDL_GL_PROC(type, name) api->name = (type) SDL_GL_GetProcAddress(#name)
+
 void setup_gl_functions(RenderingAPI* api)
 {
-  api->glViewport = (PFNGLVIEWPORTPROC) SDL_GL_GetProcAddress("glViewport");
+  LOAD_SDL_GL_PROC(PFNGLVIEWPORTPROC, glViewport);
+  // api->glViewport = (PFNGLVIEWPORTPROC) SDL_GL_GetProcAddress("glViewport");
   api->glGenTextures = (PFNGLGENTEXTURESPROC) SDL_GL_GetProcAddress("glGenTextures");
   api->glBindTexture = (PFNGLBINDTEXTUREPROC) SDL_GL_GetProcAddress("glBindTexture");
   api->glTexParameteri = (PFNGLTEXPARAMETERIPROC) SDL_GL_GetProcAddress("glTexParameteri");
   api->glTexImage2D = (PFNGLTEXIMAGE2DPROC) SDL_GL_GetProcAddress("glTexImage2D");
   api->glEnable = (PFNGLENABLEPROC) SDL_GL_GetProcAddress("glEnable");
+  api->glDisable = (PFNGLDISABLEPROC) SDL_GL_GetProcAddress("glDisable");
   api->glClearColor = (PFNGLCLEARCOLORPROC) SDL_GL_GetProcAddress("glClearColor");
   api->glClear = (PFNGLCLEARPROC) SDL_GL_GetProcAddress("glClear");
   api->glActiveTexture = (PFNGLACTIVETEXTUREPROC) SDL_GL_GetProcAddress("glActiveTexture");
@@ -53,6 +57,21 @@ void setup_gl_functions(RenderingAPI* api)
   api->glPolygonMode = (PFNGLPOLYGONMODEPROC) SDL_GL_GetProcAddress("glPolygonMode");
   api->glBindBufferBase = (PFNGLBINDBUFFERBASEPROC) SDL_GL_GetProcAddress("glBindBufferBase");
   api->glBufferSubData = (PFNGLBUFFERSUBDATAPROC) SDL_GL_GetProcAddress("glBufferSubData");
+  api->glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC) SDL_GL_GetProcAddress("glGenFramebuffers");
+  api->glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC) SDL_GL_GetProcAddress("glBindFramebuffer");
+  api->glFramebufferTexture2D =
+    (PFNGLFRAMEBUFFERTEXTURE2DPROC) SDL_GL_GetProcAddress("glFramebufferTexture2D");
+  api->glDrawBuffer = (PFNGLDRAWBUFFERPROC) SDL_GL_GetProcAddress("glDrawBuffer");
+  api->glReadBuffer = (PFNGLREADBUFFERPROC) SDL_GL_GetProcAddress("glReadBuffer");
+  api->glGetUniformBlockIndex =
+    (PFNGLGETUNIFORMBLOCKINDEXPROC) SDL_GL_GetProcAddress("glGetUniformBlockIndex");
+  api->glUniformBlockBinding =
+    (PFNGLUNIFORMBLOCKBINDINGPROC) SDL_GL_GetProcAddress("glUniformBlockBinding");
+  api->glFinish = (PFNGLFINISHPROC) SDL_GL_GetProcAddress("glFinish");
+  api->glFramebufferTexture =
+    (PFNGLFRAMEBUFFERTEXTUREPROC) SDL_GL_GetProcAddress("glFramebufferTexture");
+  api->glCheckFramebufferStatus =
+    (PFNGLCHECKFRAMEBUFFERSTATUSPROC) SDL_GL_GetProcAddress("glCheckFramebufferStatus");
 }
 
 #  ifdef MODE_DEBUG

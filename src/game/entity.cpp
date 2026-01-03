@@ -119,7 +119,7 @@ Array<renderer::Item> renderer_item_entity_bounding_box(const Entity& entity, Al
   return out;
 }
 
-// TODO(szulf): this ring is not right! it off by a little bit
+// TODO(szulf): this ring is not right! its off by a little bit
 Array<renderer::Item>
 renderer_item_entity_interactable_radius(const Entity& entity, Allocator& allocator)
 {

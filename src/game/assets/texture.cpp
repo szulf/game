@@ -3,7 +3,7 @@
 namespace assets
 {
 
-Texture texture_make(const Image& img)
+Texture texture_from_image(const Image& img)
 {
   Texture out = {};
   rendering.glGenTextures(1, &out.id);

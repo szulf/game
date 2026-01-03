@@ -21,6 +21,10 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
   {
     Entity entity = {};
     auto& line = lines[line_idx];
+    if (line[0] == '#')
+    {
+      continue;
+    }
 
     auto parts = string_split(line, ':', scratch_arena.allocator);
     ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
@@ -39,8 +43,8 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
       );
       entity =
         entity_from_file(string_to_cstr(entity_path, scratch_arena.allocator), allocator, error);
-      map_set(entity_cache, entity_path_raw, entity);
       ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
+      map_set(entity_cache, entity_path_raw, entity);
     }
 
     auto position_string = string_trim_whitespace(parts[1]);

@@ -80,17 +80,25 @@ struct vec4
   f32 w;
 };
 
+// NOTE(szulf): column major
 struct mat4
 {
-  f32 data[16];
+  union
+  {
+    f32 data[4][4];
+    f32 raw_data[16];
+  };
 };
 
 mat4 mat4_make();
-mat4 mat4_vertical_perspective(f32 vertical_fov, f32 aspect, f32 near, f32 far);
+mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
 mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
+mat4 mat4_look_at(const vec3& pos, const vec3& target, const vec3& up);
 
 void mat4_scale(mat4& mat, f32 scale);
 void mat4_scale(mat4& mat, const vec3& scale);
 void mat4_translate(mat4& mat, const vec3& position);
+
+mat4 operator*(const mat4& ma, const mat4& mb);
 
 #endif

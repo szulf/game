@@ -123,8 +123,7 @@ struct ObjContext
   usize uv_count;
 };
 
-static TextureHandle
-obj_get_texture_by_path(const String& path, Allocator& allocator, Error& out_error)
+static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allocator)
 {
   Error error = SUCCESS;
   auto scratch_arena = scratch_arena_get();
@@ -140,9 +139,8 @@ obj_get_texture_by_path(const String& path, Allocator& allocator, Error& out_err
   if (error != SUCCESS)
   {
     img = image_error_placeholder();
-    out_error = GLOBAL_ERROR_INVALID_DATA;
   }
-  auto texture = texture_make(img);
+  auto texture = texture_from_image(img);
   auto allocated_path = string_copy(path, allocator);
   auto texture_handle = texture_set(texture);
   texture_handle_set(allocated_path, texture_handle);
@@ -216,7 +214,7 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
       auto base_file_path = string_make("assets/");
       auto texture_file_path = string_append_str(base_file_path, parts[1], scratch_arena.allocator);
 
-      auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator, error);
+      auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator);
       material.diffuse_map = texture_handle;
     }
     else if (parts[0] == "Kd")
@@ -541,6 +539,7 @@ enum ShaderType
 {
   SHADER_TYPE_VERTEX,
   SHADER_TYPE_FRAGMENT,
+  SHADER_TYPE_GEOMETRY,
 };
 
 // TODO(szulf): move to some opengl specific location?
@@ -563,10 +562,14 @@ static u32 shader_load(const char* path, ShaderType shader_type, Error& out_erro
       shader = rendering.glCreateShader(GL_VERTEX_SHADER);
     }
     break;
-
     case SHADER_TYPE_FRAGMENT:
     {
       shader = rendering.glCreateShader(GL_FRAGMENT_SHADER);
+    }
+    break;
+    case SHADER_TYPE_GEOMETRY:
+    {
+      shader = rendering.glCreateShader(GL_GEOMETRY_SHADER);
     }
     break;
   }
@@ -598,12 +601,19 @@ static u32 shader_load(const char* path, ShaderType shader_type, Error& out_erro
         return (u32) -1;
       }
       break;
+      case SHADER_TYPE_GEOMETRY:
+      {
+        print("geometry shader compilation failed with message:\n%s\n", message);
+        out_error = SHADER_ERROR_COMPILATION;
+        return (u32) -1;
+      }
+      break;
     }
   }
   return shader;
 }
 
-static Shader shader_link(u32 vertex_shader, u32 fragment_shader, Error& out_error)
+static Shader shader_link_vert_frag(u32 vertex_shader, u32 fragment_shader, Error& out_error)
 {
   GLuint program = rendering.glCreateProgram();
   rendering.glAttachShader(program, vertex_shader);
@@ -627,20 +637,71 @@ static Shader shader_link(u32 vertex_shader, u32 fragment_shader, Error& out_err
   return program;
 }
 
+static Shader shader_link_vert_frag_geom(
+  u32 vertex_shader,
+  u32 fragment_shader,
+  u32 geometry_shader,
+  Error& out_error
+)
+{
+  GLuint program = rendering.glCreateProgram();
+  rendering.glAttachShader(program, vertex_shader);
+  rendering.glAttachShader(program, fragment_shader);
+  rendering.glAttachShader(program, geometry_shader);
+  rendering.glLinkProgram(program);
+
+  rendering.glDeleteShader(vertex_shader);
+  rendering.glDeleteShader(fragment_shader);
+  rendering.glDeleteShader(geometry_shader);
+
+  GLint program_linked;
+  rendering.glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
+  if (program_linked != GL_TRUE)
+  {
+    GLsizei log_length = 0;
+    GLchar message[1024];
+    rendering.glGetProgramInfoLog(program, 1024, &log_length, message);
+    print("failed to link shaders with message:\n%s\n", message);
+    out_error = SHADER_ERROR_LINKING;
+    return (ShaderHandle) -1;
+  }
+  return program;
+}
+
 #else
 #  error Unknown rendering backend.
 #endif
 
-ShaderHandle shader_from_file(const char* vert_path, const char* frag_path, Error& out_error)
+// TODO(szulf): could do something like just passing in the base path(ex. "shaders/shadow_depth")
+// and it would automatically look for the different extensions, dont know if its worth the effort
+ShaderHandle shader_from_file(
+  const char* vert_path,
+  const char* frag_path,
+  const char* geom_path,
+  Error& out_error
+)
 {
   Error error = SUCCESS;
   auto vertex_shader = shader_load(vert_path, SHADER_TYPE_VERTEX, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
   auto fragment_shader = shader_load(frag_path, SHADER_TYPE_FRAGMENT, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-  auto shader = shader_link(vertex_shader, fragment_shader, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-  return shader_set(shader);
+
+  if (geom_path)
+  {
+    auto geometry_shader = shader_load(geom_path, SHADER_TYPE_GEOMETRY, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
+    auto shader =
+      shader_link_vert_frag_geom(vertex_shader, fragment_shader, geometry_shader, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
+    return shader_set(shader);
+  }
+  else
+  {
+    auto shader = shader_link_vert_frag(vertex_shader, fragment_shader, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
+    return shader_set(shader);
+  }
 }
 
 }

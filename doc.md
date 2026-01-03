@@ -2,7 +2,11 @@
 
 ## SMALL TODOS: (ordered)
 
-11. shadow mapping or point shadows (?)
+12. instancing
+13. entity tint
+    - just a value the color will be multiplied by
+    - will be used for chaning the on/off state of the light bulb
+    - and for possible changing the color of the ground
 
 ---
 
@@ -13,11 +17,20 @@
   - do i want unit tests? or just in-game tests?
 - free gpu resources
   - static models should survive the freeing
-- consider orthographic projection
 
 - audio
+- map/entity/keymap editor
 - inventory system
-- render instancing
+
+- more on lighting
+  - gamma correction
+  - hdr?
+  - bloom?
+  - ssao
+  - deferred shading?
+  - somehow get rid of the visible rings coming from the light bulb
+
+- directional light with shadow mapping
 
 - read the projection [matrix article](https://www.songho.ca/opengl/gl_projectionmatrix.html#fov)
 - read the look at [matrix article](https://morning-flow.com/2023/02/06/the-math-behind-the-lookat-transform/)
@@ -82,6 +95,21 @@ but also the main player base (if you can call it that) will be my friends and I
 features.
 
 Only if later the game will be too slow in release (which I highly doubt) i will try to strip the debug features.
+
+---
+
+## Renderer
+
+TODO: ?
+
+## Game Ideas
+
+because implementing multiple shadow maps efficiently is hard, i might just give the player a single light source
+that they pick up and place in different places while they fix the main lighting on the platform
+after they fix it they can keep it, but there will also be a directional light
+
+so in total two shadow maps, so not too bad i think
+and honestly this seems like an interesting game mechanic
 
 ---
 

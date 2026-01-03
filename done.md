@@ -23,3 +23,4 @@
 9. figure out stripping debug features from release builds
    - or maybe dont strip them?
 10. phong/blinn-phong lighting
+11. shadow mapping

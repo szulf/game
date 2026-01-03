@@ -5,13 +5,10 @@ static PlatformAPI platform;
 static RenderingAPI rendering;
 
 #include "image.cpp"
-
 #include "assets/assets.cpp"
-#include "renderer/renderer.cpp"
-
 #include "camera.cpp"
+#include "renderer/renderer.cpp"
 #include "entity.cpp"
-
 #include "data/data.cpp"
 
 struct Main
@@ -75,7 +72,8 @@ dll_export INIT_FN(init)
   main.gameplay_camera.far_plane = 1000.0f;
   main.gameplay_camera.viewport_width = platform.get_width();
   main.gameplay_camera.viewport_height = platform.get_height();
-  main.gameplay_camera.vertical_fov = 0.25f * F32_PI;
+  main.gameplay_camera.using_vertical_fov = true;
+  main.gameplay_camera.fov = 0.25f * F32_PI;
   camera_update_vectors(main.gameplay_camera);
 
   main.debug_camera = main.gameplay_camera;
@@ -312,45 +310,112 @@ dll_export RENDER_FN(render)
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
 
-  renderer::clear_screen();
-
-  auto pass = renderer::pass_make(scratch_arena.allocator);
-  pass.view = camera_look_at(*main.main_camera);
-  pass.view_pos = main.main_camera->pos;
-  pass.projection = camera_projection(*main.main_camera);
-
-  for (usize i = 0; i < main.entities.size; ++i)
+  // NOTE(szulf): shadow map pass
+  f32 shadow_map_camera_far_plane;
   {
-    auto& entity = main.entities[i];
-    if (entity.has_model)
+    // TODO(szulf): change this after changing the entity system
+    vec3 pos = {};
+    for (usize i = 0; i < main.entities.size; ++i)
     {
-      auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
-      renderer::queue_items(pass, renderer_items);
-    }
-    if (entity.type == ENTITY_TYPE_INTERACTABLE &&
-        entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB && entity.light_bulb_on)
-    {
-      renderer::Light light = {};
-      light.pos = entity.position;
-      light.color = entity.light_bulb_color;
-      array_push(pass.lights, light);
-    }
-    if (main.display_bounding_boxes)
-    {
-      auto bounding_box_items = renderer_item_entity_bounding_box(entity, scratch_arena.allocator);
-      renderer::queue_items(pass, bounding_box_items);
-      if (entity.type == ENTITY_TYPE_INTERACTABLE)
+      auto& entity = main.entities[i];
+      if (entity.type == ENTITY_TYPE_INTERACTABLE &&
+          entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
       {
-        auto radius_items =
-          renderer_item_entity_interactable_radius(entity, scratch_arena.allocator);
-        renderer::queue_items(pass, radius_items);
+        pos = entity.position;
       }
     }
+
+    Camera shadow_map_camera = main.gameplay_camera;
+    shadow_map_camera.pos = pos;
+    shadow_map_camera.pitch = 0.0f;
+    shadow_map_camera.yaw = F32_PI;
+    shadow_map_camera.near_plane = 0.1f;
+    shadow_map_camera.far_plane = shadow_map_camera_far_plane = 25.0f;
+    shadow_map_camera.using_vertical_fov = false;
+    shadow_map_camera.fov = F32_PI / 2.0f;
+    shadow_map_camera.viewport_width = SHADOW_CUBEMAP_WIDTH;
+    shadow_map_camera.viewport_height = SHADOW_CUBEMAP_HEIGHT;
+    camera_update_vectors(shadow_map_camera);
+
+    mat4 light_proj_mat = camera_projection(shadow_map_camera);
+    mat4 transforms[6] = {
+      light_proj_mat * mat4_look_at(pos, pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4_look_at(pos, pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
+      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
+      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
+    };
+
+    auto pass = renderer::pass_make(scratch_arena.allocator);
+    pass.camera = shadow_map_camera;
+    pass.override_shader = true;
+    pass.shader = assets::SHADER_SHADOW_DEPTH;
+    pass.framebuffer_id = renderer::shadow_framebuffer_id;
+    pass.width = SHADOW_CUBEMAP_WIDTH;
+    pass.height = SHADOW_CUBEMAP_HEIGHT;
+    pass.transforms_count = 6;
+    pass.transforms = transforms;
+
+    for (usize i = 0; i < main.entities.size; ++i)
+    {
+      auto& entity = main.entities[i];
+      if (entity.has_model && entity.type == ENTITY_TYPE_PLAYER)
+      {
+        auto items = renderer_item_entity(entity, scratch_arena.allocator);
+        renderer::queue_items(pass, items);
+      }
+    }
+
+    renderer::draw(pass);
   }
 
-  renderer::draw(pass);
+  // NOTE(szulf): main draw pass
+  {
+    auto pass = renderer::pass_make(scratch_arena.allocator);
+    pass.camera = *main.main_camera;
+    pass.shadow_map = &renderer::shadow_cubemap;
+    pass.shadow_map_camera_far_plane = shadow_map_camera_far_plane;
+    pass.width = platform.get_width();
+    pass.height = platform.get_height();
+
+    for (usize i = 0; i < main.entities.size; ++i)
+    {
+      auto& entity = main.entities[i];
+      if (entity.has_model)
+      {
+        auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
+        renderer::queue_items(pass, renderer_items);
+      }
+      if (entity.type == ENTITY_TYPE_INTERACTABLE &&
+          entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB && entity.light_bulb_on)
+      {
+        renderer::Light light = {};
+        light.pos = entity.position;
+        light.pos.y += entity.light_bulb_height_offset;
+        light.color = entity.light_bulb_color;
+        array_push(pass.lights, light);
+      }
+      if (main.display_bounding_boxes)
+      {
+        auto bounding_box_items =
+          renderer_item_entity_bounding_box(entity, scratch_arena.allocator);
+        renderer::queue_items(pass, bounding_box_items);
+
+        if (entity.type == ENTITY_TYPE_INTERACTABLE)
+        {
+          auto radius_items =
+            renderer_item_entity_interactable_radius(entity, scratch_arena.allocator);
+          renderer::queue_items(pass, radius_items);
+        }
+      }
+    }
+
+    renderer::draw(pass);
+  }
 }
 
+// TODO(szulf): get rid of this, just set width and height every frame
 dll_export EVENT_FN(event)
 {
   auto& main = *(Main*) memory->memory;
@@ -359,7 +424,6 @@ dll_export EVENT_FN(event)
   {
     case EVENT_TYPE_WINDOW_RESIZE:
     {
-      renderer::window_resize(event->data.window_resize.width, event->data.window_resize.height);
       main.gameplay_camera.viewport_width = event->data.window_resize.width;
       main.gameplay_camera.viewport_height = event->data.window_resize.height;
       main.debug_camera.viewport_width = event->data.window_resize.width;

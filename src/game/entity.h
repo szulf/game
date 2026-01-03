@@ -61,6 +61,7 @@ struct Entity
   // NOTE(szulf): light_bulb
   bool light_bulb_on;
   vec3 light_bulb_color;
+  float light_bulb_height_offset = -0.25f;
 
   // NOTE(szulf): used for read/write
   String name;

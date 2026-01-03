@@ -23,7 +23,8 @@ struct Camera
   f32 yaw;
   f32 pitch;
 
-  f32 vertical_fov;
+  bool using_vertical_fov;
+  f32 fov;
   f32 near_plane;
   f32 far_plane;
 

@@ -6,6 +6,7 @@ import re
 # List of directories to search
 directories = [
     "./src",
+    "./shaders",
     # Add more directories here
 ]
 
@@ -93,15 +94,15 @@ with open(output_file, "w", encoding="utf-8") as md_file:
                                     j += 1
 
                                 # Write TODO to Markdown
-                                md_file.write(f"### **TODO:** {todo_text}\n")
+                                md_file.write(f"### **TODO:** {todo_text}\n\n")
                                 md_file.write(
-                                    f"{relative_path} (line {start_line_number})\n"
+                                    f"{relative_path} (line {start_line_number})\n\n"
                                 )
                                 if context_lines:
-                                    md_file.write("**Context:**\n")
+                                    md_file.write("**Context:**\n\n")
                                     md_file.write("```cpp\n")
                                     md_file.write("\n".join(context_lines) + "\n")
-                                    md_file.write("```\n")
+                                    md_file.write("```\n\n")
                                 md_file.write("---\n\n")
                             else:
                                 i += 1

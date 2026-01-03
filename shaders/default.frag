@@ -1,4 +1,4 @@
-#version 460 core
+#version 330 core
 
 struct Material
 {
@@ -9,14 +9,19 @@ struct Material
   float specular_exponent;
 };
 
-in vec2 uv;
+in VERT_OUT
+{
+  vec2 uv;
+  vec3 normal;
+  vec3 frag_pos;
+}
+vert_out;
 
 out vec4 color;
 
 uniform Material material;
-uniform bool light_bulb_on;
 
 void main()
 {
-  color = texture(material.diffuse_map, uv) + vec4(material.diffuse, 1.0f);
+  color = texture(material.diffuse_map, vert_out.uv) + vec4(material.diffuse, 1.0f);
 }

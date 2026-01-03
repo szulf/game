@@ -1,6 +1,13 @@
 namespace renderer
 {
 
+struct STD140Camera
+{
+  mat4 proj_view;
+  vec3 view_pos;
+  float far_plane;
+};
+
 struct STD140Light
 {
   vec4 pos;
@@ -19,20 +26,18 @@ struct STD140Lights
   STD140Light lights[MAX_LIGHTS];
 };
 
+#define CAMERA_UBO_BLOCK_INDEX 0
+static GLuint camera_ubo;
+#define LIGHTS_UBO_BLOCK_INDEX 1
 static GLuint lights_ubo;
+
+static assets::Texture shadow_cubemap;
+static u32 shadow_framebuffer_id;
 
 void init(Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
   rendering.glEnable(GL_DEPTH_TEST);
-
-  auto shader = assets::shader_from_file("shaders/shader.vert", "shaders/default.frag", error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, );
-  ASSERT(shader == assets::SHADER_DEFAULT, "invalid shader loading");
-
-  shader = assets::shader_from_file("shaders/shader.vert", "shaders/lighting.frag", error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, );
-  ASSERT(shader == assets::SHADER_LIGHTING, "invalid shader loading");
 
   static_model_init(
     STATIC_MODEL_BOUNDING_BOX,
@@ -55,25 +60,93 @@ void init(Allocator& allocator, Error& out_error)
     allocator
   );
 
-  auto error_texture = assets::texture_make(image_error_placeholder());
+  auto error_texture = assets::texture_from_image(image_error_placeholder());
   auto error_texture_handle = assets::texture_set(error_texture);
   ASSERT(error_texture_handle == 0, "error loading error texture");
+
+  rendering.glGenBuffers(1, &camera_ubo);
+  rendering.glBindBuffer(GL_UNIFORM_BUFFER, camera_ubo);
+  rendering.glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Camera), nullptr, GL_DYNAMIC_DRAW);
+  rendering.glBindBufferBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BLOCK_INDEX, camera_ubo);
 
   rendering.glGenBuffers(1, &lights_ubo);
   rendering.glBindBuffer(GL_UNIFORM_BUFFER, lights_ubo);
   rendering.glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Lights), nullptr, GL_DYNAMIC_DRAW);
-  rendering.glBindBufferBase(GL_UNIFORM_BUFFER, 0, lights_ubo);
-}
+  rendering.glBindBufferBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BLOCK_INDEX, lights_ubo);
 
-void clear_screen()
-{
-  rendering.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  rendering.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-}
+#define SHADOW_CUBEMAP_WIDTH 1024
+#define SHADOW_CUBEMAP_HEIGHT 1024
+  rendering.glGenTextures(1, &shadow_cubemap.id);
+  rendering.glBindTexture(GL_TEXTURE_CUBE_MAP, shadow_cubemap.id);
+  for (i32 i = 0; i < 6; ++i)
+  {
+    rendering.glTexImage2D(
+      (GLenum) (GL_TEXTURE_CUBE_MAP_POSITIVE_X + i),
+      0,
+      GL_DEPTH_COMPONENT,
+      SHADOW_CUBEMAP_WIDTH,
+      SHADOW_CUBEMAP_HEIGHT,
+      0,
+      GL_DEPTH_COMPONENT,
+      GL_FLOAT,
+      nullptr
+    );
+  }
+  rendering.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  rendering.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  rendering.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  rendering.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  rendering.glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-void window_resize(u32 width, u32 height)
-{
-  rendering.glViewport(0, 0, (i32) width, (i32) height);
+  rendering.glGenFramebuffers(1, &shadow_framebuffer_id);
+  rendering.glBindFramebuffer(GL_FRAMEBUFFER, shadow_framebuffer_id);
+  rendering.glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_cubemap.id, 0);
+  rendering.glDrawBuffer(GL_NONE);
+  rendering.glReadBuffer(GL_NONE);
+  rendering.glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  {
+    auto shader_handle =
+      assets::shader_from_file("shaders/shader.vert", "shaders/default.frag", nullptr, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, );
+    ASSERT(shader_handle == assets::SHADER_DEFAULT, "invalid shader loading");
+    auto shader = assets::shader_get(shader_handle);
+
+    auto index = rendering.glGetUniformBlockIndex(shader, "Camera");
+    ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
+    rendering.glUniformBlockBinding(shader, index, CAMERA_UBO_BLOCK_INDEX);
+  }
+
+  {
+    auto shader_handle =
+      assets::shader_from_file("shaders/shader.vert", "shaders/lighting.frag", nullptr, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, );
+    ASSERT(shader_handle == assets::SHADER_LIGHTING, "invalid shader loading");
+    auto shader = assets::shader_get(shader_handle);
+
+    auto index = rendering.glGetUniformBlockIndex(shader, "Camera");
+    ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
+    rendering.glUniformBlockBinding(shader, index, CAMERA_UBO_BLOCK_INDEX);
+    index = rendering.glGetUniformBlockIndex(shader, "Lights");
+    ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
+    rendering.glUniformBlockBinding(shader, index, LIGHTS_UBO_BLOCK_INDEX);
+  }
+
+  {
+    auto shader_handle = assets::shader_from_file(
+      "shaders/shadow_depth.vert",
+      "shaders/shadow_depth.frag",
+      "shaders/shadow_depth.geom",
+      error
+    );
+    ERROR_ASSERT(error == SUCCESS, out_error, error, );
+    ASSERT(shader_handle == assets::SHADER_SHADOW_DEPTH, "invalid shader loading");
+    auto shader = assets::shader_get(shader_handle);
+
+    auto index = rendering.glGetUniformBlockIndex(shader, "Camera");
+    ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
+    rendering.glUniformBlockBinding(shader, index, CAMERA_UBO_BLOCK_INDEX);
+  }
 }
 
 GLenum gl_primitive_from_primitive(assets::Primitive primitive)
@@ -89,12 +162,52 @@ GLenum gl_primitive_from_primitive(assets::Primitive primitive)
 
 void draw(const Pass& pass)
 {
+  rendering.glBindFramebuffer(GL_FRAMEBUFFER, pass.framebuffer_id);
+
+  rendering.glViewport(0, 0, (GLsizei) pass.width, (GLsizei) pass.height);
+  rendering.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  rendering.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  {
+    STD140Camera camera = {};
+    camera.view_pos = pass.camera.pos;
+    camera.proj_view = camera_projection(pass.camera) * camera_look_at(pass.camera);
+    camera.far_plane = pass.camera.far_plane;
+    rendering.glBindBuffer(GL_UNIFORM_BUFFER, camera_ubo);
+    rendering.glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera), &camera);
+  }
+
+  {
+    STD140Lights lights = {};
+    ASSERT(pass.lights.size < MAX_LIGHTS, "too many lights in scene");
+    lights.light_count = (int) pass.lights.size;
+    for (usize light_idx = 0; light_idx < pass.lights.size; ++light_idx)
+    {
+      auto& light = pass.lights[light_idx];
+      lights.lights[light_idx].pos = {light.pos.x, light.pos.y, light.pos.z, 1.0f};
+      lights.lights[light_idx].color = {light.color.x, light.color.y, light.color.z, 1.0f};
+      lights.lights[light_idx].constant = 1.0f;
+      lights.lights[light_idx].linear = 0.22f;
+      lights.lights[light_idx].quadratic = 0.20f;
+    }
+    rendering.glBindBuffer(GL_UNIFORM_BUFFER, lights_ubo);
+    rendering.glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(lights), &lights);
+  }
+
   for (usize item_idx = 0; item_idx < pass.items.size; ++item_idx)
   {
     auto& item = pass.items[item_idx];
     auto& mesh = assets::mesh_get(item.mesh);
     auto& material = assets::material_get(item.material);
-    auto shader = assets::shader_get(material.shader);
+    assets::Shader shader;
+    if (pass.override_shader)
+    {
+      shader = assets::shader_get(pass.shader);
+    }
+    else
+    {
+      shader = assets::shader_get(material.shader);
+    }
     auto diffuse_map_id = assets::texture_get(material.diffuse_map).id;
 
     if (material.wireframe)
@@ -107,15 +220,7 @@ void draw(const Pass& pass)
       rendering.glGetUniformLocation(shader, "model"),
       1,
       false,
-      item.model.data
-    );
-    rendering
-      .glUniformMatrix4fv(rendering.glGetUniformLocation(shader, "view"), 1, false, pass.view.data);
-    rendering.glUniformMatrix4fv(
-      rendering.glGetUniformLocation(shader, "proj"),
-      1,
-      false,
-      pass.projection.data
+      item.model.raw_data
     );
 
     {
@@ -141,34 +246,33 @@ void draw(const Pass& pass)
         rendering.glGetUniformLocation(shader, "material.specular_exponent"),
         material.specular_exponent
       );
-
       rendering.glActiveTexture(GL_TEXTURE0);
       rendering.glBindTexture(GL_TEXTURE_2D, diffuse_map_id);
       rendering.glUniform1i(rendering.glGetUniformLocation(shader, "material.diffuse_map"), 0);
     }
 
+    if (pass.shadow_map)
     {
-      STD140Lights lights = {};
-      lights.light_count = (int) pass.lights.size;
-      for (usize light_idx = 0; light_idx < pass.lights.size; ++light_idx)
-      {
-        auto& light = pass.lights[light_idx];
-        lights.lights[light_idx].pos = {light.pos.x, light.pos.y, light.pos.z, 1.0f};
-        lights.lights[light_idx].color = {light.color.x, light.color.y, light.color.z, 1.0f};
-        lights.lights[light_idx].constant = 1.0f;
-        lights.lights[light_idx].linear = 0.14f;
-        lights.lights[light_idx].quadratic = 0.07f;
-      }
-      rendering.glBindBuffer(GL_UNIFORM_BUFFER, lights_ubo);
-      rendering.glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(lights), &lights);
+      rendering.glActiveTexture(GL_TEXTURE1);
+      rendering.glBindTexture(GL_TEXTURE_CUBE_MAP, pass.shadow_map->id);
+      rendering.glUniform1i(rendering.glGetUniformLocation(shader, "shadow_map"), 1);
+
+      rendering.glUniform1f(
+        rendering.glGetUniformLocation(shader, "shadow_map_camera_far_plane"),
+        pass.shadow_map_camera_far_plane
+      );
     }
 
-    rendering.glUniform3f(
-      rendering.glGetUniformLocation(shader, "view_pos"),
-      pass.view_pos.x,
-      pass.view_pos.y,
-      pass.view_pos.z
-    );
+    if (pass.transforms)
+    {
+      ASSERT(pass.transforms_count == 6, "invalid transforms count");
+      rendering.glUniformMatrix4fv(
+        rendering.glGetUniformLocation(shader, "shadow_matrices"),
+        (GLsizei) pass.transforms_count,
+        false,
+        (float*) pass.transforms[0].raw_data
+      );
+    }
 
     rendering.glBindVertexArray(mesh.vao);
 

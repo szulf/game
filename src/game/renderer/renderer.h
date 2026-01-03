@@ -38,16 +38,27 @@ struct Pass
 {
   Array<Item> items;
   Array<Light> lights;
-  mat4 view;
-  mat4 projection;
-  vec3 view_pos;
+
+  Camera camera;
+
+  u32 transforms_count;
+  mat4* transforms;
+
+  bool override_shader;
+  assets::ShaderHandle shader;
+
+  u32 framebuffer_id;
+
+  assets::Texture* shadow_map;
+  float shadow_map_camera_far_plane;
+
+  u32 width;
+  u32 height;
 };
 
 Pass pass_make(Allocator& allocator);
 
 void init(Allocator& allocator, Error& out_error);
-void clear_screen();
-void window_resize(u32 width, u32 height);
 void queue_items(Pass& pass, const Array<Item>& render_items);
 void draw(const Pass& pass);
 

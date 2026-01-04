@@ -59,6 +59,8 @@ extern "C" struct RenderingAPI
   PFNGLFINISHPROC glFinish;
   PFNGLFRAMEBUFFERTEXTUREPROC glFramebufferTexture;
   PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
+  PFNGLVERTEXATTRIBDIVISORPROC glVertexAttribDivisor;
+  PFNGLDRAWELEMENTSINSTANCEDPROC glDrawElementsInstanced;
 };
 void setup_gl_functions(RenderingAPI* api);
 

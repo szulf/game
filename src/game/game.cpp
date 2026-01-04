@@ -65,7 +65,7 @@ dll_export INIT_FN(init)
 
   main.gameplay_camera = {};
   main.gameplay_camera.type = CAMERA_TYPE_PERSPECTIVE;
-  main.gameplay_camera.pos = {-0.5f, 12.0f, 8.0f};
+  main.gameplay_camera.pos = {0.0f, 12.0f, 8.0f};
   main.gameplay_camera.yaw = -90.0f;
   main.gameplay_camera.pitch = -55.0f;
   main.gameplay_camera.near_plane = 0.1f;
@@ -338,6 +338,7 @@ dll_export RENDER_FN(render)
     camera_update_vectors(shadow_map_camera);
 
     mat4 light_proj_mat = camera_projection(shadow_map_camera);
+    // TODO(szulf): there is a weird artifact on the player because of the upside down rendering
     mat4 transforms[6] = {
       light_proj_mat * mat4_look_at(pos, pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
       light_proj_mat * mat4_look_at(pos, pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
@@ -367,6 +368,7 @@ dll_export RENDER_FN(render)
       }
     }
 
+    renderer::sort_items(pass);
     renderer::draw(pass);
   }
 
@@ -411,6 +413,7 @@ dll_export RENDER_FN(render)
       }
     }
 
+    renderer::sort_items(pass);
     renderer::draw(pass);
   }
 }

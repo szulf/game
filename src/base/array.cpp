@@ -1,16 +1,18 @@
 #include "array.h"
 
 template <typename T>
-force_inline T& Array<T>::operator[](usize idx)
+template <typename I>
+force_inline T& Array<T>::operator[](I idx)
 {
-  ASSERT(idx < size, "list index out of bounds");
+  ASSERT((usize) idx < size, "list index out of bounds");
   return data[idx];
 }
 
 template <typename T>
-const force_inline T& Array<T>::operator[](usize idx) const
+template <typename I>
+const force_inline T& Array<T>::operator[](I idx) const
 {
-  ASSERT(idx < size, "list index out of bounds");
+  ASSERT((usize) idx < size, "list index out of bounds");
   return data[idx];
 }
 
@@ -135,4 +137,44 @@ void array_dynamic_finish(Array<T>& arr)
   ASSERT(arr.dynamic_active, "'dynamic' arena has to be active to finish");
   alloc_finish(arr.allocator, arr.data + arr.size);
   arr.dynamic_active = false;
+}
+
+template <typename T>
+static i64 quicksort_parition_(Array<T>& arr, i64 lo, i64 hi, bool (*sort_fn)(const T&, const T&))
+{
+  auto& pivot = arr[hi];
+  auto i = lo - 1;
+
+  for (i64 j = lo; j <= hi - 1; ++j)
+  {
+    if (!sort_fn(arr[j], pivot))
+    {
+      ++i;
+      T temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
+    }
+  }
+
+  T temp = arr[i + 1];
+  arr[i + 1] = arr[hi];
+  arr[hi] = temp;
+  return i + 1;
+}
+
+template <typename T>
+static void quicksort_(Array<T>& arr, i64 lo, i64 hi, bool (*sort_fn)(const T&, const T&))
+{
+  if (lo >= 0 && hi >= 0 && lo < hi)
+  {
+    auto p = quicksort_parition_(arr, lo, hi, sort_fn);
+    quicksort_(arr, lo, p - 1, sort_fn);
+    quicksort_(arr, p + 1, hi, sort_fn);
+  }
+}
+
+template <typename T>
+void array_sort(Array<T>& arr, bool (*sort_fn)(const T&, const T&))
+{
+  return quicksort_(arr, 0, (i64) (arr.size - 1), sort_fn);
 }

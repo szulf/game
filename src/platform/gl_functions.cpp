@@ -7,7 +7,6 @@
 void setup_gl_functions(RenderingAPI* api)
 {
   LOAD_SDL_GL_PROC(PFNGLVIEWPORTPROC, glViewport);
-  // api->glViewport = (PFNGLVIEWPORTPROC) SDL_GL_GetProcAddress("glViewport");
   api->glGenTextures = (PFNGLGENTEXTURESPROC) SDL_GL_GetProcAddress("glGenTextures");
   api->glBindTexture = (PFNGLBINDTEXTUREPROC) SDL_GL_GetProcAddress("glBindTexture");
   api->glTexParameteri = (PFNGLTEXPARAMETERIPROC) SDL_GL_GetProcAddress("glTexParameteri");
@@ -72,6 +71,10 @@ void setup_gl_functions(RenderingAPI* api)
     (PFNGLFRAMEBUFFERTEXTUREPROC) SDL_GL_GetProcAddress("glFramebufferTexture");
   api->glCheckFramebufferStatus =
     (PFNGLCHECKFRAMEBUFFERSTATUSPROC) SDL_GL_GetProcAddress("glCheckFramebufferStatus");
+  api->glVertexAttribDivisor =
+    (PFNGLVERTEXATTRIBDIVISORPROC) SDL_GL_GetProcAddress("glVertexAttribDivisor");
+  api->glDrawElementsInstanced =
+    (PFNGLDRAWELEMENTSINSTANCEDPROC) SDL_GL_GetProcAddress("glDrawElementsInstanced");
 }
 
 #  ifdef MODE_DEBUG

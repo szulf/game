@@ -24,3 +24,4 @@
    - or maybe dont strip them?
 10. phong/blinn-phong lighting
 11. shadow mapping
+12. instancing

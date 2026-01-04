@@ -34,31 +34,14 @@ static GLuint lights_ubo;
 static assets::Texture shadow_cubemap;
 static u32 shadow_framebuffer_id;
 
+#define MAX_INSTANCES 10000
+// TODO(szulf): this should be here, for now is in assets/mesh.cpp
+// static u32 instancing_matrix_buffer;
+
 void init(Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
   rendering.glEnable(GL_DEPTH_TEST);
-
-  static_model_init(
-    STATIC_MODEL_BOUNDING_BOX,
-    assets::SHADER_DEFAULT,
-    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
-    array_from(bounding_box_indices, array_size(bounding_box_indices)),
-    assets::PRIMITIVE_TRIANGLES,
-    true,
-    {0.0f, 1.0f, 0.0f},
-    allocator
-  );
-  static_model_init(
-    STATIC_MODEL_RING,
-    assets::SHADER_DEFAULT,
-    array_from(ring_vertices, array_size(ring_vertices)),
-    array_from(ring_indices, array_size(ring_indices)),
-    assets::PRIMITIVE_LINE_STRIP,
-    false,
-    {1.0f, 1.0f, 0.0f},
-    allocator
-  );
 
   auto error_texture = assets::texture_from_image(image_error_placeholder());
   auto error_texture_handle = assets::texture_set(error_texture);
@@ -105,6 +88,11 @@ void init(Allocator& allocator, Error& out_error)
   rendering.glReadBuffer(GL_NONE);
   rendering.glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  rendering.glGenBuffers(1, &instancing_matrix_buffer);
+  rendering.glBindBuffer(GL_ARRAY_BUFFER, instancing_matrix_buffer);
+  rendering.glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES * sizeof(mat4), nullptr, GL_STATIC_DRAW);
+  rendering.glBindBuffer(GL_ARRAY_BUFFER, 0);
+
   {
     auto shader_handle =
       assets::shader_from_file("shaders/shader.vert", "shaders/default.frag", nullptr, error);
@@ -147,6 +135,27 @@ void init(Allocator& allocator, Error& out_error)
     ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
     rendering.glUniformBlockBinding(shader, index, CAMERA_UBO_BLOCK_INDEX);
   }
+
+  static_model_init(
+    STATIC_MODEL_BOUNDING_BOX,
+    assets::SHADER_DEFAULT,
+    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
+    array_from(bounding_box_indices, array_size(bounding_box_indices)),
+    assets::PRIMITIVE_TRIANGLES,
+    true,
+    {0.0f, 1.0f, 0.0f},
+    allocator
+  );
+  static_model_init(
+    STATIC_MODEL_RING,
+    assets::SHADER_DEFAULT,
+    array_from(ring_vertices, array_size(ring_vertices)),
+    array_from(ring_indices, array_size(ring_indices)),
+    assets::PRIMITIVE_LINE_STRIP,
+    false,
+    {1.0f, 1.0f, 0.0f},
+    allocator
+  );
 }
 
 GLenum gl_primitive_from_primitive(assets::Primitive primitive)
@@ -194,9 +203,26 @@ void draw(const Pass& pass)
     rendering.glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(lights), &lights);
   }
 
-  for (usize item_idx = 0; item_idx < pass.items.size; ++item_idx)
+  for (usize item_idx = 0; item_idx < pass.items.size;)
   {
     auto& item = pass.items[item_idx];
+    usize batch_idx = item_idx + 1;
+    while ((batch_idx < pass.items.size || batch_idx - item_idx > MAX_INSTANCES) &&
+           (item.mesh == pass.items[batch_idx].mesh &&
+            item.material == pass.items[batch_idx].material))
+    {
+      ++batch_idx;
+    }
+    auto batch_size = batch_idx - item_idx;
+    auto scratch_arena = scratch_arena_get();
+    defer(scratch_arena_release(scratch_arena));
+    auto instancing_matrices =
+      array_make<mat4>(ARRAY_TYPE_STATIC, batch_size, scratch_arena.allocator);
+    for (usize i = 0; i < batch_size; ++i)
+    {
+      array_push(instancing_matrices, pass.items[item_idx + i].model);
+    }
+
     auto& mesh = assets::mesh_get(item.mesh);
     auto& material = assets::material_get(item.material);
     assets::Shader shader;
@@ -216,12 +242,6 @@ void draw(const Pass& pass)
     }
 
     rendering.glUseProgram(shader);
-    rendering.glUniformMatrix4fv(
-      rendering.glGetUniformLocation(shader, "model"),
-      1,
-      false,
-      item.model.raw_data
-    );
 
     {
       rendering.glUniform3f(
@@ -276,14 +296,24 @@ void draw(const Pass& pass)
 
     rendering.glBindVertexArray(mesh.vao);
 
-    rendering.glDrawElements(
+    rendering.glBindBuffer(GL_ARRAY_BUFFER, instancing_matrix_buffer);
+    rendering.glBufferSubData(
+      GL_ARRAY_BUFFER,
+      0,
+      (GLsizeiptr) (instancing_matrices.size * sizeof(mat4)),
+      instancing_matrices.data
+    );
+
+    rendering.glDrawElementsInstanced(
       gl_primitive_from_primitive(mesh.primitive),
       (GLsizei) mesh.index_count,
       GL_UNSIGNED_INT,
-      nullptr
+      nullptr,
+      (GLsizei) batch_size
     );
 
     rendering.glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    item_idx += batch_size;
   }
 }
 

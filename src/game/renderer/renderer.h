@@ -4,6 +4,11 @@
 namespace renderer
 {
 
+// TODO(szulf): maybe textures, materials, meshes, models, shaders should be a part of renderer
+// and assets would depend on renderer
+// it would clean up the mess in mesh_make that vertex attrib pointer for instancing matrix buffer
+// created
+
 enum StaticModel
 {
   STATIC_MODEL_BOUNDING_BOX = 1,
@@ -60,6 +65,7 @@ Pass pass_make(Allocator& allocator);
 
 void init(Allocator& allocator, Error& out_error);
 void queue_items(Pass& pass, const Array<Item>& render_items);
+void sort_items(Pass& pass);
 void draw(const Pass& pass);
 
 }

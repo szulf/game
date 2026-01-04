@@ -19,7 +19,7 @@ void static_model_init(
   material.wireframe = wireframe;
   material.diffuse_color = color;
   auto mesh_handle = assets::mesh_set(assets::mesh_make(vertices, indices, primitive));
-  auto material_handle = material_set(material);
+  auto material_handle = assets::material_set(material);
   assets::Model model = {};
   model.parts = array_make<assets::MeshMaterialPair>(ARRAY_TYPE_STATIC, 1, allocator);
   array_push(model.parts, {mesh_handle, material_handle});
@@ -112,6 +112,22 @@ static Vertex ring_vertices[] = {
 
 static u32 ring_indices[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
                              17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0};
+
+// TODO(szulf): doesnt handle transparent meshes and possibly more
+void sort_items(Pass& pass)
+{
+  array_sort(
+    pass.items,
+    +[](const Item& a, const Item& b) -> bool
+    {
+      if (a.material != b.material)
+      {
+        return a.material > b.material;
+      }
+      return a.mesh > b.mesh;
+    }
+  );
+}
 
 }
 

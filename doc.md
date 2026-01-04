@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-12. instancing
 13. entity tint
     - just a value the color will be multiplied by
     - will be used for chaning the on/off state of the light bulb
@@ -20,6 +19,7 @@
 
 - audio
 - map/entity/keymap editor
+- profiler
 - inventory system
 
 - more on lighting

@@ -143,48 +143,58 @@ void alloc_finish(Allocator& allocator, void* end)
   data.dynamic_active = false;
 }
 
-thread_local static Allocator scratch_arena_ = {};
-thread_local static bool scratch_arena_initialized_ = false;
-thread_local static bool scratch_arena_top_caller_used_ = false;
+struct ScratchArenaManagementInfo
+{
+  Allocator arena;
+  bool initialized;
+  bool in_use;
+};
+
+#define SCRATCH_ARENA_BUFFER_SIZE MB(50)
+#define SCRATCH_ARENA_COUNT 10
+#define SCRATCH_ARENA_TOTAL_MEMORY_SIZE (SCRATCH_ARENA_BUFFER_SIZE * SCRATCH_ARENA_COUNT)
+thread_local static void* scratch_arenas_memory_pool_ = nullptr;
+thread_local static ScratchArenaManagementInfo scratch_arenas_[SCRATCH_ARENA_COUNT] = {};
 
 ScratchArena scratch_arena_get()
 {
-  if (!scratch_arena_initialized_)
+  static bool first_init = true;
+
+  for (usize i = 0; i < SCRATCH_ARENA_COUNT; ++i)
   {
-    // TODO(szulf): maybe in the future somehow dynamically handle how much memory is actually used
-    // by the scratch arena?
-    scratch_arena_.size = MB(500);
-    scratch_arena_.type = ALLOCATOR_TYPE_ARENA;
-    // TODO(szulf): is there some better way to get this memory?
-    scratch_arena_.buffer = malloc(scratch_arena_.size);
-    scratch_arena_initialized_ = true;
-    mem_set(scratch_arena_.buffer, 0, scratch_arena_.size);
+    auto& scratch = scratch_arenas_[i];
+    if (scratch.in_use)
+    {
+      continue;
+    }
+
+    if (!scratch.initialized)
+    {
+      if (first_init)
+      {
+        // NOTE(szulf): the malloc here is fine its happing at most once per thread startup
+        // i dont really like using libc, but i dont see a cleaner way here
+        scratch_arenas_memory_pool_ = malloc(SCRATCH_ARENA_TOTAL_MEMORY_SIZE);
+        first_init = false;
+      }
+
+      scratch.arena.size = SCRATCH_ARENA_BUFFER_SIZE;
+      scratch.arena.type = ALLOCATOR_TYPE_ARENA;
+      scratch.arena.buffer = (u8*) scratch_arenas_memory_pool_ + SCRATCH_ARENA_BUFFER_SIZE * i;
+      mem_set(scratch.arena.buffer, 0, scratch.arena.size);
+      scratch.initialized = true;
+    }
+    scratch.in_use = true;
+
+    return {scratch.arena, 0, true, i};
   }
-  bool top_caller = false;
-  if (!scratch_arena_top_caller_used_)
-  {
-    top_caller = true;
-    scratch_arena_top_caller_used_ = true;
-  }
-  return {scratch_arena_, scratch_arena_.type_data.arena.offset, top_caller};
+  ASSERT(false, "no free scratch_arenas");
 }
 
 void scratch_arena_release(ScratchArena& sa)
 {
-  // NOTE(szulf): wait until the top caller of ScratchArena::get() releases to actually free any
-  // memory this is a way to both reduce mistakes(skill issues?), and simplify the managment of the
-  // scratch arena this probably increases the memory usage by a little, but i dont know how to
-  // check if i can actually free the memory on release
-  // TODO(szulf): maybe think of a better way to handle all this in the future,
-  // for now i just want to move on
-  if (sa.top_caller)
-  {
-    mem_set(
-      (u8*) scratch_arena_.buffer + sa.start_offset,
-      0,
-      scratch_arena_.type_data.arena.offset - sa.start_offset
-    );
-    scratch_arena_.type_data.arena.offset = sa.start_offset;
-    scratch_arena_top_caller_used_ = false;
-  }
+  auto& scratch = scratch_arenas_[sa.idx];
+  scratch.in_use = false;
+  mem_set((u8*) scratch.arena.buffer, 0, scratch.arena.type_data.arena.offset);
+  scratch.arena.type_data.arena.offset = 0;
 }

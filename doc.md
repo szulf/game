@@ -27,6 +27,8 @@
 
 - directional light with shadow mapping
 
+- get rid of sdl3(big future)
+
 - read the projection [matrix article](https://www.songho.ca/opengl/gl_projectionmatrix.html#fov)
 - read the look at [matrix article](https://morning-flow.com/2023/02/06/the-math-behind-the-lookat-transform/)
 

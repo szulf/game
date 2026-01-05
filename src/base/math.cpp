@@ -370,19 +370,18 @@ void mat4_scale(mat4& mat, f32 scale)
   mat.data[2][2] *= scale;
 }
 
-// TODO(szulf): no idea if this is correct, could be very wrong
 void mat4_scale(mat4& mat, const vec3& scale)
 {
   mat.data[0][0] *= scale.x;
-  mat.data[1][0] *= scale.x;
-  mat.data[2][0] *= scale.x;
+  mat.data[0][1] *= scale.x;
+  mat.data[0][2] *= scale.x;
 
-  mat.data[0][1] *= scale.y;
+  mat.data[1][0] *= scale.y;
   mat.data[1][1] *= scale.y;
-  mat.data[2][1] *= scale.y;
+  mat.data[1][2] *= scale.y;
 
-  mat.data[0][2] *= scale.z;
-  mat.data[1][2] *= scale.z;
+  mat.data[2][0] *= scale.z;
+  mat.data[2][1] *= scale.z;
   mat.data[2][2] *= scale.z;
 }
 

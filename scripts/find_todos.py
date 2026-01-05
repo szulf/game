@@ -1,4 +1,8 @@
 # all credits go to ChatGPT for vibe coding this for me
+#
+# ISSUES:
+# - #define is not not being used as context since its a comment in .gent
+# - '// NOTE(szulf):' gets used as the todo text
 
 import os
 import re

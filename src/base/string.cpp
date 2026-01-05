@@ -108,7 +108,6 @@ const char* string_to_cstr(const String& str, Allocator& allocator)
   return out;
 }
 
-// TODO(szulf): this whole implementation is kinda whacky but idc for now
 Array<String> string_split(const String& str, char c, Allocator& allocator)
 {
   usize splits_count = string_count_chars(str, c) + 1;
@@ -130,7 +129,7 @@ Array<String> string_split(const String& str, char c, Allocator& allocator)
     }
   }
 
-  if (str.size - start_idx > 0)
+  if (str.size > start_idx)
   {
     auto s = string_make_len(str.data + start_idx, str.size - start_idx);
     array_push(splits, s);

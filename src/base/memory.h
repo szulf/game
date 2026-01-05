@@ -50,6 +50,7 @@ struct ScratchArena
   Allocator& allocator;
   usize start_offset;
   bool top_caller;
+  usize idx;
 };
 
 ScratchArena scratch_arena_get();

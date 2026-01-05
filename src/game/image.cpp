@@ -604,7 +604,7 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, err, error, img);
   if (file == nullptr)
   {

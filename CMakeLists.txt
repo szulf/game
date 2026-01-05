@@ -76,12 +76,6 @@ set(flags
 
 set(include_dirs src)
 
-# NOTE(szulf): using unity build so thats the reason for just one source file
-add_library(game SHARED src/game/game.cpp)
-target_include_directories(game PRIVATE ${include_dirs})
-target_compile_options(game PRIVATE ${flags} -fPIC -fvisibility=hidden)
-target_compile_definitions(game PRIVATE ${definitions})
-
 find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
 

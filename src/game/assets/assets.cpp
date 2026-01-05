@@ -178,7 +178,7 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
   auto file = string_make_len((const char*) file_ptr, file_size);
   auto lines = string_split(file, '\n', scratch_arena.allocator);
@@ -429,7 +429,7 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   auto file = string_make_len((const char*) file_ptr, file_size);
   ctx.lines = string_split(file, '\n', scratch_arena.allocator);
@@ -551,7 +551,7 @@ static u32 shader_load(const char* path, ShaderType shader_type, Error& out_erro
   auto scratch_arena = scratch_arena_get();
   defer(scratch_arena_release(scratch_arena));
   usize file_size;
-  void* file = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
 
   u32 shader;

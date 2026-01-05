@@ -10,7 +10,7 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
   defer(scratch_arena_release(scratch_arena));
 
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   auto file = string_make_len((const char*) file_ptr, file_size);
 
@@ -82,7 +82,7 @@ void scene_to_file(const char* path, const Array<Entity>& entities, Error& out_e
     );
   }
   auto gscn = string_make_len(buf, (usize) written);
-  platform.write_file(path, &gscn, &error);
+  platform::write_entire_file(path, gscn, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
 }
 

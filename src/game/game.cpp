@@ -1,7 +1,6 @@
 #include "base/base.cpp"
 #include "platform/platform.h"
 
-static PlatformAPI platform;
 static RenderingAPI rendering;
 
 #include "image.cpp"
@@ -29,27 +28,26 @@ struct Main
   Array<Entity> entities;
 };
 
-dll_export SPEC_FN(spec)
+void game_spec(GameSpec& spec)
 {
-  spec->name = "game";
-  spec->width = 1280;
-  spec->height = 720;
-  spec->memory_size = GB(2);
+  spec.name = "game";
+  spec.width = 1280;
+  spec.height = 720;
+  spec.memory_size = GB(2);
 }
 
-dll_export APIS_FN(apis)
+void game_apis(RenderingAPI& rendering_api)
 {
-  rendering = *rendering_api;
-  platform = *platform_api;
+  rendering = rendering_api;
 }
 
-dll_export INIT_FN(init)
+void game_init(GameMemory& memory, GameInput& input)
 {
   Error error = SUCCESS;
-  auto& main = *(Main*) memory->memory;
+  auto& main = *(Main*) memory.memory;
 
   main.allocator.size = GB(1);
-  main.allocator.buffer = (u8*) memory->memory + sizeof(Main);
+  main.allocator.buffer = (u8*) memory.memory + sizeof(Main);
   main.allocator.type = ALLOCATOR_TYPE_ARENA;
 
   main.assets_manager = assets::manager_make(main.allocator);
@@ -60,7 +58,7 @@ dll_export INIT_FN(init)
   main.entities = data::scene_from_file("data/main.gscn", main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt load scene");
 
-  *input = data::keymap_from_file("data/keymap.gkey", error);
+  input = data::keymap_from_file("data/keymap.gkey", error);
   ASSERT(error == SUCCESS, "couldnt read keymap file");
 
   main.gameplay_camera = {};
@@ -70,8 +68,8 @@ dll_export INIT_FN(init)
   main.gameplay_camera.pitch = -55.0f;
   main.gameplay_camera.near_plane = 0.1f;
   main.gameplay_camera.far_plane = 1000.0f;
-  main.gameplay_camera.viewport_width = platform.get_width();
-  main.gameplay_camera.viewport_height = platform.get_height();
+  main.gameplay_camera.viewport_width = platform::get_width();
+  main.gameplay_camera.viewport_height = platform::get_height();
   main.gameplay_camera.using_vertical_fov = true;
   main.gameplay_camera.fov = 0.25f * F32_PI;
   camera_update_vectors(main.gameplay_camera);
@@ -81,15 +79,12 @@ dll_export INIT_FN(init)
   main.main_camera = &main.gameplay_camera;
 }
 
-dll_export POST_RELOAD_FN(post_reload)
+void game_update(GameMemory& memory, GameInput& input, float dt)
 {
-  auto& main = *(Main*) memory->memory;
-  assets::manager_instance = &main.assets_manager;
-}
+  auto& main = *(Main*) memory.memory;
 
-dll_export UPDATE_FN(update)
-{
-  auto& main = *(Main*) memory->memory;
+  main.gameplay_camera.viewport_width = main.debug_camera.viewport_width = platform::get_width();
+  main.gameplay_camera.viewport_height = main.debug_camera.viewport_height = platform::get_height();
 
   Entity* player = nullptr;
   // TODO(szulf): basically acts as a bad frame arena, fix that
@@ -125,30 +120,30 @@ dll_export UPDATE_FN(update)
     }
   }
 
-  if (input->toggle_camera_mode.ended_down && input->toggle_camera_mode.transition_count != 0)
+  if (input.toggle_camera_mode.ended_down && input.toggle_camera_mode.transition_count != 0)
   {
     main.camera_mode = !main.camera_mode;
   }
-  if (input->toggle_display_bounding_boxes.ended_down &&
-      input->toggle_display_bounding_boxes.transition_count != 0)
+  if (input.toggle_display_bounding_boxes.ended_down &&
+      input.toggle_display_bounding_boxes.transition_count != 0)
   {
     main.display_bounding_boxes = !main.display_bounding_boxes;
   }
 
   vec3 acceleration = {};
-  if (input->move_front.ended_down)
+  if (input.move_front.ended_down)
   {
     acceleration.z += -1.0f;
   }
-  if (input->move_back.ended_down)
+  if (input.move_back.ended_down)
   {
     acceleration.z += 1.0f;
   }
-  if (input->move_left.ended_down)
+  if (input.move_left.ended_down)
   {
     acceleration.x += -1.0f;
   }
-  if (input->move_right.ended_down)
+  if (input.move_right.ended_down)
   {
     acceleration.x += 1.0f;
   }
@@ -157,17 +152,17 @@ dll_export UPDATE_FN(update)
   if (main.camera_mode)
   {
     main.main_camera = &main.debug_camera;
-    if (input->camera_move_up.ended_down)
+    if (input.camera_move_up.ended_down)
     {
       acceleration.y += 1.0f;
     }
-    if (input->camera_move_down.ended_down)
+    if (input.camera_move_down.ended_down)
     {
       acceleration.y += -1.0f;
     }
 
-    f32 x_offset = input->mouse_relative.x * CAMERA_SENSITIVITY;
-    f32 y_offset = input->mouse_relative.y * CAMERA_SENSITIVITY;
+    f32 x_offset = input.mouse_relative.x * CAMERA_SENSITIVITY;
+    f32 y_offset = input.mouse_relative.y * CAMERA_SENSITIVITY;
     main.debug_camera.yaw += x_offset;
     main.debug_camera.pitch -= y_offset;
     main.debug_camera.pitch = clamp(main.debug_camera.pitch, -89.0f, 89.0f);
@@ -279,7 +274,7 @@ dll_export UPDATE_FN(update)
 
     // NOTE(szulf): interactions
     {
-      if (input->interact.ended_down && input->interact.transition_count != 0)
+      if (input.interact.ended_down && input.interact.transition_count != 0)
       {
         for (usize i = 0; i < interactables.size; ++i)
         {
@@ -303,9 +298,9 @@ dll_export UPDATE_FN(update)
   }
 }
 
-dll_export RENDER_FN(render)
+void game_render(GameMemory& memory)
 {
-  auto& main = *(Main*) memory->memory;
+  auto& main = *(Main*) memory.memory;
 
   // TODO(szulf): switch this to the frame arena
   auto scratch_arena = scratch_arena_get();
@@ -379,8 +374,8 @@ dll_export RENDER_FN(render)
     pass.camera = *main.main_camera;
     pass.shadow_map = &renderer::shadow_cubemap;
     pass.shadow_map_camera_far_plane = shadow_map_camera_far_plane;
-    pass.width = platform.get_width();
-    pass.height = platform.get_height();
+    pass.width = platform::get_width();
+    pass.height = platform::get_height();
 
     for (usize i = 0; i < main.entities.size; ++i)
     {
@@ -416,23 +411,5 @@ dll_export RENDER_FN(render)
 
     renderer::sort_items(pass);
     renderer::draw(pass);
-  }
-}
-
-// TODO(szulf): get rid of this, just set width and height every frame
-dll_export EVENT_FN(event)
-{
-  auto& main = *(Main*) memory->memory;
-
-  switch (event->type)
-  {
-    case EVENT_TYPE_WINDOW_RESIZE:
-    {
-      main.gameplay_camera.viewport_width = event->data.window_resize.width;
-      main.gameplay_camera.viewport_height = event->data.window_resize.height;
-      main.debug_camera.viewport_width = event->data.window_resize.width;
-      main.debug_camera.viewport_height = event->data.window_resize.height;
-    }
-    break;
   }
 }

@@ -24,7 +24,7 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
   entity.name = string_copy(p, allocator);
 
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
   auto file = string_make_len((const char*) file_ptr, file_size);
 
@@ -176,7 +176,7 @@ void entity_to_file(const Entity& entity, Error& out_error)
     ".gent",
     scratch_arena.allocator
   );
-  platform.write_file(string_to_cstr(path, scratch_arena.allocator), &str, &error);
+  platform::write_entire_file(string_to_cstr(path, scratch_arena.allocator), str, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
 }
 

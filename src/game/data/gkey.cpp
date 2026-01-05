@@ -11,7 +11,7 @@ GameInput keymap_from_file(const char* path, Error& out_error)
   defer(scratch_arena_release(scratch_arena));
 
   usize file_size;
-  void* file_ptr = platform.read_file(path, &scratch_arena.allocator, &file_size, &error);
+  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, input);
   auto file = string_make_len((const char*) file_ptr, file_size);
 
@@ -101,7 +101,7 @@ void keymap_to_file(const char* path, GameInput& input, Error& out_error)
   WRITE_KEY(toggle_display_bounding_boxes);
 
   auto s = string_make_len(buf, (usize) written);
-  platform.write_file(path, &s, &error);
+  platform::write_entire_file(path, s, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
 }
 

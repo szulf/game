@@ -25,14 +25,10 @@ enum InteractableType
 const char* interactable_type_to_cstr(InteractableType type);
 InteractableType string_to_interactable_type(const String& str, Error& out_error);
 
-struct InteractableInfo
-{
-  f32 radius2;
-};
-
-static const InteractableInfo interactable_info[] = {
-  {1.0f},
-};
+// TODO(szulf): should this not be just read from the gent file?
+#define LIGHT_BULB_RADIUS2 1.0f
+#define LIGHT_BULB_TINT_ON vec3{1.0f, 1.0f, 1.0f}
+#define LIGHT_BULB_TINT_OFF vec3{0.1f, 0.1f, 0.1f}
 
 struct BoundingBox
 {
@@ -56,12 +52,17 @@ struct Entity
   bool has_model;
   assets::ModelHandle model;
 
+  vec3 tint = {1.0f, 1.0f, 1.0f};
+
   InteractableType interactable_type;
 
   // NOTE(szulf): light_bulb
   bool light_bulb_on;
   vec3 light_bulb_color;
+  // TODO(szulf): get this from the gent file?
   float light_bulb_height_offset = -0.25f;
+  vec3 light_bulb_on_tint;
+  vec3 light_bulb_off_tint;
 
   // NOTE(szulf): used for read/write
   String name;

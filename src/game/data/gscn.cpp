@@ -48,17 +48,10 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
     }
 
     auto position_string = string_trim_whitespace(parts[1]);
-    auto nums = string_split(position_string, ' ', scratch_arena.allocator);
-    ERROR_ASSERT(nums.size == 3, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
+    vec3 pos = get_vec3(position_string, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, entities);
 
-    f32 x = string_parse_f32(nums[0], error);
-    ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
-    f32 y = string_parse_f32(nums[1], error);
-    ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
-    f32 z = string_parse_f32(nums[2], error);
-    ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
-
-    entity.position = {x, y, z};
+    entity.position = pos;
 
     array_push(entities, entity);
   }

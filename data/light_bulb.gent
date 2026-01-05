@@ -3,3 +3,5 @@ type : INTERACTABLE
 interactable_type : LIGHT_BULB
 bounding_box : *
 light_bulb_color : 1.0 1.0 0.7
+# TODO(szulf): shouldnt i get this from the in code constant somehow?
+tint : 0.1 0.1 0.1

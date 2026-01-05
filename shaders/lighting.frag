@@ -29,6 +29,7 @@ in VERT_OUT
   vec2 uv;
   vec3 normal;
   vec3 frag_pos;
+  vec3 tint;
 }
 vert_out;
 
@@ -54,7 +55,7 @@ layout(std140) uniform Lights
 void main()
 {
   vec3 norm = normalize(vert_out.normal);
-  vec3 object_color = vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse;
+  vec3 object_color = (vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse) * vert_out.tint;
 
   vec3 diffuse_specular = vec3(0.0f);
   float shadow = 0.0f;

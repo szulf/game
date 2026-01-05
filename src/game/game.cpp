@@ -290,11 +290,12 @@ dll_export UPDATE_FN(update)
           // either increase the accepted rad difference,
           // or just remove the whole thing
           f32 orientation = atan2(-vec.x, vec.z);
-          if (dist < interactable_info[interactable.interactable_type].radius2 &&
-              abs(player->rotation - orientation) < 1.0f &&
+          if (dist < LIGHT_BULB_RADIUS2 && abs(player->rotation - orientation) < 1.0f &&
               interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
           {
             interactable.light_bulb_on = !interactable.light_bulb_on;
+            interactable.tint =
+              interactable.light_bulb_on ? LIGHT_BULB_TINT_ON : LIGHT_BULB_TINT_OFF;
           }
         }
       }

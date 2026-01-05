@@ -32,6 +32,11 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
   for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
   {
     auto& line = lines[line_idx];
+    if (line[0] == '#')
+    {
+      continue;
+    }
+
     auto parts = string_split(line, ':', scratch_arena.allocator);
     ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, entity);
 
@@ -40,15 +45,8 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
 
     if (key == "position")
     {
-      auto values = string_split(value, ' ', scratch_arena.allocator);
-      ERROR_ASSERT(values.size == 3, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
-
-      entity.position.x = string_parse_f32(values[0], error);
-      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
-      entity.position.y = string_parse_f32(values[1], error);
-      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
-      entity.position.z = string_parse_f32(values[2], error);
-      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
+      entity.position = get_vec3(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
     }
     else if (key == "model")
     {
@@ -98,21 +96,20 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
         ASSERT(false, "[TODO] load hardcoded bounding box");
       }
     }
+    else if (key == "tint")
+    {
+      entity.tint = get_vec3(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
+    }
     else if (key == "light_bulb_color")
     {
       ASSERT(
-        entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB,
+        entity.type == ENTITY_TYPE_INTERACTABLE &&
+          entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB,
         "cannot set light_bulb_color on non light_bulb entity"
       );
-      auto values = string_split(value, ' ', scratch_arena.allocator);
-      ERROR_ASSERT(values.size == 3, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
-
-      entity.light_bulb_color.x = string_parse_f32(values[0], error);
-      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
-      entity.light_bulb_color.y = string_parse_f32(values[1], error);
-      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
-      entity.light_bulb_color.z = string_parse_f32(values[2], error);
-      ERROR_ASSERT(error == SUCCESS, out_error, ENTITY_READ_ERROR_INVALID_POSITION, entity);
+      entity.light_bulb_color = get_vec3(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
     }
     else
     {

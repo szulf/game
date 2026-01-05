@@ -95,6 +95,7 @@ Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allo
     auto& part = model.parts[part_idx];
     renderer::Item renderer_item = {};
     renderer_item.model = mat4_make();
+    renderer_item.tint = entity.tint;
     mat4_translate(renderer_item.model, entity.position);
     mat4_rotate(renderer_item.model, entity.rotation, {0.0f, 1.0f, 0.0f});
     renderer_item.mesh = part.mesh;
@@ -110,11 +111,12 @@ Array<renderer::Item> renderer_item_entity_bounding_box(const Entity& entity, Al
   auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, 1, allocator);
   auto& part = model.parts[0];
   renderer::Item renderer_item = {};
-  renderer_item.mesh = part.mesh;
-  renderer_item.material = part.material;
   renderer_item.model = mat4_make();
   mat4_scale(renderer_item.model, {entity.bounding_box.width, 1.0f, entity.bounding_box.depth});
   mat4_translate(renderer_item.model, entity.position);
+  renderer_item.tint = {1.0f, 1.0f, 1.0f};
+  renderer_item.mesh = part.mesh;
+  renderer_item.material = part.material;
   array_push(out, renderer_item);
   return out;
 }
@@ -127,16 +129,12 @@ renderer_item_entity_interactable_radius(const Entity& entity, Allocator& alloca
   auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, 1, allocator);
   auto& part = model.parts[0];
   renderer::Item renderer_item = {};
+  renderer_item.model = mat4_make();
+  mat4_scale(renderer_item.model, {LIGHT_BULB_RADIUS2, 1.0f, LIGHT_BULB_RADIUS2});
+  mat4_translate(renderer_item.model, entity.position);
+  renderer_item.tint = {1.0f, 1.0f, 1.0f};
   renderer_item.mesh = part.mesh;
   renderer_item.material = part.material;
-  renderer_item.model = mat4_make();
-  mat4_scale(
-    renderer_item.model,
-    {interactable_info[entity.interactable_type].radius2,
-     1.0f,
-     interactable_info[entity.interactable_type].radius2}
-  );
-  mat4_translate(renderer_item.model, entity.position);
   array_push(out, renderer_item);
   return out;
 }

@@ -90,7 +90,8 @@ void init(Allocator& allocator, Error& out_error)
 
   rendering.glGenBuffers(1, &instancing_matrix_buffer);
   rendering.glBindBuffer(GL_ARRAY_BUFFER, instancing_matrix_buffer);
-  rendering.glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES * sizeof(mat4), nullptr, GL_STATIC_DRAW);
+  rendering
+    .glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES * sizeof(InstanceData), nullptr, GL_STATIC_DRAW);
   rendering.glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   {
@@ -216,11 +217,14 @@ void draw(const Pass& pass)
     auto batch_size = batch_idx - item_idx;
     auto scratch_arena = scratch_arena_get();
     defer(scratch_arena_release(scratch_arena));
-    auto instancing_matrices =
-      array_make<mat4>(ARRAY_TYPE_STATIC, batch_size, scratch_arena.allocator);
+    auto instancing_data =
+      array_make<InstanceData>(ARRAY_TYPE_STATIC, batch_size, scratch_arena.allocator);
     for (usize i = 0; i < batch_size; ++i)
     {
-      array_push(instancing_matrices, pass.items[item_idx + i].model);
+      InstanceData data = {};
+      data.model = pass.items[item_idx + i].model;
+      data.tint = pass.items[item_idx + i].tint;
+      array_push(instancing_data, data);
     }
 
     auto& mesh = assets::mesh_get(item.mesh);
@@ -290,7 +294,7 @@ void draw(const Pass& pass)
         rendering.glGetUniformLocation(shader, "shadow_matrices"),
         (GLsizei) pass.transforms_count,
         false,
-        (float*) pass.transforms[0].raw_data
+        pass.transforms[0].raw_data
       );
     }
 
@@ -300,8 +304,8 @@ void draw(const Pass& pass)
     rendering.glBufferSubData(
       GL_ARRAY_BUFFER,
       0,
-      (GLsizeiptr) (instancing_matrices.size * sizeof(mat4)),
-      instancing_matrices.data
+      (GLsizeiptr) (instancing_data.size * sizeof(InstanceData)),
+      instancing_data.data
     );
 
     rendering.glDrawElementsInstanced(

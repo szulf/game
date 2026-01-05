@@ -7,26 +7,29 @@ import re
 directories = [
     "./src",
     "./shaders",
-    # Add more directories here
+    "./data",
 ]
 
 output_file = "source_todos.md"
 
-# Pattern to detect TODO comments and capture the text
-todo_pattern = re.compile(r"//\s*TODO\(.*?\):\s*(.*)")
+# Matches both // TODO(...) and # TODO(...)
+todo_pattern = re.compile(r"(//|#)\s*TODO\(.*?\):\s*(.*)")
+
+# Matches any comment line starting with // or #
+comment_line_pattern = re.compile(r"^\s*(//|#)\s*(.*)")
 
 # Pattern to detect struct definitions
 struct_pattern = re.compile(r"^\s*struct\s+\w+")
 
-context_lines_count = 3  # maximum number of lines to include after TODO
+context_lines_count = 3
 
 with open(output_file, "w", encoding="utf-8") as md_file:
     md_file.write("# TODO Report\n\n")
 
     for directory in directories:
         md_file.write(f"## Directory: {directory}\n\n")
+
         for root, dirs, files in os.walk(directory):
-            # Sort files for consistent order
             files.sort()
             for file in files:
                 file_path = os.path.join(root, file)
@@ -36,21 +39,23 @@ with open(output_file, "w", encoding="utf-8") as md_file:
                     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         lines = f.readlines()
                         i = 0
+
                         while i < len(lines):
-                            line = lines[i].strip()
-                            match = todo_pattern.match(line)
+                            stripped = lines[i].strip()
+                            match = todo_pattern.match(stripped)
+
                             if match:
                                 start_line_number = i + 1
-                                current_text_lines = [match.group(1)]
+                                current_text_lines = [match.group(2)]
                                 i += 1
 
-                                # Collect following // comment lines that belong to this TODO
+                                # Collect continuation comment lines (// or #)
                                 while i < len(lines):
-                                    stripped = lines[i].strip()
-                                    if stripped.startswith(
-                                        "//"
-                                    ) and not todo_pattern.match(stripped):
-                                        text = stripped[2:].strip()
+                                    cont = comment_line_pattern.match(lines[i].strip())
+                                    if cont and not todo_pattern.match(
+                                        lines[i].strip()
+                                    ):
+                                        text = cont.group(2).strip()
                                         if text:
                                             current_text_lines.append(text)
                                         i += 1
@@ -59,11 +64,12 @@ with open(output_file, "w", encoding="utf-8") as md_file:
 
                                 todo_text = " ".join(current_text_lines)
 
-                                # Collect context lines with brace tracking
+                                # Collect smart context
                                 context_lines = []
                                 context_lines_added = 0
                                 brace_balance = 0
                                 j = i
+
                                 while (
                                     j < len(lines)
                                     and context_lines_added < context_lines_count
@@ -93,16 +99,18 @@ with open(output_file, "w", encoding="utf-8") as md_file:
                                     context_lines_added += 1
                                     j += 1
 
-                                # Write TODO to Markdown
+                                # Write Markdown
                                 md_file.write(f"### **TODO:** {todo_text}\n\n")
                                 md_file.write(
                                     f"{relative_path} (line {start_line_number})\n\n"
                                 )
+
                                 if context_lines:
                                     md_file.write("**Context:**\n\n")
                                     md_file.write("```cpp\n")
                                     md_file.write("\n".join(context_lines) + "\n")
                                     md_file.write("```\n\n")
+
                                 md_file.write("---\n\n")
                             else:
                                 i += 1

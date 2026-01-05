@@ -2,11 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-13. entity tint
-    - just a value the color will be multiplied by
-    - will be used for chaning the on/off state of the light bulb
-    - and for possible changing the color of the ground
-
 ---
 
 ## NEXT BIG TODOS: (unordered)

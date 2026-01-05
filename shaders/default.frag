@@ -14,6 +14,7 @@ in VERT_OUT
   vec2 uv;
   vec3 normal;
   vec3 frag_pos;
+  vec3 tint;
 }
 vert_out;
 
@@ -23,5 +24,6 @@ uniform Material material;
 
 void main()
 {
-  color = texture(material.diffuse_map, vert_out.uv) + vec4(material.diffuse, 1.0f);
+  vec3 object_color = (texture(material.diffuse_map, vert_out.uv).rgb + material.diffuse) * vert_out.tint;
+  color = vec4(object_color, 1.0f);
 }

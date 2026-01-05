@@ -28,6 +28,7 @@ void static_model_init(
 struct Item
 {
   mat4 model;
+  vec3 tint;
   assets::MeshHandle mesh;
   assets::MaterialHandle material;
 };

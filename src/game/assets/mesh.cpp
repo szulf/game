@@ -4,6 +4,11 @@
 namespace renderer
 {
 static u32 instancing_matrix_buffer;
+struct InstanceData
+{
+  mat4 model;
+  vec3 tint;
+};
 }
 
 namespace assets
@@ -38,45 +43,92 @@ Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, Primiti
     GL_STATIC_DRAW
   );
 
-  rendering.glVertexAttribPointer(
-    0,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    sizeof(Vertex),
-    (void*) offsetof(Vertex, position)
-  );
-  rendering.glEnableVertexAttribArray(0);
-  rendering.glVertexAttribPointer(
-    1,
-    3,
-    GL_FLOAT,
-    GL_FALSE,
-    sizeof(Vertex),
-    (void*) offsetof(Vertex, normal)
-  );
-  rendering.glEnableVertexAttribArray(1);
-  rendering
-    .glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) offsetof(Vertex, uv));
-  rendering.glEnableVertexAttribArray(2);
+  {
+    rendering.glVertexAttribPointer(
+      0,
+      3,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(Vertex),
+      (void*) offsetof(Vertex, position)
+    );
+    rendering.glEnableVertexAttribArray(0);
+    rendering.glVertexAttribPointer(
+      1,
+      3,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(Vertex),
+      (void*) offsetof(Vertex, normal)
+    );
+    rendering.glEnableVertexAttribArray(1);
+    rendering.glVertexAttribPointer(
+      2,
+      2,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(Vertex),
+      (void*) offsetof(Vertex, uv)
+    );
+    rendering.glEnableVertexAttribArray(2);
+  }
 
-  rendering.glBindBuffer(GL_ARRAY_BUFFER, renderer::instancing_matrix_buffer);
-  rendering.glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(vec4), nullptr);
-  rendering.glEnableVertexAttribArray(3);
-  rendering
-    .glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(vec4), (void*) (1 * sizeof(vec4)));
-  rendering.glEnableVertexAttribArray(4);
-  rendering
-    .glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(vec4), (void*) (2 * sizeof(vec4)));
-  rendering.glEnableVertexAttribArray(5);
-  rendering
-    .glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(vec4), (void*) (3 * sizeof(vec4)));
-  rendering.glEnableVertexAttribArray(6);
+  {
+    rendering.glBindBuffer(GL_ARRAY_BUFFER, renderer::instancing_matrix_buffer);
+    // NOTE(szulf): model matrix
+    rendering.glVertexAttribPointer(
+      3,
+      4,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(renderer::InstanceData),
+      (void*) offsetof(renderer::InstanceData, model)
+    );
+    rendering.glEnableVertexAttribArray(3);
+    rendering.glVertexAttribPointer(
+      4,
+      4,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(renderer::InstanceData),
+      (void*) (offsetof(renderer::InstanceData, model) + sizeof(vec4))
+    );
+    rendering.glEnableVertexAttribArray(4);
+    rendering.glVertexAttribPointer(
+      5,
+      4,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(renderer::InstanceData),
+      (void*) (offsetof(renderer::InstanceData, model) + 2 * sizeof(vec4))
+    );
+    rendering.glEnableVertexAttribArray(5);
+    rendering.glVertexAttribPointer(
+      6,
+      4,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(renderer::InstanceData),
+      (void*) (offsetof(renderer::InstanceData, model) + 3 * sizeof(vec4))
+    );
+    rendering.glEnableVertexAttribArray(6);
+    // NOTE(szulf): entity tint
+    rendering.glVertexAttribPointer(
+      7,
+      4,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(renderer::InstanceData),
+      (void*) offsetof(renderer::InstanceData, tint)
+    );
+    rendering.glEnableVertexAttribArray(7);
+  }
 
   rendering.glVertexAttribDivisor(3, 1);
   rendering.glVertexAttribDivisor(4, 1);
   rendering.glVertexAttribDivisor(5, 1);
   rendering.glVertexAttribDivisor(6, 1);
+  rendering.glVertexAttribDivisor(7, 1);
 
   rendering.glBindVertexArray(0);
 

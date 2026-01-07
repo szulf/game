@@ -121,7 +121,6 @@ Array<renderer::Item> renderer_item_entity_bounding_box(const Entity& entity, Al
   return out;
 }
 
-// TODO(szulf): this ring is not right! its off by a little bit
 Array<renderer::Item>
 renderer_item_entity_interactable_radius(const Entity& entity, Allocator& allocator)
 {
@@ -130,7 +129,8 @@ renderer_item_entity_interactable_radius(const Entity& entity, Allocator& alloca
   auto& part = model.parts[0];
   renderer::Item renderer_item = {};
   renderer_item.model = mat4_make();
-  mat4_scale(renderer_item.model, {LIGHT_BULB_RADIUS2, 1.0f, LIGHT_BULB_RADIUS2});
+  auto diameter = 2.0f * sqrt(LIGHT_BULB_RADIUS2);
+  mat4_scale(renderer_item.model, {diameter, 1.0f, diameter});
   mat4_translate(renderer_item.model, entity.position);
   renderer_item.tint = {1.0f, 1.0f, 1.0f};
   renderer_item.mesh = part.mesh;

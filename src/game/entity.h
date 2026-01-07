@@ -26,9 +26,10 @@ const char* interactable_type_to_cstr(InteractableType type);
 InteractableType string_to_interactable_type(const String& str, Error& out_error);
 
 // TODO(szulf): should this not be just read from the gent file?
-#define LIGHT_BULB_RADIUS2 1.0f
-#define LIGHT_BULB_TINT_ON vec3{1.0f, 1.0f, 1.0f}
-#define LIGHT_BULB_TINT_OFF vec3{0.1f, 0.1f, 0.1f}
+#define LIGHT_BULB_RADIUS 0.8f
+#define LIGHT_BULB_RADIUS2 (LIGHT_BULB_RADIUS * LIGHT_BULB_RADIUS)
+#define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
+#define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
 
 struct BoundingBox
 {

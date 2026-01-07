@@ -290,7 +290,7 @@ void game_update(GameMemory& memory, GameInput& input, float dt)
           {
             interactable.light_bulb_on = !interactable.light_bulb_on;
             interactable.tint =
-              interactable.light_bulb_on ? LIGHT_BULB_TINT_ON : LIGHT_BULB_TINT_OFF;
+              interactable.light_bulb_on ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
           }
         }
       }

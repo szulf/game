@@ -43,10 +43,6 @@ void init(Allocator& allocator, Error& out_error)
   Error error = SUCCESS;
   rendering.glEnable(GL_DEPTH_TEST);
 
-  auto error_texture = assets::texture_from_image(image_error_placeholder());
-  auto error_texture_handle = assets::texture_set(error_texture);
-  ASSERT(error_texture_handle == 0, "error loading error texture");
-
   rendering.glGenBuffers(1, &camera_ubo);
   rendering.glBindBuffer(GL_UNIFORM_BUFFER, camera_ubo);
   rendering.glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Camera), nullptr, GL_DYNAMIC_DRAW);
@@ -140,8 +136,8 @@ void init(Allocator& allocator, Error& out_error)
   static_model_init(
     STATIC_MODEL_BOUNDING_BOX,
     assets::SHADER_DEFAULT,
-    array_from(bounding_box_vertices, array_size(bounding_box_vertices)),
-    array_from(bounding_box_indices, array_size(bounding_box_indices)),
+    Array<Vertex>::from(bounding_box_vertices, array_size(bounding_box_vertices)),
+    Array<u32>::from(bounding_box_indices, array_size(bounding_box_indices)),
     assets::PRIMITIVE_TRIANGLES,
     true,
     {0.0f, 1.0f, 0.0f},
@@ -150,8 +146,8 @@ void init(Allocator& allocator, Error& out_error)
   static_model_init(
     STATIC_MODEL_RING,
     assets::SHADER_DEFAULT,
-    array_from(ring_vertices, array_size(ring_vertices)),
-    array_from(ring_indices, array_size(ring_indices)),
+    Array<Vertex>::from(ring_vertices, array_size(ring_vertices)),
+    Array<u32>::from(ring_indices, array_size(ring_indices)),
     assets::PRIMITIVE_LINE_STRIP,
     false,
     {1.0f, 1.0f, 0.0f},
@@ -181,7 +177,7 @@ void draw(const Pass& pass)
   {
     STD140Camera camera = {};
     camera.view_pos = pass.camera.pos;
-    camera.proj_view = camera_projection(pass.camera) * camera_look_at(pass.camera);
+    camera.proj_view = pass.camera.projection() * pass.camera.look_at();
     camera.far_plane = pass.camera.far_plane;
     rendering.glBindBuffer(GL_UNIFORM_BUFFER, camera_ubo);
     rendering.glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera), &camera);
@@ -215,16 +211,16 @@ void draw(const Pass& pass)
       ++batch_idx;
     }
     auto batch_size = batch_idx - item_idx;
-    auto scratch_arena = scratch_arena_get();
-    defer(scratch_arena_release(scratch_arena));
+    auto scratch_arena = ScratchArena::get();
+    defer(scratch_arena.release());
     auto instancing_data =
-      array_make<InstanceData>(ARRAY_TYPE_STATIC, batch_size, scratch_arena.allocator);
+      Array<InstanceData>::make(ArrayType::STATIC, batch_size, scratch_arena.allocator);
     for (usize i = 0; i < batch_size; ++i)
     {
       InstanceData data = {};
       data.model = pass.items[item_idx + i].model;
       data.tint = pass.items[item_idx + i].tint;
-      array_push(instancing_data, data);
+      instancing_data.push(data);
     }
 
     auto& mesh = assets::mesh_get(item.mesh);

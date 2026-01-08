@@ -2,79 +2,66 @@
 
 #  include "gl_functions.h"
 
-#  define LOAD_SDL_GL_PROC(type, name) api->name = (type) SDL_GL_GetProcAddress(#name)
+#  define LOAD_SDL_GL_PROC(type, name) api.name = (type) SDL_GL_GetProcAddress(#name)
 
-void setup_gl_functions(RenderingAPI* api)
+void setup_gl_functions(RenderingAPI& api)
 {
   LOAD_SDL_GL_PROC(PFNGLVIEWPORTPROC, glViewport);
-  api->glGenTextures = (PFNGLGENTEXTURESPROC) SDL_GL_GetProcAddress("glGenTextures");
-  api->glBindTexture = (PFNGLBINDTEXTUREPROC) SDL_GL_GetProcAddress("glBindTexture");
-  api->glTexParameteri = (PFNGLTEXPARAMETERIPROC) SDL_GL_GetProcAddress("glTexParameteri");
-  api->glTexImage2D = (PFNGLTEXIMAGE2DPROC) SDL_GL_GetProcAddress("glTexImage2D");
-  api->glEnable = (PFNGLENABLEPROC) SDL_GL_GetProcAddress("glEnable");
-  api->glDisable = (PFNGLDISABLEPROC) SDL_GL_GetProcAddress("glDisable");
-  api->glClearColor = (PFNGLCLEARCOLORPROC) SDL_GL_GetProcAddress("glClearColor");
-  api->glClear = (PFNGLCLEARPROC) SDL_GL_GetProcAddress("glClear");
-  api->glActiveTexture = (PFNGLACTIVETEXTUREPROC) SDL_GL_GetProcAddress("glActiveTexture");
-  api->glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC) SDL_GL_GetProcAddress("glGenVertexArrays");
-  api->glDrawElements = (PFNGLDRAWELEMENTSPROC) SDL_GL_GetProcAddress("glDrawElements");
-  api->glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC) SDL_GL_GetProcAddress("glGenVertexArrays");
-  api->glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC) SDL_GL_GetProcAddress("glBindVertexArray");
-  api->glGenBuffers = (PFNGLGENBUFFERSPROC) SDL_GL_GetProcAddress("glGenBuffers");
-  api->glBindBuffer = (PFNGLBINDBUFFERPROC) SDL_GL_GetProcAddress("glBindBuffer");
-  api->glBufferData = (PFNGLBUFFERDATAPROC) SDL_GL_GetProcAddress("glBufferData");
-  api->glVertexAttribPointer =
-    (PFNGLVERTEXATTRIBPOINTERPROC) SDL_GL_GetProcAddress("glVertexAttribPointer");
-  api->glEnableVertexAttribArray =
-    (PFNGLENABLEVERTEXATTRIBARRAYPROC) SDL_GL_GetProcAddress("glEnableVertexAttribArray");
-  api->glUniform1i = (PFNGLUNIFORM1IPROC) SDL_GL_GetProcAddress("glUniform1i");
-  api->glGetUniformLocation =
-    (PFNGLGETUNIFORMLOCATIONPROC) SDL_GL_GetProcAddress("glGetUniformLocation");
-  api->glUniform1f = (PFNGLUNIFORM1FPROC) SDL_GL_GetProcAddress("glUniform1f");
-  api->glUniform3f = (PFNGLUNIFORM3FPROC) SDL_GL_GetProcAddress("glUniform3f");
-  api->glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC) SDL_GL_GetProcAddress("glUniformMatrix4fv");
-  api->glUseProgram = (PFNGLUSEPROGRAMPROC) SDL_GL_GetProcAddress("glUseProgram");
-  api->glCreateShader = (PFNGLCREATESHADERPROC) SDL_GL_GetProcAddress("glCreateShader");
-  api->glShaderSource = (PFNGLSHADERSOURCEPROC) SDL_GL_GetProcAddress("glShaderSource");
-  api->glCompileShader = (PFNGLCOMPILESHADERPROC) SDL_GL_GetProcAddress("glCompileShader");
-  api->glGetShaderiv = (PFNGLGETSHADERIVPROC) SDL_GL_GetProcAddress("glGetShaderiv");
-  api->glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC) SDL_GL_GetProcAddress("glGetShaderInfoLog");
-  api->glCreateProgram = (PFNGLCREATEPROGRAMPROC) SDL_GL_GetProcAddress("glCreateProgram");
-  api->glAttachShader = (PFNGLATTACHSHADERPROC) SDL_GL_GetProcAddress("glAttachShader");
-  api->glLinkProgram = (PFNGLLINKPROGRAMPROC) SDL_GL_GetProcAddress("glLinkProgram");
-  api->glDeleteShader = (PFNGLDELETESHADERPROC) SDL_GL_GetProcAddress("glDeleteShader");
-  api->glGetProgramiv = (PFNGLGETPROGRAMIVPROC) SDL_GL_GetProcAddress("glGetProgramiv");
-  api->glGetProgramInfoLog =
-    (PFNGLGETPROGRAMINFOLOGPROC) SDL_GL_GetProcAddress("glGetProgramInfoLog");
-  api->glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC) SDL_GL_GetProcAddress("glGenerateMipmap");
-  api->glDebugMessageCallback =
-    (PFNGLDEBUGMESSAGECALLBACKPROC) SDL_GL_GetProcAddress("glDebugMessageCallback");
-  api->glDeleteVertexArrays =
-    (PFNGLDELETEVERTEXARRAYSPROC) SDL_GL_GetProcAddress("glDeleteVertexArrays");
-  api->glDeleteBuffers = (PFNGLDELETEBUFFERSPROC) SDL_GL_GetProcAddress("glDeleteBuffers");
-  api->glGetError = (PFNGLGETERRORPROC) SDL_GL_GetProcAddress("glGetError");
-  api->glPolygonMode = (PFNGLPOLYGONMODEPROC) SDL_GL_GetProcAddress("glPolygonMode");
-  api->glBindBufferBase = (PFNGLBINDBUFFERBASEPROC) SDL_GL_GetProcAddress("glBindBufferBase");
-  api->glBufferSubData = (PFNGLBUFFERSUBDATAPROC) SDL_GL_GetProcAddress("glBufferSubData");
-  api->glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC) SDL_GL_GetProcAddress("glGenFramebuffers");
-  api->glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC) SDL_GL_GetProcAddress("glBindFramebuffer");
-  api->glFramebufferTexture2D =
-    (PFNGLFRAMEBUFFERTEXTURE2DPROC) SDL_GL_GetProcAddress("glFramebufferTexture2D");
-  api->glDrawBuffer = (PFNGLDRAWBUFFERPROC) SDL_GL_GetProcAddress("glDrawBuffer");
-  api->glReadBuffer = (PFNGLREADBUFFERPROC) SDL_GL_GetProcAddress("glReadBuffer");
-  api->glGetUniformBlockIndex =
-    (PFNGLGETUNIFORMBLOCKINDEXPROC) SDL_GL_GetProcAddress("glGetUniformBlockIndex");
-  api->glUniformBlockBinding =
-    (PFNGLUNIFORMBLOCKBINDINGPROC) SDL_GL_GetProcAddress("glUniformBlockBinding");
-  api->glFinish = (PFNGLFINISHPROC) SDL_GL_GetProcAddress("glFinish");
-  api->glFramebufferTexture =
-    (PFNGLFRAMEBUFFERTEXTUREPROC) SDL_GL_GetProcAddress("glFramebufferTexture");
-  api->glCheckFramebufferStatus =
-    (PFNGLCHECKFRAMEBUFFERSTATUSPROC) SDL_GL_GetProcAddress("glCheckFramebufferStatus");
-  api->glVertexAttribDivisor =
-    (PFNGLVERTEXATTRIBDIVISORPROC) SDL_GL_GetProcAddress("glVertexAttribDivisor");
-  api->glDrawElementsInstanced =
-    (PFNGLDRAWELEMENTSINSTANCEDPROC) SDL_GL_GetProcAddress("glDrawElementsInstanced");
+  LOAD_SDL_GL_PROC(PFNGLGENTEXTURESPROC, glGenTextures);
+  LOAD_SDL_GL_PROC(PFNGLBINDTEXTUREPROC, glBindTexture);
+  LOAD_SDL_GL_PROC(PFNGLTEXPARAMETERIPROC, glTexParameteri);
+  LOAD_SDL_GL_PROC(PFNGLTEXIMAGE2DPROC, glTexImage2D);
+  LOAD_SDL_GL_PROC(PFNGLENABLEPROC, glEnable);
+  LOAD_SDL_GL_PROC(PFNGLDISABLEPROC, glDisable);
+  LOAD_SDL_GL_PROC(PFNGLCLEARCOLORPROC, glClearColor);
+  LOAD_SDL_GL_PROC(PFNGLCLEARPROC, glClear);
+  LOAD_SDL_GL_PROC(PFNGLACTIVETEXTUREPROC, glActiveTexture);
+  LOAD_SDL_GL_PROC(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays);
+  LOAD_SDL_GL_PROC(PFNGLDRAWELEMENTSPROC, glDrawElements);
+  LOAD_SDL_GL_PROC(PFNGLGENVERTEXARRAYSPROC, glGenVertexArrays);
+  LOAD_SDL_GL_PROC(PFNGLBINDVERTEXARRAYPROC, glBindVertexArray);
+  LOAD_SDL_GL_PROC(PFNGLGENBUFFERSPROC, glGenBuffers);
+  LOAD_SDL_GL_PROC(PFNGLBINDBUFFERPROC, glBindBuffer);
+  LOAD_SDL_GL_PROC(PFNGLBUFFERDATAPROC, glBufferData);
+  LOAD_SDL_GL_PROC(PFNGLVERTEXATTRIBPOINTERPROC, glVertexAttribPointer);
+  LOAD_SDL_GL_PROC(PFNGLENABLEVERTEXATTRIBARRAYPROC, glEnableVertexAttribArray);
+  LOAD_SDL_GL_PROC(PFNGLUNIFORM1IPROC, glUniform1i);
+  LOAD_SDL_GL_PROC(PFNGLGETUNIFORMLOCATIONPROC, glGetUniformLocation);
+  LOAD_SDL_GL_PROC(PFNGLUNIFORM1FPROC, glUniform1f);
+  LOAD_SDL_GL_PROC(PFNGLUNIFORM3FPROC, glUniform3f);
+  LOAD_SDL_GL_PROC(PFNGLUNIFORMMATRIX4FVPROC, glUniformMatrix4fv);
+  LOAD_SDL_GL_PROC(PFNGLUSEPROGRAMPROC, glUseProgram);
+  LOAD_SDL_GL_PROC(PFNGLCREATESHADERPROC, glCreateShader);
+  LOAD_SDL_GL_PROC(PFNGLSHADERSOURCEPROC, glShaderSource);
+  LOAD_SDL_GL_PROC(PFNGLCOMPILESHADERPROC, glCompileShader);
+  LOAD_SDL_GL_PROC(PFNGLGETSHADERIVPROC, glGetShaderiv);
+  LOAD_SDL_GL_PROC(PFNGLGETSHADERINFOLOGPROC, glGetShaderInfoLog);
+  LOAD_SDL_GL_PROC(PFNGLCREATEPROGRAMPROC, glCreateProgram);
+  LOAD_SDL_GL_PROC(PFNGLATTACHSHADERPROC, glAttachShader);
+  LOAD_SDL_GL_PROC(PFNGLLINKPROGRAMPROC, glLinkProgram);
+  LOAD_SDL_GL_PROC(PFNGLDELETESHADERPROC, glDeleteShader);
+  LOAD_SDL_GL_PROC(PFNGLGETPROGRAMIVPROC, glGetProgramiv);
+  LOAD_SDL_GL_PROC(PFNGLGETPROGRAMINFOLOGPROC, glGetProgramInfoLog);
+  LOAD_SDL_GL_PROC(PFNGLGENERATEMIPMAPPROC, glGenerateMipmap);
+  LOAD_SDL_GL_PROC(PFNGLDEBUGMESSAGECALLBACKPROC, glDebugMessageCallback);
+  LOAD_SDL_GL_PROC(PFNGLDELETEVERTEXARRAYSPROC, glDeleteVertexArrays);
+  LOAD_SDL_GL_PROC(PFNGLDELETEBUFFERSPROC, glDeleteBuffers);
+  LOAD_SDL_GL_PROC(PFNGLGETERRORPROC, glGetError);
+  LOAD_SDL_GL_PROC(PFNGLPOLYGONMODEPROC, glPolygonMode);
+  LOAD_SDL_GL_PROC(PFNGLBINDBUFFERBASEPROC, glBindBufferBase);
+  LOAD_SDL_GL_PROC(PFNGLBUFFERSUBDATAPROC, glBufferSubData);
+  LOAD_SDL_GL_PROC(PFNGLGENFRAMEBUFFERSPROC, glGenFramebuffers);
+  LOAD_SDL_GL_PROC(PFNGLBINDFRAMEBUFFERPROC, glBindFramebuffer);
+  LOAD_SDL_GL_PROC(PFNGLFRAMEBUFFERTEXTURE2DPROC, glFramebufferTexture2D);
+  LOAD_SDL_GL_PROC(PFNGLDRAWBUFFERPROC, glDrawBuffer);
+  LOAD_SDL_GL_PROC(PFNGLREADBUFFERPROC, glReadBuffer);
+  LOAD_SDL_GL_PROC(PFNGLGETUNIFORMBLOCKINDEXPROC, glGetUniformBlockIndex);
+  LOAD_SDL_GL_PROC(PFNGLUNIFORMBLOCKBINDINGPROC, glUniformBlockBinding);
+  LOAD_SDL_GL_PROC(PFNGLFINISHPROC, glFinish);
+  LOAD_SDL_GL_PROC(PFNGLFRAMEBUFFERTEXTUREPROC, glFramebufferTexture);
+  LOAD_SDL_GL_PROC(PFNGLCHECKFRAMEBUFFERSTATUSPROC, glCheckFramebufferStatus);
+  LOAD_SDL_GL_PROC(PFNGLVERTEXATTRIBDIVISORPROC, glVertexAttribDivisor);
+  LOAD_SDL_GL_PROC(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced);
 }
 
 #  ifdef MODE_DEBUG

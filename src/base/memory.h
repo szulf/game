@@ -12,9 +12,9 @@ void mem_hash_fnv1(usize& out, const void* data, usize n);
 
 #define DEFAULT_ALIGNMENT (2 * sizeof(void*))
 
-enum AllocatorType
+enum class AllocatorType
 {
-  ALLOCATOR_TYPE_ARENA,
+  ARENA,
 };
 
 struct ArenaData
@@ -34,16 +34,16 @@ struct Allocator
   usize size;
   AllocatorTypeData type_data;
   AllocatorType type;
+
+  void* alloc_align(usize bytes, usize alignment);
+  void* alloc(usize bytes);
+  void free(void* ptr);
+  void free_all();
+
+  void* alloc_start_align(usize alignment);
+  void* alloc_start();
+  void alloc_finish(void* end);
 };
-
-void* alloc_align(Allocator& allocator, usize bytes, usize alignment);
-void* alloc(Allocator& allocator, usize bytes);
-void free(Allocator& allocator, void* ptr);
-void free_all(Allocator& allocator);
-
-void* alloc_start_align(Allocator& allocator, usize alignment);
-void* alloc_start(Allocator& allocator);
-void alloc_finish(Allocator& allocator, void* end);
 
 struct ScratchArena
 {
@@ -51,9 +51,9 @@ struct ScratchArena
   usize start_offset;
   bool top_caller;
   usize idx;
-};
 
-ScratchArena scratch_arena_get();
-void scratch_arena_release(ScratchArena& scratch_arena);
+  static ScratchArena get();
+  void release();
+};
 
 #endif

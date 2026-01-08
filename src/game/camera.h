@@ -1,14 +1,14 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-static const vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
+#define CAMERA_WORLD_UP vec3{0.0f, 1.0f, 0.0f}
 #define CAMERA_SPEED 4.0f
 #define CAMERA_SENSITIVITY 0.8f
 
-enum CameraType
+enum class CameraType
 {
-  CAMERA_TYPE_PERSPECTIVE,
-  CAMERA_TYPE_ORTHOGRAPHIC,
+  PERSPECTIVE,
+  ORTHOGRAPHIC,
 };
 
 struct Camera
@@ -30,11 +30,11 @@ struct Camera
 
   u32 viewport_width;
   u32 viewport_height;
+
+  mat4 look_at() const;
+  mat4 projection() const;
+
+  void update_vectors();
 };
-
-void camera_update_vectors(Camera& camera);
-
-mat4 camera_look_at(const Camera& camera);
-mat4 camera_projection(const Camera& camera);
 
 #endif

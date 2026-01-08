@@ -465,14 +465,14 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, u8* data, Allocator& alloc
   u32 data_bytes_per_pixel = byte_depth * channels;
   usize stride = img.width * RGBA8_BYTES_PER_PIXEL;
 
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
-  img.data = (u8*) alloc(allocator, img.width * img.height * RGBA8_BYTES_PER_PIXEL);
+  img.data = (u8*) allocator.alloc(img.width * img.height * RGBA8_BYTES_PER_PIXEL);
 
   // NOTE(szulf): (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
   usize bytes_per_scanline = ((img.width * channels * ctx.bit_depth) + 7) >> 3;
-  u8* filter_buffer = (u8*) alloc(scratch_arena.allocator, bytes_per_scanline * 2);
+  u8* filter_buffer = (u8*) scratch_arena.allocator.alloc(bytes_per_scanline * 2);
 
   usize width = img.width;
   if (ctx.bit_depth < 8)
@@ -596,13 +596,13 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, u8* data, Allocator& alloc
   }
 }
 
-Image image_from_file(const char* path, Allocator& allocator, Error& err)
+Image Image::from_file(const char* path, Allocator& allocator, Error& err)
 {
   Image img = {};
   Error error = SUCCESS;
   ImageContext ctx = {};
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
   usize file_size;
   void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, err, error, img);
@@ -666,7 +666,7 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
         u8 filter = image_get8(ctx);
         ERROR_ASSERT(filter == 0, err, IMAGE_ERROR_INVALID_IHDR, img);
         ctx.interlaced = image_get8(ctx);
-        combined_idat_chunks = (u8*) alloc_start(scratch_arena.allocator);
+        combined_idat_chunks = (u8*) scratch_arena.allocator.alloc_start();
         combined_idat_chunks_size_limit =
           scratch_arena.allocator.size - scratch_arena.allocator.type_data.arena.offset;
       }
@@ -698,7 +698,7 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
       {
         ERROR_ASSERT(!first, err, IMAGE_ERROR_IHDR_NOT_FIRST, img);
         ERROR_ASSERT(combined_idat_chunks, err, IMAGE_ERROR_INVALID_IDAT, img);
-        alloc_finish(scratch_arena.allocator, combined_idat_chunks + combined_idat_chunks_size);
+        scratch_arena.allocator.alloc_finish(combined_idat_chunks + combined_idat_chunks_size);
 
         // NOTE(szulf): zlib parsing
         ImageZlibContext zlib_ctx = {};
@@ -716,7 +716,7 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
         }
 
         // NOTE(szulf): data
-        zlib_ctx.out = zlib_ctx.out_start = (u8*) alloc_start(scratch_arena.allocator);
+        zlib_ctx.out = zlib_ctx.out_start = (u8*) scratch_arena.allocator.alloc_start();
         zlib_ctx.bits_buffered = 0;
         zlib_ctx.bits_buffer = 0;
         bool final = false;
@@ -800,7 +800,7 @@ Image image_from_file(const char* path, Allocator& allocator, Error& err)
           }
         }
         while (!final);
-        alloc_finish(scratch_arena.allocator, zlib_ctx.out);
+        scratch_arena.allocator.alloc_finish(zlib_ctx.out);
 
         if (!ctx.interlaced)
         {
@@ -841,7 +841,7 @@ static u8 error_placeholder_data[] = {
   // clang-format on
 };
 
-Image image_error_placeholder()
+Image Image::error_placeholder()
 {
   Image out = {};
   out.width = 2;

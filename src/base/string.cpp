@@ -14,13 +14,7 @@ usize cstr_len(const char* cstr)
   return (usize) (s - cstr);
 }
 
-force_inline char String::operator[](usize idx) const
-{
-  ASSERT(idx < size, "string index out of bounds");
-  return data[idx];
-}
-
-String string_make(const char* cstr)
+String String::make(const char* cstr)
 {
   String s;
   s.data = cstr;
@@ -28,7 +22,7 @@ String string_make(const char* cstr)
   return s;
 }
 
-String string_make_len(const char* cstr, usize len)
+String String::make(const char* cstr, usize len)
 {
   String s;
   s.data = cstr;
@@ -36,12 +30,18 @@ String string_make_len(const char* cstr, usize len)
   return s;
 }
 
-usize string_count_chars(const String& str, char c)
+force_inline char String::operator[](usize idx) const
+{
+  ASSERT(idx < size, "string index out of bounds");
+  return data[idx];
+}
+
+usize String::count_chars(char c) const
 {
   usize count = 0;
-  for (usize i = 0; i < str.size; ++i)
+  for (usize i = 0; i < size; ++i)
   {
-    if (str[i] == c)
+    if (data[i] == c)
     {
       ++count;
     }
@@ -49,12 +49,12 @@ usize string_count_chars(const String& str, char c)
   return count;
 }
 
-usize string_find_char(const String& str, char c, usize start_idx)
+usize String::find_char(char c, usize start_idx) const
 {
-  ASSERT(start_idx < str.size, "start_idx is out of bounds");
-  for (usize i = start_idx; i < str.size; ++i)
+  ASSERT(start_idx < size, "start_idx is out of bounds");
+  for (usize i = start_idx; i < size; ++i)
   {
-    if (str[i] == c)
+    if (data[i] == c)
     {
       return i;
     }
@@ -62,88 +62,105 @@ usize string_find_char(const String& str, char c, usize start_idx)
   return (usize) -1;
 }
 
-bool string_starts_with_cstr(const String& str, const char* cstr)
+bool String::starts_with(const char* cstr) const
 {
   auto cstr_size = cstr_len(cstr);
-  return str.size >= cstr_size && mem_equal(str.data, cstr, cstr_size);
+  return size >= cstr_size && mem_equal(data, cstr, cstr_size);
 }
 
-bool string_ends_with_cstr(const String& str, const char* cstr)
+bool String::ends_with(const char* cstr) const
 {
   auto cstr_size = cstr_len(cstr);
-  return str.size >= cstr_size && mem_equal(str.data + str.size - cstr_size, cstr, cstr_size);
+  return size >= cstr_size && mem_equal(data + size - cstr_size, cstr, cstr_size);
 }
 
-String string_append_cstr(const String& str, const char* cstr, Allocator& allocator)
+String String::append(const char* cstr, Allocator& allocator) const
 {
   usize cstr_size = cstr_len(cstr);
-  char* out = (char*) alloc(allocator, str.size + cstr_size);
-  mem_copy(out, str.data, str.size);
-  mem_copy(out + str.size, cstr, cstr_size);
-  return string_make_len(out, str.size + cstr_size);
+  char* out = (char*) allocator.alloc(size + cstr_size);
+  mem_copy(out, data, size);
+  mem_copy(out + size, cstr, cstr_size);
+  return make(out, size + cstr_size);
 }
 
-String string_append_str(const String& s1, const String& s2, Allocator& allocator)
+String String::append(const String& str, Allocator& allocator) const
 {
-  char* out = (char*) alloc(allocator, s1.size + s2.size);
-  mem_copy(out, s1.data, s1.size);
-  mem_copy(out + s1.size, s2.data, s2.size);
-  return string_make_len(out, s1.size + s2.size);
+  char* out = (char*) allocator.alloc(size + str.size);
+  mem_copy(out, data, size);
+  mem_copy(out + size, str.data, str.size);
+  return make(out, size + str.size);
 }
 
-String string_prepend_cstr(const String& str, const char* cstr, Allocator& allocator)
+String String::prepend(const char* cstr, Allocator& allocator) const
 {
   usize cstr_size = cstr_len(cstr);
-  char* out = (char*) alloc(allocator, str.size + cstr_size);
+  char* out = (char*) allocator.alloc(size + cstr_size);
   mem_copy(out, cstr, cstr_size);
-  mem_copy(out + cstr_size, str.data, str.size);
-  return string_make_len(out, str.size + cstr_size);
+  mem_copy(out + cstr_size, data, size);
+  return make(out, size + cstr_size);
 }
 
-const char* string_to_cstr(const String& str, Allocator& allocator)
+const char* String::to_cstr(Allocator& allocator) const
 {
-  char* out = (char*) alloc(allocator, str.size + 1);
-  mem_copy(out, str.data, str.size);
-  out[str.size] = 0;
+  char* out = (char*) allocator.alloc(size + 1);
+  mem_copy(out, data, size);
+  out[size] = 0;
   return out;
 }
 
-Array<String> string_split(const String& str, char c, Allocator& allocator)
+Array<String> String::split(char c, Allocator& allocator) const
 {
-  usize splits_count = string_count_chars(str, c) + 1;
-  auto splits = array_make<String>(ARRAY_TYPE_STATIC, splits_count, allocator);
+  usize splits_count = count_chars(c) + 1;
+  auto splits = Array<String>::make(ArrayType::STATIC, splits_count, allocator);
 
   usize start_idx = 0;
-  for (usize found_idx = string_find_char(str, c, start_idx); found_idx != (usize) -1;
-       found_idx = string_find_char(str, c, start_idx))
+  for (usize found_idx = find_char(c, start_idx); found_idx != (usize) -1;
+       found_idx = find_char(c, start_idx))
   {
-    auto s = string_make_len(str.data + start_idx, found_idx - start_idx);
+    auto s = make(data + start_idx, found_idx - start_idx);
     start_idx = found_idx + 1;
     if (s.size != 0)
     {
-      array_push(splits, s);
+      splits.push(s);
     }
-    if (start_idx >= str.size)
+    if (start_idx >= size)
     {
       break;
     }
   }
 
-  if (str.size > start_idx)
+  if (size > start_idx)
   {
-    auto s = string_make_len(str.data + start_idx, str.size - start_idx);
-    array_push(splits, s);
+    auto s = make(data + start_idx, size - start_idx);
+    splits.push(s);
   }
 
   return splits;
 }
 
-String string_copy(const String& str, Allocator& allocator)
+String String::copy(Allocator& allocator) const
 {
-  return string_make_len(string_to_cstr(str, allocator), str.size);
+  return make(to_cstr(allocator), size);
 }
 
-f32 string_parse_f32(const String& str, Error& out_error)
+String String::trim_whitespace() const
+{
+  const char* s = data;
+  while (is_whitespace(*s))
+  {
+    ++s;
+  }
+
+  usize end_size = size;
+  while (is_whitespace(data[end_size - 1]))
+  {
+    --end_size;
+  }
+
+  return make(s, size - (size - end_size) - (usize) (s - data));
+}
+
+f32 parse_f32(const String& str, Error& out_error)
 {
   const char* s = str.data;
 
@@ -194,7 +211,7 @@ f32 string_parse_f32(const String& str, Error& out_error)
   return sign * (val + frac);
 }
 
-u32 string_parse_u32(const String& str, Error& out_error)
+u32 parse_u32(const String& str, Error& out_error)
 {
   const char* s = str.data;
 
@@ -211,23 +228,6 @@ u32 string_parse_u32(const String& str, Error& out_error)
   }
 
   return val;
-}
-
-String string_trim_whitespace(const String& str)
-{
-  const char* s = str.data;
-  while (is_whitespace(*s))
-  {
-    ++s;
-  }
-
-  usize end_size = str.size;
-  while (is_whitespace(str[end_size - 1]))
-  {
-    --end_size;
-  }
-
-  return string_make_len(s, str.size - (str.size - end_size) - (usize) (s - str.data));
 }
 
 force_inline bool operator==(const String& s1, const String& s2)

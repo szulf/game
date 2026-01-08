@@ -8,12 +8,12 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
   Error error = SUCCESS;
   Entity entity = {};
 
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
-  auto p = string_make(path);
+  auto p = String::make(path);
   ERROR_ASSERT(
-    string_starts_with_cstr(p, "data/") && string_ends_with_cstr(p, ".gent"),
+    p.starts_with("data/") && p.ends_with(".gent"),
     out_error,
     ENTITY_READ_ERROR_INVALID_PATH,
     entity
@@ -21,14 +21,14 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
   p.data += sizeof("data/") - 1;
   p.size -= sizeof("data/") - 1;
   p.size -= sizeof(".gent") - 1;
-  entity.name = string_copy(p, allocator);
+  entity.name = p.copy(allocator);
 
   usize file_size;
   void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
-  auto file = string_make_len((const char*) file_ptr, file_size);
+  auto file = String::make((const char*) file_ptr, file_size);
 
-  auto lines = string_split(file, '\n', scratch_arena.allocator);
+  auto lines = file.split('\n', scratch_arena.allocator);
   for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
   {
     auto& line = lines[line_idx];
@@ -37,11 +37,11 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
       continue;
     }
 
-    auto parts = string_split(line, ':', scratch_arena.allocator);
+    auto parts = line.split(':', scratch_arena.allocator);
     ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, entity);
 
-    auto key = string_trim_whitespace(parts[0]);
-    auto value = string_trim_whitespace(parts[1]);
+    auto key = parts[0].trim_whitespace();
+    auto value = parts[1].trim_whitespace();
 
     if (key == "position")
     {
@@ -51,9 +51,9 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     else if (key == "model")
     {
       entity.has_model = true;
-      entity.model_path = string_copy(value, allocator);
+      entity.model_path = value.copy(allocator);
       entity.model = assets::model_from_file(
-        string_to_cstr(entity.model_path, scratch_arena.allocator),
+        entity.model_path.to_cstr(scratch_arena.allocator),
         allocator,
         error
       );
@@ -67,7 +67,7 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     else if (key == "interactable_type")
     {
       ASSERT(
-        entity.type == ENTITY_TYPE_INTERACTABLE,
+        entity.type == EntityType::INTERACTABLE,
         "cannot set interactable_type on non interactable entity"
       );
       entity.interactable_type = string_to_interactable_type(value, error);
@@ -88,7 +88,7 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
           ENTITY_READ_ERROR_DYNAMIC_BOUNDING_BOX_NO_MODEL,
           entity
         );
-        entity.bounding_box = bounding_box_from_model(entity.model);
+        entity.bounding_box = BoundingBox::from_model(entity.model);
         entity.is_bounding_box_from_model = true;
       }
       else
@@ -104,8 +104,8 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     else if (key == "light_bulb_color")
     {
       ASSERT(
-        entity.type == ENTITY_TYPE_INTERACTABLE &&
-          entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB,
+        entity.type == EntityType::INTERACTABLE &&
+          entity.interactable_type == InteractableType::LIGHT_BULB,
         "cannot set light_bulb_color on non light_bulb entity"
       );
       entity.light_bulb_color = get_vec3(value, error);
@@ -127,14 +127,14 @@ void entity_to_file(const Entity& entity, Error& out_error)
   char buf[1024];
   int written = 0;
 
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
   written += fmt(
     buf + written,
     sizeof(buf) - (usize) written,
     "model : %s\n",
-    string_to_cstr(entity.model_path, scratch_arena.allocator)
+    entity.model_path.to_cstr(scratch_arena.allocator)
   );
 
   written += fmt(
@@ -144,7 +144,7 @@ void entity_to_file(const Entity& entity, Error& out_error)
     entity_type_to_cstr(entity.type)
   );
 
-  if (entity.type == ENTITY_TYPE_INTERACTABLE)
+  if (entity.type == EntityType::INTERACTABLE)
   {
     written += fmt(
       buf + written,
@@ -169,14 +169,11 @@ void entity_to_file(const Entity& entity, Error& out_error)
     );
   }
 
-  String str = string_make_len(buf, (usize) written);
+  String str = String::make(buf, (usize) written);
 
-  auto path = string_append_cstr(
-    string_prepend_cstr(entity.name, "data/", scratch_arena.allocator),
-    ".gent",
-    scratch_arena.allocator
-  );
-  platform::write_entire_file(string_to_cstr(path, scratch_arena.allocator), str, error);
+  auto path =
+    entity.name.prepend("data/", scratch_arena.allocator).append(".gent", scratch_arena.allocator);
+  platform::write_entire_file(path.to_cstr(scratch_arena.allocator), str, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
 }
 

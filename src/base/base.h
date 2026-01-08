@@ -192,17 +192,17 @@ usize hash(const T& value);
 #include "string.h"
 #include "vertex.h"
 
-enum Key
+enum class Key
 {
-  KEY_W = 1,
-  KEY_S,
-  KEY_A,
-  KEY_D,
-  KEY_E,
-  KEY_F1,
-  KEY_F2,
-  KEY_SPACE,
-  KEY_LSHIFT,
+  W = 1,
+  S,
+  A,
+  D,
+  E,
+  F1,
+  F2,
+  SPACE,
+  LSHIFT,
 };
 
 const char* key_to_cstr(Key key);

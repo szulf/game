@@ -27,7 +27,7 @@ void* read_entire_file(const char* path, Allocator& allocator, usize& out_size, 
 
   auto file_size_success = SDL_GetStorageFileSize(storage, path, &out_size);
   ERROR_ASSERT(file_size_success, out_error, GLOBAL_ERROR_FILE_READING, nullptr);
-  void* file = alloc(allocator, out_size);
+  void* file = allocator.alloc(out_size);
   auto read_file_success = SDL_ReadStorageFile(storage, path, file, out_size);
   ERROR_ASSERT(read_file_success, out_error, GLOBAL_ERROR_FILE_READING, nullptr);
   return file;
@@ -44,15 +44,11 @@ void write_entire_file(const char* path, const String& string, Error& out_error)
     SDL_Delay(1);
   }
 
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
-  auto write_file_success = SDL_WriteStorageFile(
-    storage,
-    path,
-    string_to_cstr(string, scratch_arena.allocator),
-    string.size
-  );
+  auto write_file_success =
+    SDL_WriteStorageFile(storage, path, string.to_cstr(scratch_arena.allocator), string.size);
   ERROR_ASSERT(write_file_success, out_error, GLOBAL_ERROR_FILE_WRITING, );
 }
 
@@ -62,23 +58,23 @@ static SDL_Keycode sdlk_from_key(Key key)
 {
   switch (key)
   {
-    case KEY_W:
+    case Key::W:
       return SDLK_W;
-    case KEY_S:
+    case Key::S:
       return SDLK_S;
-    case KEY_A:
+    case Key::A:
       return SDLK_A;
-    case KEY_D:
+    case Key::D:
       return SDLK_D;
-    case KEY_E:
+    case Key::E:
       return SDLK_E;
-    case KEY_SPACE:
+    case Key::SPACE:
       return SDLK_SPACE;
-    case KEY_LSHIFT:
+    case Key::LSHIFT:
       return SDLK_LSHIFT;
-    case KEY_F1:
+    case Key::F1:
       return SDLK_F1;
-    case KEY_F2:
+    case Key::F2:
       return SDLK_F2;
   }
   return (SDL_Keycode) -1;
@@ -88,8 +84,8 @@ i32 main()
 {
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
-  GameSpec spec = {};
-  game_spec(spec);
+  game::Spec spec = {};
+  game::spec(spec);
   g_width = spec.width;
   g_width = spec.height;
 
@@ -115,7 +111,7 @@ i32 main()
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
   ASSERT(gl_context, "failed to create sdl3 opengl context");
   RenderingAPI gl_api;
-  setup_gl_functions(&gl_api);
+  setup_gl_functions(gl_api);
 
 #ifdef GAME_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
@@ -123,7 +119,7 @@ i32 main()
   glDebugMessageCallback(debug_callback, nullptr);
 #endif
 
-  GameMemory memory = {};
+  game::Memory memory = {};
   memory.size = spec.memory_size;
   memory.memory = malloc(memory.size);
   mem_set(memory.memory, 0, memory.size);
@@ -131,10 +127,10 @@ i32 main()
   SDL_PathInfo game_lib_info = {};
   SDL_GetPathInfo("./build/libgame.so", &game_lib_info);
 
-  GameInput input = {};
+  game::Input input = {};
 
-  game_apis(gl_api);
-  game_init(memory, input);
+  game::apis(gl_api);
+  game::init(memory, input);
 
   while (true)
   {
@@ -209,9 +205,9 @@ i32 main()
         [SDL_GetScancodeFromKey(sdlk_from_key(input.toggle_display_bounding_boxes.key), nullptr)];
     }
 
-    game_update(memory, input, 1.0f / (f32) FPS);
+    game::update(memory, input, 1.0f / (f32) FPS);
 
-    game_render(memory);
+    game::render(memory);
     SDL_GL_SwapWindow(window);
 
     auto end_ms = SDL_GetTicks();

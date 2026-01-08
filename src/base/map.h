@@ -14,17 +14,15 @@ struct Map
 {
   usize cap;
   MapEntry<K, V>* entries;
-};
 
-template <typename K, typename V>
-Map<K, V> map_make(usize cap, Allocator& allocator);
-template <typename K, typename V>
-const V* map_get(const Map<K, V>& map, const K& key);
-template <typename K, typename V>
-const MapEntry<K, V>* map_entry(const Map<K, V>& map, const K& key);
-template <typename K, typename V>
-void map_set(Map<K, V>& map, const K& key, const V& value);
-template <typename K, typename V>
-bool map_contains(const Map<K, V>& map, const K& key);
+  static Map<K, V> make(usize cap, Allocator& allocator);
+
+  const V* operator[](const K& key) const;
+  V* operator[](const K& key);
+
+  const MapEntry<K, V>* entry(const K& key) const;
+  void set(const K& key, const V& value);
+  bool contains(const K& key) const;
+};
 
 #endif

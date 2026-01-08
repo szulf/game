@@ -4,11 +4,11 @@ const char* entity_type_to_cstr(EntityType type)
 {
   switch (type)
   {
-    case ENTITY_TYPE_PLAYER:
+    case EntityType::PLAYER:
       return "PLAYER";
-    case ENTITY_TYPE_STATIC_COLLISION:
+    case EntityType::STATIC_COLLISION:
       return "STATIC_COLLISION";
-    case ENTITY_TYPE_INTERACTABLE:
+    case EntityType::INTERACTABLE:
       return "INTERACTABLE";
   }
 }
@@ -17,15 +17,15 @@ EntityType string_to_entity_type(const String& str, Error& out_error)
 {
   if (str == "PLAYER")
   {
-    return ENTITY_TYPE_PLAYER;
+    return EntityType::PLAYER;
   }
   else if (str == "STATIC_COLLISION")
   {
-    return ENTITY_TYPE_STATIC_COLLISION;
+    return EntityType::STATIC_COLLISION;
   }
   else if (str == "INTERACTABLE")
   {
-    return ENTITY_TYPE_INTERACTABLE;
+    return EntityType::INTERACTABLE;
   }
 
   out_error = GLOBAL_ERROR_INVALID_DATA;
@@ -36,7 +36,7 @@ const char* interactable_type_to_cstr(InteractableType type)
 {
   switch (type)
   {
-    case INTERACTABLE_TYPE_LIGHT_BULB:
+    case InteractableType::LIGHT_BULB:
       return "LIGHT_BULB";
   }
 }
@@ -45,14 +45,14 @@ InteractableType string_to_interactable_type(const String& str, Error& out_error
 {
   if (str == "LIGHT_BULB")
   {
-    return INTERACTABLE_TYPE_LIGHT_BULB;
+    return InteractableType::LIGHT_BULB;
   }
 
   out_error = GLOBAL_ERROR_INVALID_DATA;
   return (InteractableType) 0;
 }
 
-BoundingBox bounding_box_from_model(assets::ModelHandle handle)
+BoundingBox BoundingBox::from_model(assets::ModelHandle handle)
 {
   vec3 max_corner = {F32_MIN, 0, F32_MIN};
   vec3 min_corner = {F32_MAX, 0, F32_MAX};
@@ -89,18 +89,18 @@ bool entities_collide(const Entity& ea, const Entity& eb)
 Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allocator)
 {
   auto& model = assets::model_get(entity.model);
-  auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, model.parts.size, allocator);
+  auto out = Array<renderer::Item>::make(ArrayType::STATIC, model.parts.size, allocator);
   for (usize part_idx = 0; part_idx < model.parts.size; ++part_idx)
   {
     auto& part = model.parts[part_idx];
     renderer::Item renderer_item = {};
-    renderer_item.model = mat4_make();
+    renderer_item.model = mat4::make();
     renderer_item.tint = entity.tint;
-    mat4_translate(renderer_item.model, entity.position);
-    mat4_rotate(renderer_item.model, entity.rotation, {0.0f, 1.0f, 0.0f});
+    translate(renderer_item.model, entity.position);
+    rotate(renderer_item.model, entity.rotation, {0.0f, 1.0f, 0.0f});
     renderer_item.mesh = part.mesh;
     renderer_item.material = part.material;
-    array_push(out, renderer_item);
+    out.push(renderer_item);
   }
   return out;
 }
@@ -108,16 +108,16 @@ Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allo
 Array<renderer::Item> renderer_item_entity_bounding_box(const Entity& entity, Allocator& allocator)
 {
   auto& model = assets::model_get(renderer::STATIC_MODEL_BOUNDING_BOX);
-  auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, 1, allocator);
+  auto out = Array<renderer::Item>::make(ArrayType::STATIC, 1, allocator);
   auto& part = model.parts[0];
   renderer::Item renderer_item = {};
-  renderer_item.model = mat4_make();
-  mat4_scale(renderer_item.model, {entity.bounding_box.width, 1.0f, entity.bounding_box.depth});
-  mat4_translate(renderer_item.model, entity.position);
+  renderer_item.model = mat4::make();
+  scale(renderer_item.model, {entity.bounding_box.width, 1.0f, entity.bounding_box.depth});
+  translate(renderer_item.model, entity.position);
   renderer_item.tint = {1.0f, 1.0f, 1.0f};
   renderer_item.mesh = part.mesh;
   renderer_item.material = part.material;
-  array_push(out, renderer_item);
+  out.push(renderer_item);
   return out;
 }
 
@@ -125,16 +125,16 @@ Array<renderer::Item>
 renderer_item_entity_interactable_radius(const Entity& entity, Allocator& allocator)
 {
   auto& model = assets::model_get(renderer::STATIC_MODEL_RING);
-  auto out = array_make<renderer::Item>(ARRAY_TYPE_STATIC, 1, allocator);
+  auto out = Array<renderer::Item>::make(ArrayType::STATIC, 1, allocator);
   auto& part = model.parts[0];
   renderer::Item renderer_item = {};
-  renderer_item.model = mat4_make();
+  renderer_item.model = mat4::make();
   auto diameter = 2.0f * sqrt(LIGHT_BULB_RADIUS2);
-  mat4_scale(renderer_item.model, {diameter, 1.0f, diameter});
-  mat4_translate(renderer_item.model, entity.position);
+  scale(renderer_item.model, {diameter, 1.0f, diameter});
+  translate(renderer_item.model, entity.position);
   renderer_item.tint = {1.0f, 1.0f, 1.0f};
   renderer_item.mesh = part.mesh;
   renderer_item.material = part.material;
-  array_push(out, renderer_item);
+  out.push(renderer_item);
   return out;
 }

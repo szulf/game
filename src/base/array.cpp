@@ -17,126 +17,126 @@ const force_inline T& Array<T>::operator[](I idx) const
 }
 
 template <typename T>
-Array<T> array_make(ArrayType type, usize cap, Allocator& allocator)
+Array<T> Array<T>::make(ArrayType type, usize cap, Allocator& allocator)
 {
   ASSERT(cap != 0, "cannot create an empty list");
   Array<T> out = {};
   out.type = type;
   out.allocator = &allocator;
   out.capacity = cap + 1;
-  out.data = (T*) alloc(allocator, sizeof(T) * out.capacity);
+  out.data = (T*) allocator.alloc(sizeof(T) * out.capacity);
   return out;
 }
 
 template <typename T>
-Array<T> array_from_dynamic_arena(Allocator& allocator)
+Array<T> Array<T>::from_dynamic_arena(Allocator& allocator)
 {
   Array<T> out = {};
-  out.allocator = allocator;
-  out.data = (T*) alloc_start(allocator);
-  out.type = ARRAY_TYPE_DYNAMIC_ARENA;
+  out.allocator = &allocator;
+  out.data = (T*) allocator.alloc_start();
+  out.type = ArrayType::DYNAMIC_ARENA;
   out.dynamic_active = true;
   return out;
 }
 
 template <typename T>
-Array<T> array_from(T* data, usize size)
+Array<T> Array<T>::from(T* data, usize size)
 {
   Array<T> out = {};
   out.data = data;
   out.capacity = out.size = size;
-  out.type = ARRAY_TYPE_STATIC;
+  out.type = ArrayType::STATIC;
   return out;
 }
 
 template <typename T>
-void array_push(Array<T>& arr, const T& value)
+void Array<T>::push(const T& value)
 {
-  switch (arr.type)
+  switch (type)
   {
-    case ARRAY_TYPE_DYNAMIC:
+    case ArrayType::DYNAMIC:
     {
-      if (arr.size + 1 >= arr.capacity)
+      if (size + 1 >= capacity)
       {
-        arr.capacity *= 2;
-        arr.capacity += 1;
-        void* new_data = alloc(*arr.allocator, sizeof(T) * arr.capacity);
-        mem_copy(new_data, arr.data, arr.size * sizeof(T));
-        free(*arr.allocator, arr.data);
-        arr.data = (T*) new_data;
+        capacity *= 2;
+        capacity += 1;
+        void* new_data = allocator->alloc(sizeof(T) * capacity);
+        mem_copy(new_data, data, size * sizeof(T));
+        allocator->free(data);
+        data = (T*) new_data;
       }
     }
     break;
-    case ARRAY_TYPE_DYNAMIC_ARENA:
+    case ArrayType::DYNAMIC_ARENA:
     {
-      ASSERT(arr.dynamic_active, "'dynamic' arena has to be active to push");
+      ASSERT(dynamic_active, "'dynamic' arena has to be active to push");
       ASSERT(
-        arr.allocator->type == ALLOCATOR_TYPE_ARENA &&
-          (arr.size + 1) * sizeof(T) + arr.allocator->type_data.arena.offset < arr.allocator->size,
+        allocator->type == AllocatorType::ARENA &&
+          (size + 1) * sizeof(T) + allocator->type_data.arena.offset < allocator->size,
         "out of memory in 'dynamic' allocation"
       );
-      ++arr.capacity;
+      ++capacity;
     }
     break;
-    case ARRAY_TYPE_STATIC:
+    case ArrayType::STATIC:
     {
-      ASSERT(arr.size + 1 < arr.capacity, "exceeded size of static array");
+      ASSERT(size + 1 < capacity, "exceeded size of static array");
     }
     break;
   }
-  arr.data[arr.size++] = value;
+  data[size++] = value;
 }
 
 template <typename T>
-void array_push_range(Array<T>& arr, const T* begin, const T* end)
+void Array<T>::push_range(const T* begin, const T* end)
 {
   ASSERT(end > begin, "end has to be further than begin");
   usize diff = (usize) (end - begin);
-  switch (arr.type)
+  switch (type)
   {
-    case ARRAY_TYPE_DYNAMIC:
+    case ArrayType::DYNAMIC:
     {
-      if (arr.size + diff >= arr.capacity)
+      if (size + diff >= capacity)
       {
-        while (arr.size + diff >= arr.capacity)
+        while (size + diff >= capacity)
         {
-          arr.capacity *= 2;
+          capacity *= 2;
         }
-        void* new_data = alloc(arr.allocator, sizeof(T) * arr.capacity);
-        mem_copy(new_data, arr.data, arr.size * sizeof(T));
-        free(arr.allocator, arr.data);
-        arr.data = (T*) (new_data);
+        void* new_data = allocator->alloc(sizeof(T) * capacity);
+        mem_copy(new_data, data, size * sizeof(T));
+        free(*allocator, data);
+        data = (T*) (new_data);
       }
     }
     break;
-    case ARRAY_TYPE_DYNAMIC_ARENA:
+    case ArrayType::DYNAMIC_ARENA:
     {
-      ASSERT(arr.dynamic_active, "'dynamic' arena has to be active to push");
+      ASSERT(dynamic_active, "'dynamic' arena has to be active to push");
       ASSERT(
-        arr.allocator.type == ALLOCATOR_TYPE_ARENA &&
-          (arr.size + 1) * sizeof(T) + arr.allocator.type_data.arena.offset < arr.allocator.size,
+        allocator->type == AllocatorType::ARENA &&
+          (size + 1) * sizeof(T) + allocator->type_data.arena.offset < allocator->size,
         "out of memory in 'dynamic' allocation"
       );
-      arr.capacity += diff;
+      capacity += diff;
     }
     break;
-    case ARRAY_TYPE_STATIC:
+    case ArrayType::STATIC:
     {
-      ASSERT(arr.size + diff < arr.capacity, "exceeded size of static array");
+      ASSERT(size + diff < capacity, "exceeded size of static array");
     }
     break;
   }
-  mem_copy(arr.data + arr.size, begin, diff * sizeof(T));
-  arr.size += diff;
+  mem_copy(data + size, begin, diff * sizeof(T));
+  size += diff;
 }
 
 template <typename T>
-void array_dynamic_finish(Array<T>& arr)
+void Array<T>::dynamic_finish()
 {
-  ASSERT(arr.type == ARRAY_TYPE_DYNAMIC_ARENA, "list has to be a 'dynamic' arena list");
-  ASSERT(arr.dynamic_active, "'dynamic' arena has to be active to finish");
-  alloc_finish(arr.allocator, arr.data + arr.size);
-  arr.dynamic_active = false;
+  ASSERT(type == ArrayType::DYNAMIC_ARENA, "list has to be a 'dynamic' arena list");
+  ASSERT(dynamic_active, "'dynamic' arena has to be active to finish");
+  alloc_finish(*allocator, data + size);
+  dynamic_active = false;
 }
 
 template <typename T>
@@ -174,7 +174,7 @@ static void quicksort_(Array<T>& arr, i64 lo, i64 hi, bool (*sort_fn)(const T&, 
 }
 
 template <typename T>
-void array_sort(Array<T>& arr, bool (*sort_fn)(const T&, const T&))
+void Array<T>::sort(bool (*sort_fn)(const T&, const T&))
 {
-  return quicksort_(arr, 0, (i64) (arr.size - 1), sort_fn);
+  return quicksort_(*this, 0, (i64) (size - 1), sort_fn);
 }

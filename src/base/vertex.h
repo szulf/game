@@ -10,6 +10,7 @@ struct Vertex
 
 template <>
 usize hash(const Vertex& vertex);
+
 bool operator==(const Vertex& va, const Vertex& vb);
 
 #endif

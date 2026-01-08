@@ -1,51 +1,51 @@
 #include "camera.h"
 
-void camera_update_vectors(Camera& camera)
+mat4 Camera::look_at() const
 {
-  camera.front.x = cos(radians(camera.yaw)) * cos(radians(camera.pitch));
-  camera.front.y = sin(radians(camera.pitch));
-  camera.front.z = sin(radians(camera.yaw)) * cos(radians(camera.pitch));
-  camera.front = normalize(camera.front);
-
-  camera.right = normalize(cross(camera.front, CAMERA_WORLD_UP));
-  camera.up = normalize(cross(camera.right, camera.front));
+  return mat4::look_at(pos, pos + front, up);
 }
 
-mat4 camera_look_at(const Camera& camera)
+mat4 Camera::projection() const
 {
-  return mat4_look_at(camera.pos, camera.pos + camera.front, camera.up);
-}
-
-mat4 camera_projection(const Camera& camera)
-{
-  switch (camera.type)
+  switch (type)
   {
-    case CAMERA_TYPE_PERSPECTIVE:
+    case CameraType::PERSPECTIVE:
     {
-      return mat4_perspective(
-        camera.fov,
-        (f32) camera.viewport_width / (f32) camera.viewport_height,
-        camera.near_plane,
-        camera.far_plane,
-        camera.using_vertical_fov
+      return mat4::perspective(
+        fov,
+        (f32) viewport_width / (f32) viewport_height,
+        near_plane,
+        far_plane,
+        using_vertical_fov
       );
     }
     break;
-    case CAMERA_TYPE_ORTHOGRAPHIC:
+    case CameraType::ORTHOGRAPHIC:
     {
       static const f32 world_height = 10.0f;
       static const f32 half_height = world_height * 0.5f;
-      f32 half_width = half_height * ((f32) camera.viewport_width / (f32) camera.viewport_height);
+      f32 half_width = half_height * ((f32) viewport_width / (f32) viewport_height);
 
-      return mat4_orthographic(
+      return mat4::orthographic(
         half_width,
         -half_width,
         half_height,
         -half_height,
-        camera.near_plane,
-        camera.far_plane
+        near_plane,
+        far_plane
       );
     }
     break;
   }
+}
+
+void Camera::update_vectors()
+{
+  front.x = cos(radians(yaw)) * cos(radians(pitch));
+  front.y = sin(radians(pitch));
+  front.z = sin(radians(yaw)) * cos(radians(pitch));
+  front = normalize(front);
+
+  right = normalize(cross(front, CAMERA_WORLD_UP));
+  up = normalize(cross(right, front));
 }

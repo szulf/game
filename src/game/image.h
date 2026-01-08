@@ -25,9 +25,9 @@ struct Image
   u8* data;
   usize width;
   usize height;
-};
 
-Image image_from_file(const char* path, Allocator& allocator, Error& out_error);
-Image image_error_placeholder();
+  static Image from_file(const char* path, Allocator& allocator, Error& out_error);
+  static Image error_placeholder();
+};
 
 #endif

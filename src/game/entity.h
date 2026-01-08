@@ -7,19 +7,19 @@
 #define PLAYER_MOVEMENT_SPEED 8.0f
 #define PLAYER_ROTATE_SPEED (3 * F32_PI)
 
-enum EntityType
+enum class EntityType
 {
-  ENTITY_TYPE_PLAYER,
-  ENTITY_TYPE_STATIC_COLLISION,
-  ENTITY_TYPE_INTERACTABLE,
+  PLAYER,
+  STATIC_COLLISION,
+  INTERACTABLE,
 };
 
 const char* entity_type_to_cstr(EntityType type);
 EntityType string_to_entity_type(const String& str, Error& out_error);
 
-enum InteractableType
+enum class InteractableType
 {
-  INTERACTABLE_TYPE_LIGHT_BULB,
+  LIGHT_BULB,
 };
 
 const char* interactable_type_to_cstr(InteractableType type);
@@ -30,14 +30,16 @@ InteractableType string_to_interactable_type(const String& str, Error& out_error
 #define LIGHT_BULB_RADIUS2 (LIGHT_BULB_RADIUS * LIGHT_BULB_RADIUS)
 #define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
 #define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
+// TODO(szulf): this should different be per light, so definitely get from .gent
+#define LIGHT_BULB_HEIGHT_OFFSET -0.25f
 
 struct BoundingBox
 {
   f32 width;
   f32 depth;
-};
 
-BoundingBox bounding_box_from_model(assets::ModelHandle model);
+  static BoundingBox from_model(assets::ModelHandle model);
+};
 
 struct Entity
 {
@@ -60,10 +62,6 @@ struct Entity
   // NOTE(szulf): light_bulb
   bool light_bulb_on;
   vec3 light_bulb_color;
-  // TODO(szulf): get this from the gent file?
-  float light_bulb_height_offset = -0.25f;
-  vec3 light_bulb_on_tint;
-  vec3 light_bulb_off_tint;
 
   // NOTE(szulf): used for read/write
   String name;

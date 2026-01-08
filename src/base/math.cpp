@@ -276,7 +276,7 @@ bool operator!=(const vec3& va, const vec3& vb)
   return !(va == vb);
 }
 
-mat4 mat4_make()
+mat4 mat4::make()
 {
   mat4 out = {};
   out.data[0][0] = 1.0f;
@@ -286,7 +286,7 @@ mat4 mat4_make()
   return out;
 }
 
-mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
+mat4 mat4::perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
 {
   f32 tangent = tan(fov / 2.0f);
   f32 top;
@@ -311,7 +311,7 @@ mat4 mat4_perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
   return out;
 }
 
-mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
+mat4 mat4::orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
 {
   mat4 out = {};
   out.data[0][0] = 2 / (right - left);
@@ -324,7 +324,7 @@ mat4 mat4_orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 f
   return out;
 }
 
-mat4 mat4_look_at(const vec3& pos, const vec3& target, const vec3& up)
+mat4 mat4::look_at(const vec3& pos, const vec3& target, const vec3& up)
 {
   vec3 f = normalize(target - pos);
   vec3 s = normalize(cross(f, up));
@@ -355,7 +355,23 @@ mat4 mat4_look_at(const vec3& pos, const vec3& target, const vec3& up)
   return out;
 }
 
-void mat4_scale(mat4& mat, f32 scale)
+mat4 operator*(const mat4& ma, const mat4& mb)
+{
+  mat4 out = {};
+  for (usize i = 0; i < 4; ++i)
+  {
+    for (usize j = 0; j < 4; ++j)
+    {
+      for (usize k = 0; k < 4; ++k)
+      {
+        out.data[j][i] += ma.data[k][i] * mb.data[j][k];
+      }
+    }
+  }
+  return out;
+}
+
+void scale(mat4& mat, f32 scale)
 {
   mat.data[0][0] *= scale;
   mat.data[1][0] *= scale;
@@ -370,7 +386,7 @@ void mat4_scale(mat4& mat, f32 scale)
   mat.data[2][2] *= scale;
 }
 
-void mat4_scale(mat4& mat, const vec3& scale)
+void scale(mat4& mat, const vec3& scale)
 {
   mat.data[0][0] *= scale.x;
   mat.data[0][1] *= scale.x;
@@ -385,14 +401,14 @@ void mat4_scale(mat4& mat, const vec3& scale)
   mat.data[2][2] *= scale.z;
 }
 
-void mat4_translate(mat4& mat, const vec3& position)
+void translate(mat4& mat, const vec3& position)
 {
   mat.data[3][0] = position.x;
   mat.data[3][1] = position.y;
   mat.data[3][2] = position.z;
 }
 
-void mat4_rotate(mat4& mat, f32 rad, const vec3& axis)
+void rotate(mat4& mat, f32 rad, const vec3& axis)
 {
   f32 s = sin(rad);
   f32 c = cos(rad);
@@ -410,20 +426,4 @@ void mat4_rotate(mat4& mat, f32 rad, const vec3& axis)
   mat.data[2][0] = (u.x * u.z) * t - u.y * s;
   mat.data[2][1] = (u.y * u.z) * t + u.x * s;
   mat.data[2][2] = (u.z * u.z) * t + c;
-}
-
-mat4 operator*(const mat4& ma, const mat4& mb)
-{
-  mat4 out = {};
-  for (usize i = 0; i < 4; ++i)
-  {
-    for (usize j = 0; j < 4; ++j)
-    {
-      for (usize k = 0; k < 4; ++k)
-      {
-        out.data[j][i] += ma.data[k][i] * mb.data[j][k];
-      }
-    }
-  }
-  return out;
 }

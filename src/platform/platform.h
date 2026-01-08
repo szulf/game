@@ -20,13 +20,16 @@ u32 get_height();
 
 }
 
-struct GameMemory
+namespace game
+{
+
+struct Memory
 {
   void* memory;
   usize size;
 };
 
-struct GameSpec
+struct Spec
 {
   const char* name;
   u32 width;
@@ -41,7 +44,7 @@ struct KeyState
   bool ended_down;
 };
 
-struct GameInput
+struct Input
 {
   union
   {
@@ -66,11 +69,13 @@ struct GameInput
   vec2 mouse_pos_last;
 };
 
-void game_spec(GameSpec& spec);
-void game_apis(RenderingAPI& rendering_api);
-void game_init(GameMemory& memory, GameInput& input);
-void game_update(GameMemory& memory, GameInput& input, float dt);
-void game_render(GameMemory& memory);
-void game_event(GameMemory& memory);
+void spec(Spec& spec);
+void apis(RenderingAPI& rendering_api);
+void init(Memory& memory, Input& input);
+void update(Memory& memory, Input& input, float dt);
+void render(Memory& memory);
+void event(Memory& memory);
+
+}
 
 #endif

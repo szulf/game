@@ -4,7 +4,7 @@
 #include <GL/glcorearb.h>
 #include <GL/glx.h>
 
-extern "C" struct RenderingAPI
+struct RenderingAPI
 {
   PFNGLVIEWPORTPROC glViewport;
   PFNGLGENTEXTURESPROC glGenTextures;
@@ -62,7 +62,7 @@ extern "C" struct RenderingAPI
   PFNGLVERTEXATTRIBDIVISORPROC glVertexAttribDivisor;
   PFNGLDRAWELEMENTSINSTANCEDPROC glDrawElementsInstanced;
 };
-void setup_gl_functions(RenderingAPI* api);
+void setup_gl_functions(RenderingAPI& api);
 
 #ifdef MODE_DEBUG
 void APIENTRY debug_callback(

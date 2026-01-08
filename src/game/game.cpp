@@ -28,7 +28,10 @@ struct Main
   Array<Entity> entities;
 };
 
-void game_spec(GameSpec& spec)
+namespace game
+{
+
+void spec(Spec& spec)
 {
   spec.name = "game";
   spec.width = 1280;
@@ -36,19 +39,19 @@ void game_spec(GameSpec& spec)
   spec.memory_size = GB(2);
 }
 
-void game_apis(RenderingAPI& rendering_api)
+void apis(RenderingAPI& rendering_api)
 {
   rendering = rendering_api;
 }
 
-void game_init(GameMemory& memory, GameInput& input)
+void init(Memory& memory, Input& input)
 {
   Error error = SUCCESS;
   auto& main = *(Main*) memory.memory;
 
   main.allocator.size = GB(1);
   main.allocator.buffer = (u8*) memory.memory + sizeof(Main);
-  main.allocator.type = ALLOCATOR_TYPE_ARENA;
+  main.allocator.type = AllocatorType::ARENA;
 
   main.assets_manager = assets::manager_make(main.allocator);
   assets::manager_instance = &main.assets_manager;
@@ -62,7 +65,7 @@ void game_init(GameMemory& memory, GameInput& input)
   ASSERT(error == SUCCESS, "couldnt read keymap file");
 
   main.gameplay_camera = {};
-  main.gameplay_camera.type = CAMERA_TYPE_PERSPECTIVE;
+  main.gameplay_camera.type = CameraType::PERSPECTIVE;
   main.gameplay_camera.pos = {0.0f, 12.0f, 8.0f};
   main.gameplay_camera.yaw = -90.0f;
   main.gameplay_camera.pitch = -55.0f;
@@ -72,14 +75,14 @@ void game_init(GameMemory& memory, GameInput& input)
   main.gameplay_camera.viewport_height = platform::get_height();
   main.gameplay_camera.using_vertical_fov = true;
   main.gameplay_camera.fov = 0.25f * F32_PI;
-  camera_update_vectors(main.gameplay_camera);
+  main.gameplay_camera.update_vectors();
 
   main.debug_camera = main.gameplay_camera;
 
   main.main_camera = &main.gameplay_camera;
 }
 
-void game_update(GameMemory& memory, GameInput& input, float dt)
+void update(Memory& memory, Input& input, float dt)
 {
   auto& main = *(Main*) memory.memory;
 
@@ -88,11 +91,10 @@ void game_update(GameMemory& memory, GameInput& input, float dt)
 
   Entity* player = nullptr;
   // TODO(szulf): basically acts as a bad frame arena, fix that
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
-  Array<Entity*> collidables = array_make<Entity*>(ARRAY_TYPE_DYNAMIC, 30, scratch_arena.allocator);
-  Array<Entity*> interactables =
-    array_make<Entity*>(ARRAY_TYPE_DYNAMIC, 30, scratch_arena.allocator);
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+  auto collidables = Array<Entity*>::make(ArrayType::DYNAMIC, 30, scratch_arena.allocator);
+  auto interactables = Array<Entity*>::make(ArrayType::DYNAMIC, 30, scratch_arena.allocator);
   // TODO(szulf): i dont like that i have to iterate over the whole entities list to find anything
   // but maybe a more complex solution is not worth implementing as of now
   // could probably just cache this somehow, and check if new entities have not been added
@@ -101,20 +103,20 @@ void game_update(GameMemory& memory, GameInput& input, float dt)
     auto& entity = main.entities[i];
     switch (entity.type)
     {
-      case ENTITY_TYPE_PLAYER:
+      case EntityType::PLAYER:
       {
         player = &entity;
       }
       break;
-      case ENTITY_TYPE_STATIC_COLLISION:
+      case EntityType::STATIC_COLLISION:
       {
-        array_push(collidables, &entity);
+        collidables.push(&entity);
       }
       break;
-      case ENTITY_TYPE_INTERACTABLE:
+      case EntityType::INTERACTABLE:
       {
-        array_push(collidables, &entity);
-        array_push(interactables, &entity);
+        collidables.push(&entity);
+        interactables.push(&entity);
       }
       break;
     }
@@ -166,7 +168,7 @@ void game_update(GameMemory& memory, GameInput& input, float dt)
     main.debug_camera.yaw += x_offset;
     main.debug_camera.pitch -= y_offset;
     main.debug_camera.pitch = clamp(main.debug_camera.pitch, -89.0f, 89.0f);
-    camera_update_vectors(main.debug_camera);
+    main.debug_camera.update_vectors();
 
     // TODO(szulf): i dont know if there is a better way to get this vector,
     // when i just use main.camera.front the movement gets slower the higher/lower you look
@@ -286,7 +288,7 @@ void game_update(GameMemory& memory, GameInput& input, float dt)
           // or just remove the whole thing
           f32 orientation = atan2(-vec.x, vec.z);
           if (dist < LIGHT_BULB_RADIUS2 && abs(player->rotation - orientation) < 1.0f &&
-              interactable.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
+              interactable.interactable_type == InteractableType::LIGHT_BULB)
           {
             interactable.light_bulb_on = !interactable.light_bulb_on;
             interactable.tint =
@@ -298,13 +300,13 @@ void game_update(GameMemory& memory, GameInput& input, float dt)
   }
 }
 
-void game_render(GameMemory& memory)
+void render(Memory& memory)
 {
   auto& main = *(Main*) memory.memory;
 
   // TODO(szulf): switch this to the frame arena
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
   // NOTE(szulf): shadow map pass
   f32 shadow_map_camera_far_plane;
@@ -314,8 +316,8 @@ void game_render(GameMemory& memory)
     for (usize i = 0; i < main.entities.size; ++i)
     {
       auto& entity = main.entities[i];
-      if (entity.type == ENTITY_TYPE_INTERACTABLE &&
-          entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB)
+      if (entity.type == EntityType::INTERACTABLE &&
+          entity.interactable_type == InteractableType::LIGHT_BULB)
       {
         pos = entity.position;
       }
@@ -331,17 +333,17 @@ void game_render(GameMemory& memory)
     shadow_map_camera.fov = F32_PI / 2.0f;
     shadow_map_camera.viewport_width = SHADOW_CUBEMAP_WIDTH;
     shadow_map_camera.viewport_height = SHADOW_CUBEMAP_HEIGHT;
-    camera_update_vectors(shadow_map_camera);
+    shadow_map_camera.update_vectors();
 
-    mat4 light_proj_mat = camera_projection(shadow_map_camera);
+    mat4 light_proj_mat = shadow_map_camera.projection();
     // TODO(szulf): there is a weird artifact on the player because of the upside down rendering
     mat4 transforms[6] = {
-      light_proj_mat * mat4_look_at(pos, pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * mat4_look_at(pos, pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
-      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * mat4_look_at(pos, pos + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4::look_at(pos, pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4::look_at(pos, pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
+      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
+      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
     };
 
     auto pass = renderer::pass_make(scratch_arena.allocator);
@@ -357,7 +359,7 @@ void game_render(GameMemory& memory)
     for (usize i = 0; i < main.entities.size; ++i)
     {
       auto& entity = main.entities[i];
-      if (entity.has_model && entity.type == ENTITY_TYPE_PLAYER)
+      if (entity.has_model && entity.type == EntityType::PLAYER)
       {
         auto items = renderer_item_entity(entity, scratch_arena.allocator);
         renderer::queue_items(pass, items);
@@ -385,14 +387,14 @@ void game_render(GameMemory& memory)
         auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
         renderer::queue_items(pass, renderer_items);
       }
-      if (entity.type == ENTITY_TYPE_INTERACTABLE &&
-          entity.interactable_type == INTERACTABLE_TYPE_LIGHT_BULB && entity.light_bulb_on)
+      if (entity.type == EntityType::INTERACTABLE &&
+          entity.interactable_type == InteractableType::LIGHT_BULB && entity.light_bulb_on)
       {
         renderer::Light light = {};
         light.pos = entity.position;
-        light.pos.y += entity.light_bulb_height_offset;
+        light.pos.y += LIGHT_BULB_HEIGHT_OFFSET;
         light.color = entity.light_bulb_color;
-        array_push(pass.lights, light);
+        pass.lights.push(light);
       }
       if (main.display_bounding_boxes)
       {
@@ -400,7 +402,7 @@ void game_render(GameMemory& memory)
           renderer_item_entity_bounding_box(entity, scratch_arena.allocator);
         renderer::queue_items(pass, bounding_box_items);
 
-        if (entity.type == ENTITY_TYPE_INTERACTABLE)
+        if (entity.type == EntityType::INTERACTABLE)
         {
           auto radius_items =
             renderer_item_entity_interactable_radius(entity, scratch_arena.allocator);
@@ -412,4 +414,6 @@ void game_render(GameMemory& memory)
     renderer::sort_items(pass);
     renderer::draw(pass);
   }
+}
+
 }

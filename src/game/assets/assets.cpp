@@ -12,20 +12,20 @@ namespace assets
 Manager manager_make(Allocator& allocator)
 {
   Manager out = {};
-  out.shaders = array_make<u32>(ARRAY_TYPE_STATIC, 100, allocator);
-  out.textures = array_make<Texture>(ARRAY_TYPE_STATIC, 100, allocator);
-  out.materials = array_make<Material>(ARRAY_TYPE_STATIC, 100, allocator);
-  out.meshes = array_make<Mesh>(ARRAY_TYPE_STATIC, 100, allocator);
-  out.models = array_make<Model>(ARRAY_TYPE_STATIC, 100, allocator);
+  out.shaders = Array<u32>::make(ArrayType::STATIC, 100, allocator);
+  out.textures = Array<Texture>::make(ArrayType::STATIC, 100, allocator);
+  out.materials = Array<Material>::make(ArrayType::STATIC, 100, allocator);
+  out.meshes = Array<Mesh>::make(ArrayType::STATIC, 100, allocator);
+  out.models = Array<Model>::make(ArrayType::STATIC, 100, allocator);
 
-  out.texture_handles = map_make<String, TextureHandle>(100, allocator);
-  out.material_handles = map_make<String, MaterialHandle>(100, allocator);
+  out.texture_handles = Map<String, TextureHandle>::make(100, allocator);
+  out.material_handles = Map<String, MaterialHandle>::make(100, allocator);
   return out;
 }
 
 ShaderHandle shader_set(Shader shader)
 {
-  array_push(manager_instance->shaders, shader);
+  manager_instance->shaders.push(shader);
   return (ShaderHandle) (manager_instance->shaders.size - 1);
 }
 
@@ -41,7 +41,7 @@ Texture& texture_get(TextureHandle handle)
 
 TextureHandle texture_set(const Texture& texture)
 {
-  array_push(manager_instance->textures, texture);
+  manager_instance->textures.push(texture);
   return manager_instance->textures.size - 1;
 }
 
@@ -52,7 +52,7 @@ Mesh& mesh_get(MeshHandle handle)
 
 MeshHandle mesh_set(const Mesh& mesh)
 {
-  array_push(manager_instance->meshes, mesh);
+  manager_instance->meshes.push(mesh);
   return manager_instance->meshes.size;
 }
 
@@ -63,7 +63,7 @@ Model& model_get(ModelHandle handle)
 
 ModelHandle model_set(const Model& model)
 {
-  array_push(manager_instance->models, model);
+  manager_instance->models.push(model);
   return manager_instance->models.size;
 }
 
@@ -74,38 +74,38 @@ Material& material_get(MaterialHandle handle)
 
 MaterialHandle material_set(const Material& material)
 {
-  array_push(manager_instance->materials, material);
+  manager_instance->materials.push(material);
   return manager_instance->materials.size;
 }
 
 MaterialHandle material_handle_get(const String& key)
 {
-  return *map_get(manager_instance->material_handles, key);
+  return *manager_instance->material_handles[key];
 }
 
 void material_handle_set(const String& key, MaterialHandle handle)
 {
-  map_set(manager_instance->material_handles, key, handle);
+  manager_instance->material_handles.set(key, handle);
 }
 
 bool material_handle_exists(const String& key)
 {
-  return map_contains(manager_instance->material_handles, key);
+  return manager_instance->material_handles.contains(key);
 }
 
 TextureHandle texture_handle_get(const String& key)
 {
-  return *map_get(manager_instance->texture_handles, key);
+  return *manager_instance->texture_handles[key];
 }
 
 void texture_handle_set(const String& key, TextureHandle handle)
 {
-  map_set(manager_instance->texture_handles, key, handle);
+  manager_instance->texture_handles.set(key, handle);
 }
 
 bool texture_handle_exists(const String& key)
 {
-  return map_contains(manager_instance->texture_handles, key);
+  return manager_instance->texture_handles.contains(key);
 }
 
 struct ObjContext
@@ -126,8 +126,8 @@ struct ObjContext
 static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allocator)
 {
   Error error = SUCCESS;
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
   if (texture_handle_exists(path))
   {
@@ -135,13 +135,13 @@ static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allo
   }
 
   auto img =
-    image_from_file(string_to_cstr(path, scratch_arena.allocator), scratch_arena.allocator, error);
+    Image::from_file(path.to_cstr(scratch_arena.allocator), scratch_arena.allocator, error);
   if (error != SUCCESS)
   {
-    img = image_error_placeholder();
+    img = Image::error_placeholder();
   }
   auto texture = texture_from_image(img);
-  auto allocated_path = string_copy(path, allocator);
+  auto allocated_path = path.copy(allocator);
   auto texture_handle = texture_set(texture);
   texture_handle_set(allocated_path, texture_handle);
   return texture_handle;
@@ -150,11 +150,11 @@ static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allo
 static vec3 obj_color_from_parts(const Array<String>& parts, Error& out_error)
 {
   Error error = SUCCESS;
-  f32 r = string_parse_f32(parts[1], error);
+  f32 r = parse_f32(parts[1], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  f32 g = string_parse_f32(parts[2], error);
+  f32 g = parse_f32(parts[2], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  f32 b = string_parse_f32(parts[3], error);
+  f32 b = parse_f32(parts[3], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   return {r, g, b};
 }
@@ -175,13 +175,13 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
 {
   Error error = SUCCESS;
   bool parsing = false;
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
   usize file_size;
   void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
-  auto file = string_make_len((const char*) file_ptr, file_size);
-  auto lines = string_split(file, '\n', scratch_arena.allocator);
+  auto file = String::make((const char*) file_ptr, file_size);
+  auto lines = file.split('\n', scratch_arena.allocator);
 
   String material_name = {};
   Material material = {};
@@ -190,7 +190,7 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
   for (usize i = 0; i < lines.size; ++i)
   {
     const auto& line = lines[i];
-    auto parts = string_split(line, ' ', scratch_arena.allocator);
+    auto parts = line.split(' ', scratch_arena.allocator);
 
     if (parts[0] == "newmtl")
     {
@@ -205,14 +205,14 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
         }
 
         parsing = true;
-        material_name = string_copy(parts[1], allocator);
+        material_name = parts[1].copy(allocator);
       }
     }
     else if (parts[0] == "map_Kd")
     {
       ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
-      auto base_file_path = string_make("assets/");
-      auto texture_file_path = string_append_str(base_file_path, parts[1], scratch_arena.allocator);
+      auto base_file_path = String::make("assets/");
+      auto texture_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
 
       auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator);
       material.diffuse_map = texture_handle;
@@ -234,7 +234,7 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
     else if (parts[0] == "Ns")
     {
       ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
-      f32 exponent = string_parse_f32(parts[1], error);
+      f32 exponent = parse_f32(parts[1], error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.specular_exponent = exponent;
     }
@@ -248,13 +248,13 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
 static void obj_parse_vertex(f32* points, usize points_size, const String& line, Error& out_error)
 {
   Error error = SUCCESS;
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
-  const auto parts = string_split(line, ' ', scratch_arena.allocator);
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+  const auto parts = line.split(' ', scratch_arena.allocator);
   ASSERT(parts.size - 1 <= points_size, "out of bounds on points");
   for (usize i = 1; i < parts.size; ++i)
   {
-    auto num = string_parse_f32(parts[i], error);
+    auto num = parse_f32(parts[i], error);
     if (error != SUCCESS)
     {
       out_error = error;
@@ -288,12 +288,12 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
     }
   }
   ctx.idx = idx_old;
-  auto mesh_indices = array_make<u32>(ARRAY_TYPE_STATIC, indices_amount, *ctx.allocator);
-  auto mesh_vertices = array_make<Vertex>(ARRAY_TYPE_DYNAMIC, 1, *ctx.allocator);
+  auto mesh_indices = Array<u32>::make(ArrayType::STATIC, indices_amount, *ctx.allocator);
+  auto mesh_vertices = Array<Vertex>::make(ArrayType::DYNAMIC, 1, *ctx.allocator);
   MaterialHandle material_handle = {};
 
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
 
   parsing = true;
   usize back_idx = 0;
@@ -304,15 +304,15 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
     {
       case 'f':
       {
-        const auto splits = string_split(line, ' ', scratch_arena.allocator);
+        const auto splits = line.split(' ', scratch_arena.allocator);
         for (usize i = 1; i < splits.size; ++i)
         {
           u32 indices[3];
           usize idx = 0;
-          const auto parts = string_split(splits[i], '/', scratch_arena.allocator);
+          const auto parts = splits[i].split('/', scratch_arena.allocator);
           for (usize part_idx = 0; part_idx < parts.size; ++part_idx)
           {
-            auto num = string_parse_u32(parts[part_idx], error);
+            auto num = parse_u32(parts[part_idx], error);
             if (error != SUCCESS)
             {
               out_error = error;
@@ -325,15 +325,15 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           vertex.position = ctx.positions[indices[0]];
           vertex.uv = ctx.uvs[indices[1]];
           vertex.normal = ctx.normals[indices[2]];
-          if (map_contains(ctx.vertex_map, vertex))
+          if (ctx.vertex_map.contains(vertex))
           {
-            array_push(mesh_indices, *(u32*) map_get(ctx.vertex_map, vertex));
+            mesh_indices.push(*(u32*) ctx.vertex_map[vertex]);
           }
           else
           {
-            map_set(ctx.vertex_map, vertex, mesh_vertices.size);
-            array_push(mesh_indices, (u32) mesh_vertices.size);
-            array_push(mesh_vertices, vertex);
+            ctx.vertex_map.set(vertex, mesh_vertices.size);
+            mesh_indices.push((u32) mesh_vertices.size);
+            mesh_vertices.push(vertex);
           }
         }
       }
@@ -353,7 +353,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
               return {};
             }
             vec3 vec = {points[0], points[1], points[2]};
-            array_push(ctx.positions, vec);
+            ctx.positions.push(vec);
           }
           break;
 
@@ -366,7 +366,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
               out_error = error;
               return {};
             }
-            array_push(ctx.normals, {points[0], points[1], points[2]});
+            ctx.normals.push({points[0], points[1], points[2]});
           }
           break;
 
@@ -379,7 +379,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
               out_error = error;
               return {};
             }
-            array_push(ctx.uvs, {points[0], points[1]});
+            ctx.uvs.push({points[0], points[1]});
           }
           break;
         }
@@ -388,7 +388,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
 
       case 'u':
       {
-        const auto parts = string_split(line, ' ', scratch_arena.allocator);
+        const auto parts = line.split(' ', scratch_arena.allocator);
         if (parts.size != 2 || parts[0] != "usemtl")
         {
           out_error = GLOBAL_ERROR_INVALID_DATA;
@@ -397,7 +397,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
         ASSERT(
           material_handle_exists(parts[1]),
           "material with name %s does not exist",
-          string_to_cstr(parts[1], scratch_arena.allocator)
+          parts[1].to_cstr(scratch_arena.allocator)
         );
         material_handle = material_handle_get(parts[1]);
       }
@@ -426,13 +426,13 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
   Model model = {};
   ObjContext ctx = {};
   ctx.allocator = &allocator;
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
   usize file_size;
   void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  auto file = string_make_len((const char*) file_ptr, file_size);
-  ctx.lines = string_split(file, '\n', scratch_arena.allocator);
+  auto file = String::make((const char*) file_ptr, file_size);
+  ctx.lines = file.split('\n', scratch_arena.allocator);
 
   usize vertex_count = 0;
   for (usize i = 0; i < ctx.lines.size; ++i)
@@ -481,11 +481,11 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
     }
   }
 
-  model.parts = array_make<MeshMaterialPair>(ARRAY_TYPE_STATIC, ctx.mesh_count, allocator);
-  ctx.positions = array_make<vec3>(ARRAY_TYPE_STATIC, ctx.pos_count, scratch_arena.allocator);
-  ctx.normals = array_make<vec3>(ARRAY_TYPE_STATIC, ctx.normal_count, scratch_arena.allocator);
-  ctx.uvs = array_make<vec2>(ARRAY_TYPE_STATIC, ctx.uv_count, scratch_arena.allocator);
-  ctx.vertex_map = map_make<Vertex, usize>(vertex_count * 3, scratch_arena.allocator);
+  model.parts = Array<MeshMaterialPair>::make(ArrayType::STATIC, ctx.mesh_count, allocator);
+  ctx.positions = Array<vec3>::make(ArrayType::STATIC, ctx.pos_count, scratch_arena.allocator);
+  ctx.normals = Array<vec3>::make(ArrayType::STATIC, ctx.normal_count, scratch_arena.allocator);
+  ctx.uvs = Array<vec2>::make(ArrayType::STATIC, ctx.uv_count, scratch_arena.allocator);
+  ctx.vertex_map = Map<Vertex, usize>::make(vertex_count * 3, scratch_arena.allocator);
 
   for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx)
   {
@@ -502,26 +502,22 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
           out_error = error;
           return {};
         }
-        array_push(model.parts, mesh_material_pair);
+        model.parts.push(mesh_material_pair);
         --ctx.idx;
       }
       break;
 
       case 'm':
       {
-        auto parts = string_split(line, ' ', scratch_arena.allocator);
+        auto parts = line.split(' ', scratch_arena.allocator);
         if (parts.size != 2 || parts[0] != "mtllib")
         {
           out_error = GLOBAL_ERROR_INVALID_DATA;
           return {};
         }
-        auto base_file_path = string_make("assets/");
-        auto mtl_file_path = string_append_str(base_file_path, parts[1], scratch_arena.allocator);
-        obj_parse_mtl_file(
-          string_to_cstr(mtl_file_path, scratch_arena.allocator),
-          allocator,
-          error
-        );
+        auto base_file_path = String::make("assets/");
+        auto mtl_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
+        obj_parse_mtl_file(mtl_file_path.to_cstr(scratch_arena.allocator), allocator, error);
         if (error != SUCCESS)
         {
           out_error = error;
@@ -548,8 +544,8 @@ enum ShaderType
 static u32 shader_load(const char* path, ShaderType shader_type, Error& out_error)
 {
   Error error = SUCCESS;
-  auto scratch_arena = scratch_arena_get();
-  defer(scratch_arena_release(scratch_arena));
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
   usize file_size;
   void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
@@ -574,8 +570,8 @@ static u32 shader_load(const char* path, ShaderType shader_type, Error& out_erro
     break;
   }
 
-  auto shader_str = string_make_len((const char*) file, file_size);
-  auto shader_src = string_to_cstr(shader_str, scratch_arena.allocator);
+  auto shader_str = String::make((const char*) file, file_size);
+  auto shader_src = shader_str.to_cstr(scratch_arena.allocator);
   rendering.glShaderSource(shader, 1, &shader_src, nullptr);
   rendering.glCompileShader(shader);
   GLint compiled;

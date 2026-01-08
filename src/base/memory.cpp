@@ -45,19 +45,19 @@ static usize calc_padding(void* ptr, usize alignment)
   return 0;
 }
 
-void* alloc_align(Allocator& allocator, usize bytes, usize alignment)
+void* Allocator::alloc_align(usize bytes, usize alignment)
 {
-  switch (allocator.type)
+  switch (type)
   {
-    case ALLOCATOR_TYPE_ARENA:
+    case AllocatorType::ARENA:
     {
-      auto& data = allocator.type_data.arena;
+      auto& data = type_data.arena;
       ASSERT(!data.dynamic_active, "cannot use allocator when a 'dynamic' allocation is active");
       ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
 
-      u8* curr_addr = (u8*) allocator.buffer + data.offset;
+      u8* curr_addr = (u8*) buffer + data.offset;
       usize padding = calc_padding(curr_addr, alignment);
-      ASSERT(data.offset + padding + bytes <= allocator.size, "out of memory");
+      ASSERT(data.offset + padding + bytes <= size, "out of memory");
       data.offset += padding;
       void* next_addr = curr_addr + padding;
       data.offset += bytes;
@@ -70,19 +70,19 @@ void* alloc_align(Allocator& allocator, usize bytes, usize alignment)
   return nullptr;
 }
 
-void* alloc(Allocator& allocator, usize bytes)
+void* Allocator::alloc(usize bytes)
 {
-  return alloc_align(allocator, bytes, DEFAULT_ALIGNMENT);
+  return alloc_align(bytes, DEFAULT_ALIGNMENT);
 }
 
-void free(Allocator& allocator, void* ptr)
+void Allocator::free(void* ptr)
 {
-  switch (allocator.type)
+  switch (type)
   {
-    case ALLOCATOR_TYPE_ARENA:
+    case AllocatorType::ARENA:
     {
       ASSERT(
-        !allocator.type_data.arena.dynamic_active,
+        !type_data.arena.dynamic_active,
         "cannot use an allocator when a 'dynamic' allocation is active"
       );
     }
@@ -91,53 +91,47 @@ void free(Allocator& allocator, void* ptr)
   unused(ptr);
 }
 
-void free_all(Allocator& allocator)
+void Allocator::free_all()
 {
-  switch (allocator.type)
+  switch (type)
   {
-    case ALLOCATOR_TYPE_ARENA:
+    case AllocatorType::ARENA:
     {
-      allocator.type_data.arena.offset = 0;
+      type_data.arena.offset = 0;
     }
     break;
   }
 }
 
-void* alloc_start_align(Allocator& allocator, usize alignment)
+void* Allocator::alloc_start_align(usize alignment)
 {
   ASSERT(is_power_of_two(alignment), "alignment has to be a power of two");
-  ASSERT(
-    allocator.type == ALLOCATOR_TYPE_ARENA,
-    "cannot do 'dynamic' allocations with non arena allocators"
-  );
+  ASSERT(type == AllocatorType::ARENA, "cannot do 'dynamic' allocations with non arena allocators");
 
-  auto& data = allocator.type_data.arena;
+  auto& data = type_data.arena;
   ASSERT(!data.dynamic_active, "cannot use allocator when a 'dynamic' allocation is active");
 
   data.dynamic_active = true;
-  u8* curr_addr = (u8*) allocator.buffer + data.offset;
+  u8* curr_addr = (u8*) buffer + data.offset;
   usize padding = calc_padding(curr_addr, alignment);
   data.offset += padding;
 
   return curr_addr + padding;
 }
 
-void* alloc_start(Allocator& allocator)
+void* Allocator::alloc_start()
 {
-  return alloc_start_align(allocator, DEFAULT_ALIGNMENT);
+  return alloc_start_align(DEFAULT_ALIGNMENT);
 }
 
-void alloc_finish(Allocator& allocator, void* end)
+void Allocator::alloc_finish(void* end)
 {
-  ASSERT(
-    allocator.type == ALLOCATOR_TYPE_ARENA,
-    "cannot do 'dynamic' allocations with non arena allocators"
-  );
+  ASSERT(type == AllocatorType::ARENA, "cannot do 'dynamic' allocations with non arena allocators");
 
-  auto& data = allocator.type_data.arena;
+  auto& data = type_data.arena;
   ASSERT(data.dynamic_active, "'dynamic' allocation has to be active to finish it");
 
-  u8* curr_addr = (u8*) allocator.buffer + data.offset;
+  u8* curr_addr = (u8*) buffer + data.offset;
   ASSERT((u8*) end > curr_addr, "invalid pointer provided");
   data.offset += (usize) ((u8*) end - curr_addr);
   data.dynamic_active = false;
@@ -156,7 +150,7 @@ struct ScratchArenaManagementInfo
 thread_local static void* scratch_arenas_memory_pool_ = nullptr;
 thread_local static ScratchArenaManagementInfo scratch_arenas_[SCRATCH_ARENA_COUNT] = {};
 
-ScratchArena scratch_arena_get()
+ScratchArena ScratchArena::get()
 {
   static bool first_init = true;
 
@@ -179,7 +173,7 @@ ScratchArena scratch_arena_get()
       }
 
       scratch.arena.size = SCRATCH_ARENA_BUFFER_SIZE;
-      scratch.arena.type = ALLOCATOR_TYPE_ARENA;
+      scratch.arena.type = AllocatorType::ARENA;
       scratch.arena.buffer = (u8*) scratch_arenas_memory_pool_ + SCRATCH_ARENA_BUFFER_SIZE * i;
       mem_set(scratch.arena.buffer, 0, scratch.arena.size);
       scratch.initialized = true;
@@ -191,9 +185,9 @@ ScratchArena scratch_arena_get()
   ASSERT(false, "no free scratch_arenas");
 }
 
-void scratch_arena_release(ScratchArena& sa)
+void ScratchArena::release()
 {
-  auto& scratch = scratch_arenas_[sa.idx];
+  auto& scratch = scratch_arenas_[idx];
   scratch.in_use = false;
   mem_set((u8*) scratch.arena.buffer, 0, scratch.arena.type_data.arena.offset);
   scratch.arena.type_data.arena.offset = 0;

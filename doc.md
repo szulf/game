@@ -6,6 +6,8 @@
 
 ## NEXT BIG TODOS: (unordered)
 
+- switch from custom file formats to toml (with a custom parser)
+
 - tests?
   - what do i even test? and how?
   - do i want unit tests? or just in-game tests?

@@ -322,7 +322,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
             ++idx;
           }
           Vertex vertex;
-          vertex.position = ctx.positions[indices[0]];
+          vertex.pos = ctx.positions[indices[0]];
           vertex.uv = ctx.uvs[indices[1]];
           vertex.normal = ctx.normals[indices[2]];
           if (ctx.vertex_map.contains(vertex))

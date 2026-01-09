@@ -13,6 +13,7 @@ enum StaticModel
 {
   STATIC_MODEL_BOUNDING_BOX = 1,
   STATIC_MODEL_RING,
+  STATIC_MODEL_LINE,
 };
 
 void static_model_init(
@@ -22,6 +23,7 @@ void static_model_init(
   const Array<u32>& indices,
   assets::Primitive primitive,
   bool wireframe,
+  vec3 color,
   Allocator& allocator
 );
 
@@ -65,6 +67,7 @@ struct Pass
 Pass pass_make(Allocator& allocator);
 
 void init(Allocator& allocator, Error& out_error);
+void queue_items(Pass& pass, const Item& render_item);
 void queue_items(Pass& pass, const Array<Item>& render_items);
 void sort_items(Pass& pass);
 void draw(const Pass& pass);

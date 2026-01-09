@@ -153,6 +153,16 @@ void init(Allocator& allocator, Error& out_error)
     {1.0f, 1.0f, 0.0f},
     allocator
   );
+  static_model_init(
+    STATIC_MODEL_LINE,
+    assets::SHADER_DEFAULT,
+    Array<Vertex>::from(line_vertices, array_size(line_vertices)),
+    Array<u32>::from(line_indices, array_size(line_indices)),
+    assets::PRIMITIVE_LINE_STRIP,
+    false,
+    {1.0f, 0.0f, 0.0f},
+    allocator
+  );
 }
 
 GLenum gl_primitive_from_primitive(assets::Primitive primitive)

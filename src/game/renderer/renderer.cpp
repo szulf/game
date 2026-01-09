@@ -35,6 +35,11 @@ Pass pass_make(Allocator& allocator)
   return out;
 }
 
+void queue_items(Pass& pass, const Item& render_item)
+{
+  pass.items.push(render_item);
+}
+
 void queue_items(Pass& pass, const Array<Item>& render_items)
 {
   for (usize i = 0; i < render_items.size; ++i)
@@ -112,6 +117,13 @@ static Vertex ring_vertices[] = {
 
 static u32 ring_indices[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
                              17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0};
+
+static Vertex line_vertices[] = {
+  {{0.0f, 0.0f, -0.5f}, {}, {}},
+  {{0.0f, 0.0f, 0.5f},  {}, {}},
+};
+
+static u32 line_indices[] = {0, 1};
 
 // TODO(szulf): doesnt handle transparent meshes and possibly more
 void sort_items(Pass& pass)

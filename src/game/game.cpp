@@ -198,8 +198,7 @@ void update(Memory& memory, Input& input, float dt)
       acceleration *= PLAYER_MOVEMENT_SPEED;
       // TODO(szulf): just a hack friction, change to proper sometime
       acceleration += -5.0f * player->velocity;
-      auto new_position =
-        0.5f * acceleration * square(dt) + player->velocity * dt + player->position;
+      auto new_pos = 0.5f * acceleration * square(dt) + player->velocity * dt + player->pos;
       player->velocity = acceleration * dt + player->velocity;
 
       vec3 collision_normal = {};
@@ -207,19 +206,19 @@ void update(Memory& memory, Input& input, float dt)
       for (usize i = 0; i < collidables.size; ++i)
       {
         auto& c = *collidables[i];
-        if (c.position.y != 0.0f)
+        if (c.pos.y != 0.0f)
         {
           continue;
         }
-        vec3 rounded_pos = {round(new_position.x), 0.0f, round(new_position.z)};
-        if ((c.position.x > rounded_pos.x + 1.0f || c.position.x < rounded_pos.x - 1.0f) ||
-            (c.position.z > rounded_pos.z + 1.0f || c.position.z < rounded_pos.z - 1.0f))
+        vec3 rounded_pos = {round(new_pos.x), 0.0f, round(new_pos.z)};
+        if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
+            (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
         {
           continue;
         }
 
         Entity p = {};
-        p.position = new_position;
+        p.pos = new_pos;
         p.bounding_box = player->bounding_box;
 
         if (!entities_collide(p, c))
@@ -227,15 +226,15 @@ void update(Memory& memory, Input& input, float dt)
           continue;
         }
 
-        auto collidable_front = c.position.z + (0.5f * c.bounding_box.depth);
-        auto collidable_back = c.position.z - (0.5f * c.bounding_box.depth);
-        auto collidable_left = c.position.x - (0.5f * c.bounding_box.width);
-        auto collidable_right = c.position.x + (0.5f * c.bounding_box.width);
+        auto collidable_front = c.pos.z + (0.5f * c.bounding_box.depth);
+        auto collidable_back = c.pos.z - (0.5f * c.bounding_box.depth);
+        auto collidable_left = c.pos.x - (0.5f * c.bounding_box.width);
+        auto collidable_right = c.pos.x + (0.5f * c.bounding_box.width);
 
-        auto player_front = p.position.z + (0.5f * p.bounding_box.depth);
-        auto player_back = p.position.z - (0.5f * p.bounding_box.depth);
-        auto player_left = p.position.x - (0.5f * p.bounding_box.width);
-        auto player_right = p.position.x + (0.5f * p.bounding_box.width);
+        auto player_front = p.pos.z + (0.5f * p.bounding_box.depth);
+        auto player_back = p.pos.z - (0.5f * p.bounding_box.depth);
+        auto player_left = p.pos.x - (0.5f * p.bounding_box.width);
+        auto player_right = p.pos.x + (0.5f * p.bounding_box.width);
 
         auto back_overlap = abs(player_back - collidable_front);
         auto front_overlap = abs(player_front - collidable_back);
@@ -266,8 +265,7 @@ void update(Memory& memory, Input& input, float dt)
 
       auto abs_collision_normal = abs(collision_normal);
       auto collision_normal_inverted = vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
-      player->position =
-        (abs_collision_normal * player->position) + (new_position * collision_normal_inverted);
+      player->pos = (abs_collision_normal * player->pos) + (new_pos * collision_normal_inverted);
       if (collided)
       {
         player->velocity -= dot(player->velocity, collision_normal) * collision_normal;
@@ -281,13 +279,14 @@ void update(Memory& memory, Input& input, float dt)
         for (usize i = 0; i < interactables.size; ++i)
         {
           auto& interactable = *interactables[i];
-          auto vec = interactable.position - player->position;
+          auto vec = interactable.pos - player->pos;
           f32 dist = length2(vec);
           // TODO(szulf): this orientation is kind of annoying,
           // either increase the accepted rad difference,
           // or just remove the whole thing
           f32 orientation = atan2(-vec.x, vec.z);
-          if (dist < LIGHT_BULB_RADIUS2 && abs(player->rotation - orientation) < 1.0f &&
+          if (dist < square(interactable.interactable_radius) &&
+              abs(player->rotation - orientation) < 1.0f &&
               interactable.interactable_type == InteractableType::LIGHT_BULB)
           {
             interactable.light_bulb_on = !interactable.light_bulb_on;
@@ -319,7 +318,7 @@ void render(Memory& memory)
       if (entity.type == EntityType::INTERACTABLE &&
           entity.interactable_type == InteractableType::LIGHT_BULB)
       {
-        pos = entity.position;
+        pos = entity.pos;
       }
     }
 
@@ -391,22 +390,37 @@ void render(Memory& memory)
           entity.interactable_type == InteractableType::LIGHT_BULB && entity.light_bulb_on)
       {
         renderer::Light light = {};
-        light.pos = entity.position;
-        light.pos.y += LIGHT_BULB_HEIGHT_OFFSET;
+        light.pos = entity.pos;
+        light.pos.y += entity.light_height_offset;
         light.color = entity.light_bulb_color;
         pass.lights.push(light);
       }
       if (main.display_bounding_boxes)
       {
-        auto bounding_box_items =
-          renderer_item_entity_bounding_box(entity, scratch_arena.allocator);
+        auto bounding_box_items = renderer_item_entity_bounding_box(entity);
         renderer::queue_items(pass, bounding_box_items);
 
-        if (entity.type == EntityType::INTERACTABLE)
+        switch (entity.type)
         {
-          auto radius_items =
-            renderer_item_entity_interactable_radius(entity, scratch_arena.allocator);
-          renderer::queue_items(pass, radius_items);
+          case EntityType::INTERACTABLE:
+          {
+            auto radius_items = renderer_item_entity_interactable_radius(entity);
+            renderer::queue_items(pass, radius_items);
+          }
+          break;
+
+          case EntityType::PLAYER:
+          {
+            auto rotation_items = renderer_item_player_rotation(entity);
+            renderer::queue_items(pass, rotation_items);
+          }
+          break;
+
+          case EntityType::STATIC_COLLISION:
+          default:
+          {
+          }
+          break;
         }
       }
     }

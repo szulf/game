@@ -47,7 +47,7 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
     vec3 pos = get_vec3(position_string, error);
     ERROR_ASSERT(error == SUCCESS, out_error, error, entities);
 
-    entity.position = pos;
+    entity.pos = pos;
 
     entities.push(entity);
   }
@@ -72,9 +72,9 @@ void scene_to_file(const char* path, const Array<Entity>& entities, Error& out_e
       sizeof(buf) - (usize) written,
       "%s : %f %f %f\n",
       entity.name.to_cstr(scratch_arena.allocator),
-      entity.position.x,
-      entity.position.y,
-      entity.position.z
+      entity.pos.x,
+      entity.pos.y,
+      entity.pos.z
     );
   }
   auto gscn = String::make(buf, (usize) written);

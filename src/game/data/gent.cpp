@@ -43,9 +43,9 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     auto key = parts[0].trim_whitespace();
     auto value = parts[1].trim_whitespace();
 
-    if (key == "position")
+    if (key == "pos")
     {
-      entity.position = get_vec3(value, error);
+      entity.pos = get_vec3(value, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
     }
     else if (key == "model")
@@ -99,6 +99,25 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     else if (key == "tint")
     {
       entity.tint = get_vec3(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
+    }
+    else if (key == "interactable_radius")
+    {
+      ASSERT(
+        entity.type == EntityType::INTERACTABLE,
+        "cannot set 'interactable_radius' on non interactable entity"
+      );
+      entity.interactable_radius = parse_f32(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
+    }
+    else if (key == "light_height_offset")
+    {
+      ASSERT(
+        entity.type == EntityType::INTERACTABLE &&
+          entity.interactable_type == InteractableType::LIGHT_BULB,
+        "cannot set 'light_height_offset' on non light entity"
+      );
+      entity.light_height_offset = parse_f32(value, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, entity);
     }
     else if (key == "light_bulb_color")

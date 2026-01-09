@@ -50,7 +50,7 @@ Mesh mesh_make(const Array<Vertex>& vertices, const Array<u32>& indices, Primiti
       GL_FLOAT,
       GL_FALSE,
       sizeof(Vertex),
-      (void*) offsetof(Vertex, position)
+      (void*) offsetof(Vertex, pos)
     );
     rendering.glEnableVertexAttribArray(0);
     rendering.glVertexAttribPointer(

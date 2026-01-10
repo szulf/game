@@ -333,6 +333,7 @@ void render(Memory& memory)
       if (entity.interactable_type == InteractableType::LIGHT_BULB)
       {
         pos = entity.pos;
+        pos.y += entity.light_height_offset;
         break;
       }
     }
@@ -350,7 +351,6 @@ void render(Memory& memory)
     shadow_map_camera.update_vectors();
 
     mat4 light_proj_mat = shadow_map_camera.projection();
-    // TODO(szulf): there is a weird artifact on the player because of the upside down rendering
     mat4 transforms[6] = {
       light_proj_mat * mat4::look_at(pos, pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
       light_proj_mat * mat4::look_at(pos, pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),

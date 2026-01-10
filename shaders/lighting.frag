@@ -80,6 +80,7 @@ void main()
     closest_depth *= shadow_map_camera_far_plane;
     float current_depth = length(frag_to_light);
     float bias = 0.05f;
+    // TODO(szulf): if there would be more than 1 light could shadow be more than 1.0f?
     shadow += current_depth - bias > closest_depth ? 1.0f : 0.0f;
 
     diffuse_specular += diffuse + specular;

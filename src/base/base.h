@@ -208,4 +208,9 @@ enum class Key
 const char* key_to_cstr(Key key);
 Key string_to_key(const String& str, Error& out_error);
 
+#define ENUM_CLASS_ENTRIES(enum_name, var)                                                         \
+  enum_name var = (enum_name) 0;                                                                   \
+  var < enum_name::COUNT;                                                                          \
+  var = (enum_name) ((usize) var + 1)
+
 #endif

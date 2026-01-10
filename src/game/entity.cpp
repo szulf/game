@@ -10,6 +10,8 @@ const char* entity_type_to_cstr(EntityType type)
       return "STATIC_COLLISION";
     case EntityType::INTERACTABLE:
       return "INTERACTABLE";
+    case EntityType::COUNT:
+      ASSERT(false, "no");
   }
 }
 
@@ -56,11 +58,11 @@ BoundingBox BoundingBox::from_model(assets::ModelHandle handle)
 {
   vec3 max_corner = {F32_MIN, 0, F32_MIN};
   vec3 min_corner = {F32_MAX, 0, F32_MAX};
-  auto& model = assets::model_get(handle);
+  const auto& model = assets::model_get(handle);
 
   for (usize mesh_idx = 0; mesh_idx < model.parts.size; ++mesh_idx)
   {
-    auto& mesh = assets::mesh_get(model.parts[mesh_idx].mesh);
+    const auto& mesh = assets::mesh_get(model.parts[mesh_idx].mesh);
     for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size; ++vertex_idx)
     {
       auto& vertex = mesh.vertices[vertex_idx];
@@ -88,7 +90,7 @@ bool entities_collide(const Entity& ea, const Entity& eb)
 
 Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allocator)
 {
-  auto& model = assets::model_get(entity.model);
+  const auto& model = assets::model_get(entity.model);
   auto out = Array<renderer::Item>::make(ArrayType::STATIC, model.parts.size, allocator);
   for (usize part_idx = 0; part_idx < model.parts.size; ++part_idx)
   {
@@ -107,8 +109,8 @@ Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allo
 
 renderer::Item renderer_item_entity_bounding_box(const Entity& entity)
 {
-  auto& model = assets::model_get(renderer::STATIC_MODEL_BOUNDING_BOX);
-  auto& part = model.parts[0];
+  const auto& model = assets::model_get(renderer::STATIC_MODEL_BOUNDING_BOX);
+  const auto& part = model.parts[0];
   renderer::Item out = {};
   out.model = mat4::make();
   scale(out.model, {entity.bounding_box.width, 1.0f, entity.bounding_box.depth});
@@ -121,8 +123,8 @@ renderer::Item renderer_item_entity_bounding_box(const Entity& entity)
 
 renderer::Item renderer_item_entity_interactable_radius(const Entity& entity)
 {
-  auto& model = assets::model_get(renderer::STATIC_MODEL_RING);
-  auto& part = model.parts[0];
+  const auto& model = assets::model_get(renderer::STATIC_MODEL_RING);
+  const auto& part = model.parts[0];
   renderer::Item out = {};
   out.model = mat4::make();
   auto diameter = 2.0f * sqrt(entity.interactable_radius);
@@ -136,8 +138,8 @@ renderer::Item renderer_item_entity_interactable_radius(const Entity& entity)
 
 renderer::Item renderer_item_player_rotation(const Entity& entity)
 {
-  auto& model = assets::model_get(renderer::STATIC_MODEL_LINE);
-  auto& part = model.parts[0];
+  const auto& model = assets::model_get(renderer::STATIC_MODEL_LINE);
+  const auto& part = model.parts[0];
   renderer::Item out = {};
   out.model = mat4::make();
   rotate(out.model, entity.rotation, {0.0f, 1.0f, 0.0f});

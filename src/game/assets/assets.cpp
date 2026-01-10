@@ -668,8 +668,6 @@ static Shader shader_link_vert_frag_geom(
 #  error Unknown rendering backend.
 #endif
 
-// TODO(szulf): could do something like just passing in the base path(ex. "shaders/shadow_depth")
-// and it would automatically look for the different extensions, dont know if its worth the effort
 ShaderHandle shader_from_file(
   const char* vert_path,
   const char* frag_path,

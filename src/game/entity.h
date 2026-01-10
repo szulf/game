@@ -6,6 +6,8 @@ enum class EntityType
   PLAYER,
   STATIC_COLLISION,
   INTERACTABLE,
+
+  COUNT,
 };
 
 const char* entity_type_to_cstr(EntityType type);
@@ -13,6 +15,7 @@ EntityType string_to_entity_type(const String& str, Error& out_error);
 
 #define PLAYER_MOVEMENT_SPEED 8.0f
 #define PLAYER_ROTATE_SPEED (3 * F32_PI)
+#define PLAYER_MASS 80.0f
 
 enum class InteractableType
 {

@@ -90,7 +90,7 @@ i32 main()
   g_width = spec.height;
 
   SDL_Window* window = SDL_CreateWindow(
-    spec.name,
+    spec.window_name,
     (i32) spec.width,
     (i32) spec.height,
     SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL

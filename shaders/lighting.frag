@@ -1,7 +1,5 @@
 #version 330 core
 
-// TODO(szulf): how do i differentiate between the diffuse color and diffuse texture? or do i just
-// always use both?
 struct Material
 {
   vec3 ambient;

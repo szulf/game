@@ -31,7 +31,7 @@ struct Memory
 
 struct Spec
 {
-  const char* name;
+  const char* window_name;
   u32 width;
   u32 height;
   usize memory_size;

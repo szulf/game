@@ -212,7 +212,7 @@ void draw(const Pass& pass)
 
   for (usize item_idx = 0; item_idx < pass.items.size;)
   {
-    auto& item = pass.items[item_idx];
+    const auto& item = pass.items[item_idx];
     usize batch_idx = item_idx + 1;
     while ((batch_idx < pass.items.size || batch_idx - item_idx > MAX_INSTANCES) &&
            (item.mesh == pass.items[batch_idx].mesh &&
@@ -233,8 +233,8 @@ void draw(const Pass& pass)
       instancing_data.push(data);
     }
 
-    auto& mesh = assets::mesh_get(item.mesh);
-    auto& material = assets::material_get(item.material);
+    const auto& mesh = assets::mesh_get(item.mesh);
+    const auto& material = assets::material_get(item.material);
     assets::Shader shader;
     if (pass.override_shader)
     {

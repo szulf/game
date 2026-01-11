@@ -179,8 +179,6 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
 
   String material_name = {};
   Material material = {};
-  // TODO(szulf): material ambient color should be supplied by the scene??? or something
-  material.ambient_color = {0.1f, 0.1f, 0.1f};
   for (usize i = 0; i < lines.size; ++i)
   {
     const auto& line = lines[i];

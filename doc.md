@@ -29,6 +29,7 @@
   - somehow get rid of the visible rings coming from the light bulb
 
 - worker threads
+- improve error handling
 
 - directional light with shadow mapping
 

@@ -17,6 +17,7 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
   auto lines = file.split('\n', scratch_arena.allocator);
   auto entities = Array<Entity>::make(ArrayType::STATIC, lines.size, allocator);
   auto entity_cache = Map<String, Entity>::make(lines.size * 2, scratch_arena.allocator);
+  vec3 ambient_color = {};
   for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
   {
     Entity entity = {};
@@ -29,27 +30,45 @@ Array<Entity> scene_from_file(const char* path, Allocator& allocator, Error& out
     auto parts = line.split(':', scratch_arena.allocator);
     ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
 
-    auto entity_path_raw = parts[0].trim_whitespace();
-    if (entity_cache.contains(entity_path_raw))
+    auto key = parts[0].trim_whitespace();
+    auto value = parts[1].trim_whitespace();
+
+    if (key == "ambient_color")
     {
-      entity = *entity_cache[entity_path_raw];
+      ambient_color = get_vec3(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, entities);
+      continue;
+    }
+
+    if (entity_cache.contains(key))
+    {
+      entity = *entity_cache[key];
     }
     else
     {
-      auto entity_path = entity_path_raw.prepend("data/", scratch_arena.allocator)
-                           .append(".gent", scratch_arena.allocator);
+      auto entity_path =
+        key.prepend("data/", scratch_arena.allocator).append(".gent", scratch_arena.allocator);
       entity = entity_from_file(entity_path.to_cstr(scratch_arena.allocator), allocator, error);
       ERROR_ASSERT(error == SUCCESS, out_error, GLOBAL_ERROR_INVALID_DATA, entities);
-      entity_cache.set(entity_path_raw, entity);
+      entity_cache.set(key, entity);
     }
 
-    auto position_string = parts[1].trim_whitespace();
-    vec3 pos = get_vec3(position_string, error);
+    vec3 pos = get_vec3(value, error);
     ERROR_ASSERT(error == SUCCESS, out_error, error, entities);
 
     entity.pos = pos;
 
     entities.push(entity);
+  }
+
+  for (usize entity_idx = 0; entity_idx < entities.size; ++entity_idx)
+  {
+    auto& model = assets::model_get(entities[entity_idx].model);
+    for (usize part_idx = 0; part_idx < model.parts.size; ++part_idx)
+    {
+      auto& material = assets::material_get(model.parts[part_idx].material);
+      material.ambient_color = ambient_color;
+    }
   }
 
   return entities;

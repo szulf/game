@@ -392,7 +392,6 @@ void static_model_init(
   material.wireframe = wireframe;
   material.diffuse_color = color;
   auto mesh_handle = assets::mesh_set({vertices, indices, primitive});
-  // TODO(szulf): create mesh gpu here
   auto material_handle = assets::material_set(material);
   assets::Model model = {};
   model.parts = Array<assets::MeshMaterialPair>::make(ArrayType::STATIC, 1, allocator);
@@ -740,9 +739,7 @@ void draw(const Pass& pass)
 
         const auto& mesh = assets::mesh_get(item.mesh);
         const auto& material = assets::material_get(item.material);
-        // TODO(szulf): which one to choose?
         u32 shader = 0;
-        // Shader shader;
         if (pass.override_shader)
         {
           shader = shader_get(pass.shader).data.opengl;

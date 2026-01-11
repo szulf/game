@@ -163,10 +163,38 @@ Shader Shader::from_file(
   return {shader};
 }
 
+GLint get_texture_wrapping_options_opengl(assets::TextureWrappingOptions wrapping_option)
+{
+  switch (wrapping_option)
+  {
+    case assets::TextureWrappingOptions::REPEAT:
+      return GL_REPEAT;
+    case assets::TextureWrappingOptions::MIRRORED_REPEAT:
+      return GL_MIRRORED_REPEAT;
+    case assets::TextureWrappingOptions::CLAMP_TO_EDGE:
+      return GL_CLAMP_TO_EDGE;
+    case assets::TextureWrappingOptions::CLAMP_TO_BORDER:
+      return GL_CLAMP_TO_BORDER;
+  }
+}
+
+GLint get_texture_filtering_options_opengl(assets::TextureFilteringOptions filtering_options)
+{
+  switch (filtering_options)
+  {
+    case assets::TextureFilteringOptions::LINEAR:
+      return GL_LINEAR;
+    case assets::TextureFilteringOptions::NEAREST:
+      return GL_NEAREST;
+  }
+}
+
 TextureGPU TextureGPU::make(assets::TextureHandle handle)
 {
   TextureGPU out = {};
-  auto& img = assets::texture_get(handle).img;
+  auto& texture = assets::texture_get(handle);
+  auto& img = texture.img;
+  auto& options = texture.options;
 
   switch (current_rendering_api)
   {
@@ -176,11 +204,26 @@ TextureGPU TextureGPU::make(assets::TextureHandle handle)
       glGenTextures(1, &data.id);
       glBindTexture(GL_TEXTURE_2D, data.id);
 
-      // TODO(szulf): do i want to customize these? i do for example for the error texture
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_S,
+        get_texture_wrapping_options_opengl(options.wrapping_x)
+      );
+      glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_T,
+        get_texture_wrapping_options_opengl(options.wrapping_y)
+      );
+      glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_MIN_FILTER,
+        get_texture_filtering_options_opengl(options.filter_magnifying)
+      );
+      glTexParameteri(
+        GL_TEXTURE_2D,
+        GL_TEXTURE_MAG_FILTER,
+        get_texture_filtering_options_opengl(options.filter_minifying)
+      );
 
       glTexImage2D(
         GL_TEXTURE_2D,

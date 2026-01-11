@@ -130,12 +130,17 @@ static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allo
     return texture_handle_get(path);
   }
 
+  TextureOptions options = {};
   auto img = Image::from_file(path.to_cstr(scratch_arena.allocator), allocator, error);
   if (error != SUCCESS)
   {
     img = Image::error_placeholder();
+    options.wrapping_x = TextureWrappingOptions::MIRRORED_REPEAT;
+    options.wrapping_y = TextureWrappingOptions::MIRRORED_REPEAT;
+    options.filter_magnifying = TextureFilteringOptions::NEAREST;
+    options.filter_minifying = TextureFilteringOptions::NEAREST;
   }
-  auto texture_handle = texture_set({img});
+  auto texture_handle = texture_set({img, options});
   auto allocated_path = path.copy(allocator);
   texture_handle_set(allocated_path, texture_handle);
   return texture_handle;

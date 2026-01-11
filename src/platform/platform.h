@@ -70,7 +70,6 @@ struct Input
 };
 
 void spec(Spec& spec);
-void apis(RenderingAPI& rendering_api);
 void init(Memory& memory, Input& input);
 void update(Memory& memory, Input& input, float dt);
 void render(Memory& memory);

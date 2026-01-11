@@ -110,8 +110,7 @@ i32 main()
 
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
   ASSERT(gl_context, "failed to create sdl3 opengl context");
-  RenderingAPI gl_api;
-  setup_gl_functions(gl_api);
+  setup_gl_functions();
 
 #ifdef GAME_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
@@ -129,7 +128,6 @@ i32 main()
 
   game::Input input = {};
 
-  game::apis(gl_api);
   game::init(memory, input);
 
   while (true)

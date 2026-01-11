@@ -4,7 +4,6 @@
 namespace assets
 {
 
-typedef u32 Shader;
 enum ShaderHandle
 {
   SHADER_DEFAULT,

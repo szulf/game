@@ -14,6 +14,8 @@ typedef usize ModelHandle;
 struct Model
 {
   Array<MeshMaterialPair> parts;
+
+  static ModelHandle from_file(const char* path, Allocator& allocator, Error& out_error);
 };
 
 }

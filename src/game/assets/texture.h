@@ -7,10 +7,8 @@ namespace assets
 typedef usize TextureHandle;
 struct Texture
 {
-  u32 id;
+  Image img;
 };
-
-Texture texture_from_image(const Image& img);
 
 }
 

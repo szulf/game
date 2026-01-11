@@ -1,18 +1,25 @@
 #include "assets.h"
 
 template <>
-usize hash(const u64& value)
+usize hash(const usize& value)
 {
-  return (usize) value;
+  return value;
+}
+
+template <>
+usize hash(const assets::ShaderHandle& value)
+{
+  return value;
 }
 
 namespace assets
 {
 
-Manager manager_make(Allocator& allocator)
+Manager* Manager::instance = nullptr;
+
+Manager Manager::make(Allocator& allocator)
 {
   Manager out = {};
-  out.shaders = Array<u32>::make(ArrayType::STATIC, 100, allocator);
   out.textures = Array<Texture>::make(ArrayType::STATIC, 100, allocator);
   out.materials = Array<Material>::make(ArrayType::STATIC, 100, allocator);
   out.meshes = Array<Mesh>::make(ArrayType::STATIC, 100, allocator);
@@ -23,89 +30,78 @@ Manager manager_make(Allocator& allocator)
   return out;
 }
 
-ShaderHandle shader_set(Shader shader)
-{
-  manager_instance->shaders.push(shader);
-  return (ShaderHandle) (manager_instance->shaders.size - 1);
-}
-
-Shader shader_get(ShaderHandle handle)
-{
-  return manager_instance->shaders[handle];
-}
-
 Texture& texture_get(TextureHandle handle)
 {
-  return manager_instance->textures[handle];
+  return Manager::instance->textures[handle];
 }
 
 TextureHandle texture_set(const Texture& texture)
 {
-  manager_instance->textures.push(texture);
-  return manager_instance->textures.size - 1;
+  Manager::instance->textures.push(texture);
+  return Manager::instance->textures.size - 1;
 }
 
 Mesh& mesh_get(MeshHandle handle)
 {
-  return manager_instance->meshes[handle - 1];
+  return Manager::instance->meshes[handle - 1];
 }
 
 MeshHandle mesh_set(const Mesh& mesh)
 {
-  manager_instance->meshes.push(mesh);
-  return manager_instance->meshes.size;
+  Manager::instance->meshes.push(mesh);
+  return Manager::instance->meshes.size;
 }
 
 Model& model_get(ModelHandle handle)
 {
-  return manager_instance->models[handle - 1];
+  return Manager::instance->models[handle - 1];
 }
 
 ModelHandle model_set(const Model& model)
 {
-  manager_instance->models.push(model);
-  return manager_instance->models.size;
+  Manager::instance->models.push(model);
+  return Manager::instance->models.size;
 }
 
 Material& material_get(MaterialHandle handle)
 {
-  return manager_instance->materials[handle - 1];
+  return Manager::instance->materials[handle - 1];
 }
 
 MaterialHandle material_set(const Material& material)
 {
-  manager_instance->materials.push(material);
-  return manager_instance->materials.size;
+  Manager::instance->materials.push(material);
+  return Manager::instance->materials.size;
 }
 
 MaterialHandle material_handle_get(const String& key)
 {
-  return *manager_instance->material_handles[key];
+  return *Manager::instance->material_handles[key];
 }
 
 void material_handle_set(const String& key, MaterialHandle handle)
 {
-  manager_instance->material_handles.set(key, handle);
+  Manager::instance->material_handles.set(key, handle);
 }
 
 bool material_handle_exists(const String& key)
 {
-  return manager_instance->material_handles.contains(key);
+  return Manager::instance->material_handles.contains(key);
 }
 
 TextureHandle texture_handle_get(const String& key)
 {
-  return *manager_instance->texture_handles[key];
+  return *Manager::instance->texture_handles[key];
 }
 
 void texture_handle_set(const String& key, TextureHandle handle)
 {
-  manager_instance->texture_handles.set(key, handle);
+  Manager::instance->texture_handles.set(key, handle);
 }
 
 bool texture_handle_exists(const String& key)
 {
-  return manager_instance->texture_handles.contains(key);
+  return Manager::instance->texture_handles.contains(key);
 }
 
 struct ObjContext
@@ -134,15 +130,13 @@ static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allo
     return texture_handle_get(path);
   }
 
-  auto img =
-    Image::from_file(path.to_cstr(scratch_arena.allocator), scratch_arena.allocator, error);
+  auto img = Image::from_file(path.to_cstr(scratch_arena.allocator), allocator, error);
   if (error != SUCCESS)
   {
     img = Image::error_placeholder();
   }
-  auto texture = texture_from_image(img);
+  auto texture_handle = texture_set({img});
   auto allocated_path = path.copy(allocator);
-  auto texture_handle = texture_set(texture);
   texture_handle_set(allocated_path, texture_handle);
   return texture_handle;
 }
@@ -415,12 +409,12 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
   }
 
   return {
-    mesh_set(mesh_make(mesh_vertices, mesh_indices, PRIMITIVE_TRIANGLES)),
+    mesh_set({mesh_vertices, mesh_indices, RenderingPrimitive::TRIANGLES}),
     material_handle,
   };
 }
 
-ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_error)
+ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
   Model model = {};
@@ -531,177 +525,4 @@ ModelHandle model_from_file(const char* path, Allocator& allocator, Error& out_e
   return model_set(model);
 }
 
-enum ShaderType
-{
-  SHADER_TYPE_VERTEX,
-  SHADER_TYPE_FRAGMENT,
-  SHADER_TYPE_GEOMETRY,
-};
-
-// TODO(szulf): move to some opengl specific location?
-#ifdef RENDERER_OPENGL
-
-static u32 shader_load(const char* path, ShaderType shader_type, Error& out_error)
-{
-  Error error = SUCCESS;
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-  usize file_size;
-  void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-
-  u32 shader;
-  switch (shader_type)
-  {
-    case SHADER_TYPE_VERTEX:
-    {
-      shader = rendering.glCreateShader(GL_VERTEX_SHADER);
-    }
-    break;
-    case SHADER_TYPE_FRAGMENT:
-    {
-      shader = rendering.glCreateShader(GL_FRAGMENT_SHADER);
-    }
-    break;
-    case SHADER_TYPE_GEOMETRY:
-    {
-      shader = rendering.glCreateShader(GL_GEOMETRY_SHADER);
-    }
-    break;
-  }
-
-  auto shader_str = String::make((const char*) file, file_size);
-  auto shader_src = shader_str.to_cstr(scratch_arena.allocator);
-  rendering.glShaderSource(shader, 1, &shader_src, nullptr);
-  rendering.glCompileShader(shader);
-  GLint compiled;
-  rendering.glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-  if (compiled != GL_TRUE)
-  {
-    GLsizei log_length = 0;
-    GLchar message[1024];
-    rendering.glGetShaderInfoLog(shader, 1024, &log_length, message);
-    switch (shader_type)
-    {
-      case SHADER_TYPE_VERTEX:
-      {
-        print("vertex shader compilation failed with message:\n%s\n", message);
-        out_error = SHADER_ERROR_COMPILATION;
-        return (u32) -1;
-      }
-      break;
-      case SHADER_TYPE_FRAGMENT:
-      {
-        print("fragment shader compilation failed with message:\n%s\n", message);
-        out_error = SHADER_ERROR_COMPILATION;
-        return (u32) -1;
-      }
-      break;
-      case SHADER_TYPE_GEOMETRY:
-      {
-        print("geometry shader compilation failed with message:\n%s\n", message);
-        out_error = SHADER_ERROR_COMPILATION;
-        return (u32) -1;
-      }
-      break;
-    }
-  }
-  return shader;
 }
-
-static Shader shader_link_vert_frag(u32 vertex_shader, u32 fragment_shader, Error& out_error)
-{
-  GLuint program = rendering.glCreateProgram();
-  rendering.glAttachShader(program, vertex_shader);
-  rendering.glAttachShader(program, fragment_shader);
-  rendering.glLinkProgram(program);
-
-  rendering.glDeleteShader(vertex_shader);
-  rendering.glDeleteShader(fragment_shader);
-
-  GLint program_linked;
-  rendering.glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
-  if (program_linked != GL_TRUE)
-  {
-    GLsizei log_length = 0;
-    GLchar message[1024];
-    rendering.glGetProgramInfoLog(program, 1024, &log_length, message);
-    print("failed to link shaders with message:\n%s\n", message);
-    out_error = SHADER_ERROR_LINKING;
-    return (ShaderHandle) -1;
-  }
-  return program;
-}
-
-static Shader shader_link_vert_frag_geom(
-  u32 vertex_shader,
-  u32 fragment_shader,
-  u32 geometry_shader,
-  Error& out_error
-)
-{
-  GLuint program = rendering.glCreateProgram();
-  rendering.glAttachShader(program, vertex_shader);
-  rendering.glAttachShader(program, fragment_shader);
-  rendering.glAttachShader(program, geometry_shader);
-  rendering.glLinkProgram(program);
-
-  rendering.glDeleteShader(vertex_shader);
-  rendering.glDeleteShader(fragment_shader);
-  rendering.glDeleteShader(geometry_shader);
-
-  GLint program_linked;
-  rendering.glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
-  if (program_linked != GL_TRUE)
-  {
-    GLsizei log_length = 0;
-    GLchar message[1024];
-    rendering.glGetProgramInfoLog(program, 1024, &log_length, message);
-    print("failed to link shaders with message:\n%s\n", message);
-    out_error = SHADER_ERROR_LINKING;
-    return (ShaderHandle) -1;
-  }
-  return program;
-}
-
-#else
-#  error Unknown rendering backend.
-#endif
-
-ShaderHandle shader_from_file(
-  const char* vert_path,
-  const char* frag_path,
-  const char* geom_path,
-  Error& out_error
-)
-{
-  Error error = SUCCESS;
-  auto vertex_shader = shader_load(vert_path, SHADER_TYPE_VERTEX, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-  auto fragment_shader = shader_load(frag_path, SHADER_TYPE_FRAGMENT, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-
-  if (geom_path)
-  {
-    auto geometry_shader = shader_load(geom_path, SHADER_TYPE_GEOMETRY, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-    auto shader =
-      shader_link_vert_frag_geom(vertex_shader, fragment_shader, geometry_shader, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-    return shader_set(shader);
-  }
-  else
-  {
-    auto shader = shader_link_vert_frag(vertex_shader, fragment_shader, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, (ShaderHandle) -1);
-    return shader_set(shader);
-  }
-}
-
-}
-
-#include "shader.cpp"
-#include "texture.cpp"
-#include "material.cpp"
-#include "mesh.cpp"
-#include "model.cpp"

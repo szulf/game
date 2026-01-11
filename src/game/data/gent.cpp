@@ -52,7 +52,7 @@ Entity entity_from_file(const char* path, Allocator& allocator, Error& out_error
     {
       entity.has_model = true;
       entity.model_path = value.copy(allocator);
-      entity.model = assets::model_from_file(
+      entity.model = assets::Model::from_file(
         entity.model_path.to_cstr(scratch_arena.allocator),
         allocator,
         error

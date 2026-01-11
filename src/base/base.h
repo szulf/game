@@ -213,4 +213,10 @@ Key string_to_key(const String& str, Error& out_error);
   var < enum_name::COUNT;                                                                          \
   var = (enum_name) ((usize) var + 1)
 
+enum class RenderingPrimitive
+{
+  TRIANGLES,
+  LINE_STRIP,
+};
+
 #endif

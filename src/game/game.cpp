@@ -1,8 +1,6 @@
 #include "base/base.cpp"
 #include "platform/platform.h"
 
-static RenderingAPI rendering;
-
 #include "image.cpp"
 #include "assets/assets.cpp"
 #include "camera.cpp"
@@ -32,6 +30,7 @@ struct Main
   Allocator allocator;
 
   assets::Manager assets_manager;
+  renderer::ManagerGPU gpu_manager;
 
   bool camera_mode;
   bool display_bounding_boxes;
@@ -54,11 +53,6 @@ void spec(Spec& spec)
   spec.memory_size = GB(2);
 }
 
-void apis(RenderingAPI& rendering_api)
-{
-  rendering = rendering_api;
-}
-
 void init(Memory& memory, Input& input)
 {
   Error error = SUCCESS;
@@ -68,8 +62,11 @@ void init(Memory& memory, Input& input)
   main.allocator.buffer = (u8*) memory.memory + sizeof(Main);
   main.allocator.type = AllocatorType::ARENA;
 
-  main.assets_manager = assets::manager_make(main.allocator);
-  assets::manager_instance = &main.assets_manager;
+  main.assets_manager = assets::Manager::make(main.allocator);
+  assets::Manager::instance = &main.assets_manager;
+  main.gpu_manager = renderer::ManagerGPU::make(main.allocator);
+  renderer::ManagerGPU::instance = &main.gpu_manager;
+
   renderer::init(main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt initialize renderer");
 
@@ -90,6 +87,14 @@ void init(Memory& memory, Input& input)
     auto& entity = entities[i];
     main.entities[entity.type].push(entity);
   }
+
+  auto& texture = assets::texture_get(
+    assets::material_get(
+      assets::model_get(main.entities[EntityType::PLAYER][0].model).parts[0].material
+    )
+      .diffuse_map
+  );
+  unused(texture);
 
   input = data::keymap_from_file("data/keymap.gkey", error);
   ASSERT(error == SUCCESS, "couldnt read keymap file");

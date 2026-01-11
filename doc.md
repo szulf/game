@@ -20,12 +20,15 @@
 - inventory system
 
 - more on lighting
+  - pcf or other technique for better shadow mapping
   - gamma correction
   - hdr?
   - bloom?
   - ssao
   - deferred shading?
   - somehow get rid of the visible rings coming from the light bulb
+
+- worker threads
 
 - directional light with shadow mapping
 

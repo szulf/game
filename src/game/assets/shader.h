@@ -11,13 +11,6 @@ enum ShaderHandle
   SHADER_SHADOW_DEPTH,
 };
 
-// TODO(szulf): switch to a game error struct instead?
-enum ShaderError
-{
-  SHADER_ERROR_COMPILATION = GLOBAL_ERROR_COUNT,
-  SHADER_ERROR_LINKING,
-};
-
 }
 
 #endif

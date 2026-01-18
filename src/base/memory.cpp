@@ -166,7 +166,7 @@ ScratchArena ScratchArena::get()
     {
       if (first_init)
       {
-        // NOTE(szulf): the malloc here is fine its happing at most once per thread startup
+        // NOTE: the malloc here is fine its happing at most once per thread startup
         // i dont really like using libc, but i dont see a cleaner way here
         scratch_arenas_memory_pool_ = malloc(SCRATCH_ARENA_TOTAL_MEMORY_SIZE);
         first_init = false;

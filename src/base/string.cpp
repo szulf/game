@@ -36,7 +36,7 @@ force_inline char String::operator[](usize idx) const
   return data[idx];
 }
 
-usize String::count_chars(char c) const
+usize String::count(char c) const
 {
   usize count = 0;
   for (usize i = 0; i < size; ++i)
@@ -49,10 +49,36 @@ usize String::count_chars(char c) const
   return count;
 }
 
-usize String::find_char(char c, usize start_idx) const
+usize String::count(const char* c) const
+{
+  auto s = String::make(c);
+  usize count = 0;
+  for (usize i = 0; i < size - s.size + 1; ++i)
+  {
+    if ((data + i) == s)
+    {
+      ++count;
+    }
+  }
+  return count;
+}
+
+usize String::find(char c, usize start_idx) const
 {
   ASSERT(start_idx < size, "start_idx is out of bounds");
   for (usize i = start_idx; i < size; ++i)
+  {
+    if (data[i] == c)
+    {
+      return i;
+    }
+  }
+  return (usize) -1;
+}
+
+usize String::find_last(char c) const
+{
+  for (usize i = size; i > 0; --i)
   {
     if (data[i] == c)
     {
@@ -100,6 +126,11 @@ String String::prepend(const char* cstr, Allocator& allocator) const
   return make(out, size + cstr_size);
 }
 
+String String::substr(usize start_idx, usize length, Allocator& allocator) const
+{
+  return make(data + start_idx, length).copy(allocator);
+}
+
 const char* String::to_cstr(Allocator& allocator) const
 {
   char* out = (char*) allocator.alloc(size + 1);
@@ -110,12 +141,12 @@ const char* String::to_cstr(Allocator& allocator) const
 
 Array<String> String::split(char c, Allocator& allocator) const
 {
-  usize splits_count = count_chars(c) + 1;
+  usize splits_count = count(c) + 1;
   auto splits = Array<String>::make(ArrayType::STATIC, splits_count, allocator);
 
   usize start_idx = 0;
-  for (usize found_idx = find_char(c, start_idx); found_idx != (usize) -1;
-       found_idx = find_char(c, start_idx))
+  for (usize found_idx = find(c, start_idx); found_idx != (usize) -1;
+       found_idx = find(c, start_idx))
   {
     auto s = make(data + start_idx, found_idx - start_idx);
     start_idx = found_idx + 1;
@@ -160,6 +191,26 @@ String String::trim_whitespace() const
   return make(s, size - (size - end_size) - (usize) (s - data));
 }
 
+String String::get_filename() const
+{
+  auto dir = find_last('/');
+  ++dir;
+  if (dir == (usize) -1)
+  {
+    dir = 0;
+  }
+  auto extension = find_last('.');
+  if (extension == (usize) -1)
+  {
+    extension = size;
+  }
+
+  String out = {};
+  out.size = extension - dir;
+  out.data = data + dir;
+  return out;
+}
+
 f32 parse_f32(const String& str, Error& out_error)
 {
   const char* s = str.data;
@@ -185,7 +236,7 @@ f32 parse_f32(const String& str, Error& out_error)
     {
       if (is_fraction)
       {
-        out_error = GLOBAL_ERROR_INVALID_DATA;
+        out_error = "Invalid f32 string. Too many dots.";
         return 0.0f;
       }
       is_fraction = true;
@@ -193,7 +244,7 @@ f32 parse_f32(const String& str, Error& out_error)
     }
     if (*s < '0' && *s > '9')
     {
-      out_error = GLOBAL_ERROR_INVALID_DATA;
+      out_error = "Invalid f32 string. Invalid character found.";
       return 0.0f;
     }
     if (!is_fraction)
@@ -220,10 +271,10 @@ u32 parse_u32(const String& str, Error& out_error)
   {
     if (*s < '0' && *s > '9')
     {
-      out_error = GLOBAL_ERROR_INVALID_DATA;
+      out_error = "Invalid u32 string. Invalid character found.";
       return 0;
     }
-    val = val * 10u + static_cast<u32>(*s - '0');
+    val = val * 10u + (u32) (*s - '0');
     ++s;
   }
 

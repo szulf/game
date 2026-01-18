@@ -82,7 +82,7 @@ struct vec4
   f32 w;
 };
 
-// NOTE(szulf): column major
+// NOTE: column major
 struct mat4
 {
   union

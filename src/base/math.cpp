@@ -55,14 +55,14 @@ f32 abs(f32 value)
   return fabsf(value);
 }
 
-// NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
+// NOTE: this probably loses some precision, but im casting to i32 in the middle so it would
 // lose it anyway
 f32 floor(f32 value)
 {
   return (f32) (i32) value;
 }
 
-// NOTE(szulf): this probably loses some precision, but im casting to i32 in the middle so it would
+// NOTE: this probably loses some precision, but im casting to i32 in the middle so it would
 // lose it anyway
 f32 ceil(f32 value)
 {

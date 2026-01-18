@@ -176,10 +176,8 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
   bool parsing = false;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
-  usize file_size;
-  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
+  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
-  auto file = String::make((const char*) file_ptr, file_size);
   auto lines = file.split('\n', scratch_arena.allocator);
 
   String material_name = {};
@@ -191,7 +189,7 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
 
     if (parts[0] == "newmtl")
     {
-      ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      ERROR_ASSERT(parts.size == 2, out_error, "Obj decoding error. Invalid newmtl.", );
       if (!material_handle_exists(parts[1]))
       {
         if (parsing)
@@ -207,7 +205,11 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
     }
     else if (parts[0] == "map_Kd")
     {
-      ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      ERROR_ASSERT(
+        parts.size == 2,
+        out_error,
+        "Obj decoding error. Invalid map_Kd(diffuse map).",
+      );
       auto base_file_path = String::make("assets/");
       auto texture_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
 
@@ -216,21 +218,25 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
     }
     else if (parts[0] == "Kd")
     {
-      ERROR_ASSERT(parts.size == 4, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      ERROR_ASSERT(parts.size == 4, out_error, "Obj decoding error. Invalid Kd(diffuse color).", );
       vec3 color = obj_color_from_parts(parts, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.diffuse_color = color;
     }
     else if (parts[0] == "Ks")
     {
-      ERROR_ASSERT(parts.size == 4, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      ERROR_ASSERT(parts.size == 4, out_error, "Obj decoding error. Invalid Ks(specular color).", );
       vec3 color = obj_color_from_parts(parts, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.specular_color = color;
     }
     else if (parts[0] == "Ns")
     {
-      ERROR_ASSERT(parts.size == 2, out_error, GLOBAL_ERROR_INVALID_DATA, );
+      ERROR_ASSERT(
+        parts.size == 2,
+        out_error,
+        "Obj decoding error. Invalid Ns(specular_exponent)",
+      );
       f32 exponent = parse_f32(parts[1], error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.specular_exponent = exponent;
@@ -388,7 +394,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
         const auto parts = line.split(' ', scratch_arena.allocator);
         if (parts.size != 2 || parts[0] != "usemtl")
         {
-          out_error = GLOBAL_ERROR_INVALID_DATA;
+          out_error = "Obj decoding error. Invalid usemtl.";
           return {};
         }
         ASSERT(
@@ -425,10 +431,8 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
   ctx.allocator = &allocator;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
-  usize file_size;
-  void* file_ptr = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
+  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  auto file = String::make((const char*) file_ptr, file_size);
   ctx.lines = file.split('\n', scratch_arena.allocator);
 
   usize vertex_count = 0;
@@ -437,7 +441,7 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
     const auto& line = ctx.lines[i];
     if (line.size < 2)
     {
-      out_error = GLOBAL_ERROR_INVALID_DATA;
+      out_error = "Obj decoding error. Invalid line.";
       return {};
     }
     switch (line[0])
@@ -509,7 +513,7 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
         auto parts = line.split(' ', scratch_arena.allocator);
         if (parts.size != 2 || parts[0] != "mtllib")
         {
-          out_error = GLOBAL_ERROR_INVALID_DATA;
+          out_error = "Obj decoding error. Invalid mtllib.";
           return {};
         }
         auto base_file_path = String::make("assets/");

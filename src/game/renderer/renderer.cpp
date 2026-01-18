@@ -4,7 +4,7 @@ namespace renderer
 {
 
 ManagerGPU* ManagerGPU::instance = nullptr;
-// TODO(szulf): thread_local? read from some config file?
+// TODO: thread_local? read from some config file?
 static RenderingAPI current_rendering_api = RenderingAPI::OPENGL;
 
 #define CAMERA_UBO_BLOCK_INDEX 0
@@ -22,8 +22,7 @@ u32 shader_load_opengl(const char* path, ShaderType shader_type, Error& out_erro
   Error error = SUCCESS;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
-  usize file_size;
-  void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
+  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
 
   u32 shader;
@@ -46,8 +45,7 @@ u32 shader_load_opengl(const char* path, ShaderType shader_type, Error& out_erro
     break;
   }
 
-  auto shader_str = String::make((const char*) file, file_size);
-  auto shader_src = shader_str.to_cstr(scratch_arena.allocator);
+  auto shader_src = file.to_cstr(scratch_arena.allocator);
   glShaderSource(shader, 1, &shader_src, nullptr);
   glCompileShader(shader);
   GLint compiled;
@@ -62,19 +60,19 @@ u32 shader_load_opengl(const char* path, ShaderType shader_type, Error& out_erro
       case ShaderType::VERTEX:
       {
         print("vertex shader compilation failed with message:\n%s\n", message);
-        out_error = assets::SHADER_ERROR_COMPILATION;
+        out_error = "Vertex shader compilation error.";
       }
       break;
       case ShaderType::FRAGMENT:
       {
         print("fragment shader compilation failed with message:\n%s\n", message);
-        out_error = assets::SHADER_ERROR_COMPILATION;
+        out_error = "Fragment shader compilation error.";
       }
       break;
       case ShaderType::GEOMETRY:
       {
         print("geometry shader compilation failed with message:\n%s\n", message);
-        out_error = assets::SHADER_ERROR_COMPILATION;
+        out_error = "Geometry shader compilation error.";
       }
       break;
     }
@@ -116,7 +114,7 @@ Shader shader_link_opengl(
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
     print("failed to link shaders with message:\n%s\n", message);
-    out_error = assets::SHADER_ERROR_LINKING;
+    out_error = "Failed to link shaders.";
     return {};
   }
   Shader out = {};
@@ -159,7 +157,7 @@ Shader Shader::from_file(
     break;
   }
 
-  // NOTE(szulf): stupid clang warning
+  // NOTE: stupid clang warning
   return {shader};
 }
 
@@ -307,7 +305,7 @@ MeshGPU MeshGPU::make(assets::MeshHandle handle)
 
       {
         glBindBuffer(GL_ARRAY_BUFFER, renderer::instancing_matrix_buffer);
-        // NOTE(szulf): model matrix
+        // NOTE: model matrix
         glVertexAttribPointer(
           3,
           4,
@@ -344,7 +342,7 @@ MeshGPU MeshGPU::make(assets::MeshHandle handle)
           (void*) (offsetof(renderer::InstanceData, model) + 3 * sizeof(vec4))
         );
         glEnableVertexAttribArray(6);
-        // NOTE(szulf): entity tint
+        // NOTE: entity tint
         glVertexAttribPointer(
           7,
           4,

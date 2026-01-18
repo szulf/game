@@ -18,7 +18,7 @@ elseif(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-# TODO(szulf): can this also be used for gcc?
+# TODO: can this also be used for gcc?
 set(clang_flags_common
   -Weverything -Werror -pedantic
   -fno-rtti -fno-exceptions
@@ -61,8 +61,6 @@ set(mode_definitions
 )
 
 set(definitions
-  # NOTE(szulf): for now(probably forever) only opengl
-  RENDERER_OPENGL
   ${mode_definitions}
   ${compiler_definitions}
   ${os_definitions}
@@ -79,14 +77,14 @@ set(include_dirs src)
 find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
 
-# NOTE(szulf): using unity build so thats the reason for just one source file
+# NOTE: using unity build so thats the reason for just one source file
 add_executable(game_sdl3 src/platform/sdl3_gl.cpp)
 target_include_directories(game_sdl3 PRIVATE ${include_dirs})
 target_compile_options(game_sdl3 PRIVATE ${flags})
 target_compile_definitions(game_sdl3 PRIVATE ${definitions})
 target_link_libraries(game_sdl3 PRIVATE SDL3::SDL3 OpenGL)
 
-# NOTE(szulf): run a python script to check for missing error handling
+# NOTE: run a python script to check for missing error handling
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   find_package(Python3 REQUIRED)
   set(FIND_ERROR_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_error.py")

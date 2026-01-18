@@ -45,7 +45,7 @@ typedef double f64;
 #define F64_MIN 2.2250738585072014e-308
 #define F64_MAX 1.7976931348623157e+308
 
-// TODO(szulf): maybe implement printf myself in the future
+// TODO: maybe implement printf myself in the future
 #define print(...) printf(__VA_ARGS__)
 
 #define unused(x) ((void) (sizeof(x)))
@@ -140,20 +140,10 @@ DeferImpl<F> make_defer(F&& f)
     }                                                                                              \
   )
 
-enum GlobalError
-{
-  SUCCESS = 0,
-  GLOBAL_ERROR_NOT_FOUND,
-  GLOBAL_ERROR_FILE_READING,
-  GLOBAL_ERROR_FILE_WRITING,
-  GLOBAL_ERROR_INVALID_DATA,
-  GLOBAL_ERROR_OUT_OF_MEMORY,
-  GLOBAL_ERROR_COUNT,
-};
-typedef u32 Error;
+#define SUCCESS nullptr
+typedef const char* Error;
 
 #ifdef MODE_DEBUG
-#  include <unistd.h>
 #  define ERROR_ASSERT(expr, err_var, err_val, ret_val)                                            \
     ERROR_ASSERT_1(expr, err_var, err_val, ret_val, __LINE__, __FILE__)
 #  define ERROR_ASSERT_1(expr, err_var, err_val, ret_val, line, file)                              \
@@ -207,11 +197,6 @@ enum class Key
 
 const char* key_to_cstr(Key key);
 Key string_to_key(const String& str, Error& out_error);
-
-#define ENUM_CLASS_ENTRIES(enum_name, var)                                                         \
-  enum_name var = (enum_name) 0;                                                                   \
-  var < enum_name::COUNT;                                                                          \
-  var = (enum_name) ((usize) var + 1)
 
 enum class RenderingPrimitive
 {

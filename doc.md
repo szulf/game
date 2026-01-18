@@ -1,18 +1,20 @@
-## BIG TODO: togglable light bulb (in preparation of first level)(requires interactions with objects, lights, shadows)
+## BIG TODO: core improvements
 
 ## SMALL TODOS: (ordered)
+
+1. global error list
+2. free gpu resources
+   - static models should survive the freeing
+3. new mega struct entity system?
+4. tests
+   - what do i even test? and how?
+   - do i want unit tests? or just in-game tests?
+5. new renderer? (sokol like or my own new)
+6. worker threads?
 
 ---
 
 ## NEXT BIG TODOS: (unordered)
-
-- switch from custom file formats to toml (with a custom parser)
-
-- tests?
-  - what do i even test? and how?
-  - do i want unit tests? or just in-game tests?
-- free gpu resources
-  - static models should survive the freeing
 
 - audio
 - map/entity/keymap editor
@@ -27,10 +29,6 @@
   - ssao
   - deferred shading?
   - somehow get rid of the visible rings coming from the light bulb
-
-- worker threads
-- improve error handling
-
 - directional light with shadow mapping
 
 - get rid of sdl3(big future)
@@ -62,32 +60,87 @@ the 'main' file matters.
 
 ---
 
-## Custom File Formats
+## The gdat File Format
 
-Currently there are 3 custom file formats, all are in the whitespace agnostic format that looks like this:
+- case sensitive
+- whitespace means space(' ') or tab('\t')
+- newlines mean '\n'(hex value 0A) or \r\n(hex values 0D 0A)
+- ascii files
+- whitespace is not significant
+- newlines are significant
+
+### Start of a file
+
+The first line has to contain just the ascii string 'gdat'.
+The second line has to contain just numbers that indicate the version number.
+The third line has to empty.
+
+### Comments
+
+A '#' symbol at the start of a line marks the line as a comment.
+It can only appear at the start of the line, meaning comments always take up the whole line.
+Uses of the '#' character later in the line are interpreted simply as the character itself.
+
+### Key/Value Pairs
+
+Everything besides the start, is a key value pair.
+Keys are on the left of the ':' character, values are on the right.
+Everything needs to be on the same line, and a newline is required after a key value pair.
 
 ```
 key : value
 ```
 
-Sometimes instead of an actual value there is a '\*' character, which means a dynamic value.
-This value is calculated by the parsing code. An example of this is entity bounding boxes,
-they can be either hardcoded (which could be useful for invisible, but collidable entities) or defined
-as dynamic, in which case they are calculated based on the model.
+If a key contains a '.' character it means it indexes a subfield of a field. Example:
 
-The formats are '.gent', '.gkey', '.gscn' for entities, keymaps and scenes respectively.
+```
+fruit.color : "red"
+fruit.type : "apple"
+```
 
-### .gent
+a single key cannot be used both with a '.' and without one.
 
-TODO: finish.
+Values can be any of these types:
 
-### .gkey
+- String
+- Integer
+- Floating
+- Boolean
+- 2D/3D Vector
+- Array
 
-TODO: finish.
+### 'Blocks'
 
-### .gscn
+Each block is an entry in the global map.
+A block has to start with a 'type' key value pair and the value needs to be a string, this indicates
+the name of the entry in the map. If there are more than a single one of a type in a file
+the blocks are put into an array under the same name.
+All key value pairs after the 'type' can be whatever.
+Blocks are separated by empty lines.
 
-TODO: finish.
+### String
+
+...
+
+### Integer
+
+...
+
+### Floating
+
+...
+
+### Boolean
+
+...
+
+### 2D/3D Vector
+
+...
+
+### Array
+
+...
 
 ---
 

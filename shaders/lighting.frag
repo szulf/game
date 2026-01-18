@@ -14,7 +14,7 @@ struct Light
   vec3 pos;
   vec3 color;
 
-  // NOTE(szulf): for attenuation
+  // NOTE: for attenuation
   float constant;
   float linear;
   float quadratic;
@@ -53,7 +53,8 @@ layout(std140) uniform Lights
 void main()
 {
   vec3 norm = normalize(vert_out.normal);
-  vec3 object_color = (vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse) * vert_out.tint;
+  vec3 object_color =
+    (vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse) * vert_out.tint;
 
   vec3 diffuse_specular = vec3(0.0f);
   float shadow = 0.0f;
@@ -80,7 +81,7 @@ void main()
     closest_depth *= shadow_map_camera_far_plane;
     float current_depth = length(frag_to_light);
     float bias = 0.05f;
-    // TODO(szulf): if there would be more than 1 light could shadow be more than 1.0f?
+    // TODO: if there would be more than 1 light could shadow be more than 1.0f?
     shadow += current_depth - bias > closest_depth ? 1.0f : 0.0f;
 
     diffuse_specular += diffuse + specular;

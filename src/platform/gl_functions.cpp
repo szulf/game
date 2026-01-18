@@ -1,8 +1,6 @@
-#ifdef RENDERER_OPENGL
+#include "gl_functions.h"
 
-#  include "gl_functions.h"
-
-#  define LOAD_SDL_GL_PROC(type, name) name = (type) SDL_GL_GetProcAddress(#name)
+#define LOAD_SDL_GL_PROC(type, name) name = (type) SDL_GL_GetProcAddress(#name)
 
 void setup_gl_functions()
 {
@@ -64,7 +62,7 @@ void setup_gl_functions()
   LOAD_SDL_GL_PROC(PFNGLDRAWELEMENTSINSTANCEDPROC, glDrawElementsInstanced);
 }
 
-#  ifdef MODE_DEBUG
+#ifdef MODE_DEBUG
 void APIENTRY debug_callback(
   GLenum source,
   GLenum type,
@@ -173,7 +171,7 @@ void APIENTRY debug_callback(
   );
 }
 
-#  endif
+#endif
 
 PFNGLVIEWPORTPROC glViewport;
 PFNGLGENTEXTURESPROC glGenTextures;
@@ -230,5 +228,3 @@ PFNGLFRAMEBUFFERTEXTUREPROC glFramebufferTexture;
 PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
 PFNGLVERTEXATTRIBDIVISORPROC glVertexAttribDivisor;
 PFNGLDRAWELEMENTSINSTANCEDPROC glDrawElementsInstanced;
-
-#endif

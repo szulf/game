@@ -2,7 +2,7 @@
 #
 # ISSUES:
 # - #define is not not being used as context since its a comment in .gent
-# - '// NOTE(szulf):' gets used as the todo text
+# - '// NOTE:' gets used as the todo text
 
 import os
 import re
@@ -55,7 +55,8 @@ with open(output_file, "w", encoding="utf-8") as md_file:
 
                                 # Collect continuation comment lines (// or #)
                                 while i < len(lines):
-                                    cont = comment_line_pattern.match(lines[i].strip())
+                                    cont = comment_line_pattern.match(
+                                        lines[i].strip())
                                     if cont and not todo_pattern.match(
                                         lines[i].strip()
                                     ):
@@ -89,8 +90,10 @@ with open(output_file, "w", encoding="utf-8") as md_file:
                                         context_lines.append(context_line)
                                         break
 
-                                    brace_balance += stripped_context.count("{")
-                                    closing_braces = stripped_context.count("}")
+                                    brace_balance += stripped_context.count(
+                                        "{")
+                                    closing_braces = stripped_context.count(
+                                        "}")
                                     if closing_braces > 0:
                                         if brace_balance > 0:
                                             context_lines.append(context_line)
@@ -106,13 +109,15 @@ with open(output_file, "w", encoding="utf-8") as md_file:
                                 # Write Markdown
                                 md_file.write(f"### **TODO:** {todo_text}\n\n")
                                 md_file.write(
-                                    f"{relative_path} (line {start_line_number})\n\n"
+                                    f"{relative_path} (line {
+                                        start_line_number})\n\n"
                                 )
 
                                 if context_lines:
                                     md_file.write("**Context:**\n\n")
                                     md_file.write("```cpp\n")
-                                    md_file.write("\n".join(context_lines) + "\n")
+                                    md_file.write(
+                                        "\n".join(context_lines) + "\n")
                                     md_file.write("```\n\n")
 
                                 md_file.write("---\n\n")

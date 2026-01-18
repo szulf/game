@@ -1,11 +1,7 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#ifdef RENDERER_OPENGL
-#  include "gl_functions.h"
-#else
-#  error Unknown rendering backend.
-#endif
+#include "gl_functions.h"
 
 static u32 FPS = 165;
 #define MSPF (1000 / FPS)
@@ -14,6 +10,7 @@ namespace platform
 {
 
 void* read_entire_file(const char* path, Allocator& allocator, usize& out_size, Error& out_error);
+String read_file_to_string(const char* path, Allocator& allocator, Error& out_error);
 void write_entire_file(const char* path, const String& string, Error& out_error);
 u32 get_width();
 u32 get_height();
@@ -67,6 +64,8 @@ struct Input
   vec2 mouse_pos;
   vec2 mouse_relative;
   vec2 mouse_pos_last;
+
+  static Input from_file(const char* path, Error& out_error);
 };
 
 void spec(Spec& spec);

@@ -22,21 +22,30 @@ u32 get_height()
 void* read_entire_file(const char* path, Allocator& allocator, usize& out_size, Error& out_error)
 {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
-  ERROR_ASSERT(storage, out_error, GLOBAL_ERROR_FILE_READING, nullptr);
+  ERROR_ASSERT(storage, out_error, "File reading error.", nullptr);
   defer(SDL_CloseStorage(storage));
 
   auto file_size_success = SDL_GetStorageFileSize(storage, path, &out_size);
-  ERROR_ASSERT(file_size_success, out_error, GLOBAL_ERROR_FILE_READING, nullptr);
+  ERROR_ASSERT(file_size_success, out_error, "File reading error.", nullptr);
   void* file = allocator.alloc(out_size);
   auto read_file_success = SDL_ReadStorageFile(storage, path, file, out_size);
-  ERROR_ASSERT(read_file_success, out_error, GLOBAL_ERROR_FILE_READING, nullptr);
+  ERROR_ASSERT(read_file_success, out_error, "File reading error.", nullptr);
   return file;
+}
+
+String read_file_to_string(const char* path, Allocator& allocator, Error& out_error)
+{
+  Error error = SUCCESS;
+  usize size;
+  void* file = read_entire_file(path, allocator, size, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
+  return String::make((const char*) file, size);
 }
 
 void write_entire_file(const char* path, const String& string, Error& out_error)
 {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
-  ERROR_ASSERT(storage, out_error, GLOBAL_ERROR_FILE_WRITING, );
+  ERROR_ASSERT(storage, out_error, "File reading error.", );
   defer(SDL_CloseStorage(storage));
 
   while (!SDL_StorageReady(storage))
@@ -49,7 +58,7 @@ void write_entire_file(const char* path, const String& string, Error& out_error)
 
   auto write_file_success =
     SDL_WriteStorageFile(storage, path, string.to_cstr(scratch_arena.allocator), string.size);
-  ERROR_ASSERT(write_file_success, out_error, GLOBAL_ERROR_FILE_WRITING, );
+  ERROR_ASSERT(write_file_success, out_error, "File reading error.", );
 }
 
 }
@@ -148,7 +157,7 @@ i32 main()
       {
         case SDL_EVENT_QUIT:
         {
-          // TODO(szulf): game.cleanup() here?
+          // TODO: game.cleanup() here?
           return 0;
         }
         break;
@@ -216,6 +225,6 @@ i32 main()
     }
   }
 
-  // NOTE(szulf): code never gets here
+  // NOTE: code never gets here
   // return 0;
 }

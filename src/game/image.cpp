@@ -240,7 +240,7 @@ static u32 image_zlib_huffman_decode(ImageZlibContext& zlib_ctx, ImageHuffman& h
     }
   }
 
-  // NOTE(szulf): trying to decode it through the fast lookup table
+  // NOTE: trying to decode it through the fast lookup table
   u16 fast_value = huffman.fast_table[zlib_ctx.bits_buffer & IMAGE_ZLIB_FAST_MASK];
   if (fast_value)
   {
@@ -250,7 +250,7 @@ static u32 image_zlib_huffman_decode(ImageZlibContext& zlib_ctx, ImageHuffman& h
     return fast_value & 511;
   }
 
-  // NOTE(szulf): lookup table failed, doing it the slow way
+  // NOTE: lookup table failed, doing it the slow way
   u32 bits = image_bit_reverse((u16) zlib_ctx.bits_buffer, 16);
   u32 code_length = IMAGE_ZLIB_FAST_BITS + 1;
   while (true)
@@ -470,7 +470,7 @@ image_png_create_rgba8(Image& img, ImageContext& ctx, u8* data, Allocator& alloc
 
   img.data = (u8*) allocator.alloc(img.width * img.height * RGBA8_BYTES_PER_PIXEL);
 
-  // NOTE(szulf): (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
+  // NOTE: (x + 0b111) >> 3 is basically doing ceil(x / 8.0f)
   usize bytes_per_scanline = ((img.width * channels * ctx.bit_depth) + 7) >> 3;
   u8* filter_buffer = (u8*) scratch_arena.allocator.alloc(bytes_per_scanline * 2);
 
@@ -608,13 +608,13 @@ Image Image::from_file(const char* path, Allocator& allocator, Error& err)
   ERROR_ASSERT(error == SUCCESS, err, error, img);
   if (file == nullptr)
   {
-    err = GLOBAL_ERROR_NOT_FOUND;
+    err = "Image decoding error. Not found.";
     return img;
   }
   ctx.data = (u8*) file;
   ctx.data_end = (u8*) file + file_size;
 
-  // NOTE(szulf): check png header
+  // NOTE: check png header
   static const u8 png_header[] = {137, 80, 78, 71, 13, 10, 26, 10};
   for (u32 i = 0; i < 8; ++i)
   {
@@ -685,7 +685,7 @@ Image Image::from_file(const char* path, Allocator& allocator, Error& err)
         ERROR_ASSERT(
           combined_idat_chunks_size < combined_idat_chunks_size_limit,
           err,
-          GLOBAL_ERROR_OUT_OF_MEMORY,
+          "Image decoding error. Out of memory.",
           img
         );
         mem_copy(combined_idat_chunks + combined_idat_chunks_size, ctx.data, chunk.length);
@@ -700,12 +700,12 @@ Image Image::from_file(const char* path, Allocator& allocator, Error& err)
         ERROR_ASSERT(combined_idat_chunks, err, IMAGE_ERROR_INVALID_IDAT, img);
         scratch_arena.allocator.alloc_finish(combined_idat_chunks + combined_idat_chunks_size);
 
-        // NOTE(szulf): zlib parsing
+        // NOTE: zlib parsing
         ImageZlibContext zlib_ctx = {};
         zlib_ctx.data = combined_idat_chunks;
         zlib_ctx.data_end = combined_idat_chunks + combined_idat_chunks_size;
 
-        { // NOTE(szulf): header
+        { // NOTE: header
           u8 cmf = image_zlib_get8(zlib_ctx);
           u8 cm = cmf & 15;
           u8 flg = image_zlib_get8(zlib_ctx);
@@ -715,7 +715,7 @@ Image Image::from_file(const char* path, Allocator& allocator, Error& err)
           ERROR_ASSERT(cm == 8, err, IMAGE_ERROR_CORRUPT_ZLIB, img);
         }
 
-        // NOTE(szulf): data
+        // NOTE: data
         zlib_ctx.out = zlib_ctx.out_start = (u8*) scratch_arena.allocator.alloc_start();
         zlib_ctx.bits_buffered = 0;
         zlib_ctx.bits_buffer = 0;
@@ -824,7 +824,7 @@ Image Image::from_file(const char* path, Allocator& allocator, Error& err)
       }
       break;
     }
-    // NOTE(szulf): skip CRC
+    // NOTE: skip CRC
     image_get32be(ctx);
   }
 

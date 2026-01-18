@@ -71,6 +71,6 @@ Key string_to_key(const String& str, Error& out_error)
     return Key::LSHIFT;
   }
 
-  out_error = GLOBAL_ERROR_INVALID_DATA;
+  out_error = "Invalid key string.";
   return (Key) 0;
 }

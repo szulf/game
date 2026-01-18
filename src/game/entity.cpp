@@ -30,7 +30,7 @@ EntityType string_to_entity_type(const String& str, Error& out_error)
     return EntityType::INTERACTABLE;
   }
 
-  out_error = GLOBAL_ERROR_INVALID_DATA;
+  out_error = "Invalid entity type string.";
   return (EntityType) 0;
 }
 
@@ -50,7 +50,7 @@ InteractableType string_to_interactable_type(const String& str, Error& out_error
     return InteractableType::LIGHT_BULB;
   }
 
-  out_error = GLOBAL_ERROR_INVALID_DATA;
+  out_error = "Invalid interactable type string.";
   return (InteractableType) 0;
 }
 
@@ -73,6 +73,143 @@ BoundingBox BoundingBox::from_model(assets::ModelHandle handle)
     }
   }
   return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
+}
+
+static vec3 gformat_get_vec3_(const String& value, Error& out_error)
+{
+  Error error = SUCCESS;
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+
+  vec3 out = {};
+
+  auto values = value.split(' ', scratch_arena.allocator);
+  ERROR_ASSERT(values.size == 3, out_error, "gent decoding error. Invalid vec3.", out);
+
+  out.x = parse_f32(values[0], error);
+  ERROR_ASSERT(error == SUCCESS, out_error, "gent decoding error. Invalid vec3.", out);
+  out.y = parse_f32(values[1], error);
+  ERROR_ASSERT(error == SUCCESS, out_error, "gent decoding error. Invalid vec3.", out);
+  out.z = parse_f32(values[2], error);
+  ERROR_ASSERT(error == SUCCESS, out_error, "gent decoding error. Invalid vec3.", out);
+
+  return out;
+}
+
+Entity Entity::from_file(const char* path, Allocator& allocator, Error& out_error)
+{
+  Error error = SUCCESS;
+  Entity out = {};
+
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+
+  out.name = String::make(path).get_filename().copy(allocator);
+
+  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+  auto lines = file.split('\n', scratch_arena.allocator);
+
+  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
+  {
+    auto& line = lines[line_idx];
+    if (line[0] == '#')
+    {
+      continue;
+    }
+
+    auto parts = line.split(':', scratch_arena.allocator);
+    ERROR_ASSERT(parts.size == 2, out_error, "gent decoding error. Invalid line.", out);
+
+    auto key = parts[0].trim_whitespace();
+    auto value = parts[1].trim_whitespace();
+
+    if (key == "pos")
+    {
+      out.pos = gformat_get_vec3_(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "model")
+    {
+      out.has_model = true;
+      out.model_path = value.copy(allocator);
+      out.model =
+        assets::Model::from_file(out.model_path.to_cstr(scratch_arena.allocator), allocator, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "type")
+    {
+      out.type = string_to_entity_type(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "interactable_type")
+    {
+      ASSERT(
+        out.type == EntityType::INTERACTABLE,
+        "cannot set interactable_type on non interactable entity"
+      );
+      out.interactable_type = string_to_interactable_type(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "bounding_box")
+    {
+      if (value == "*")
+      {
+        ERROR_ASSERT(
+          out.has_model,
+          out_error,
+          "gent decoding error. Cannot calculate bounding box without model.",
+          out
+        );
+        out.bounding_box = BoundingBox::from_model(out.model);
+        out.is_bounding_box_from_model = true;
+      }
+      else
+      {
+        ASSERT(false, "[TODO] load hardcoded bounding box");
+      }
+    }
+    else if (key == "tint")
+    {
+      out.tint = gformat_get_vec3_(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "interactable_radius")
+    {
+      ASSERT(
+        out.type == EntityType::INTERACTABLE,
+        "cannot set 'interactable_radius' on non interactable entity"
+      );
+      out.interactable_radius = parse_f32(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "light_height_offset")
+    {
+      ASSERT(
+        out.type == EntityType::INTERACTABLE &&
+          out.interactable_type == InteractableType::LIGHT_BULB,
+        "cannot set 'light_height_offset' on non light entity"
+      );
+      out.light_height_offset = parse_f32(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "light_bulb_color")
+    {
+      ASSERT(
+        out.type == EntityType::INTERACTABLE &&
+          out.interactable_type == InteractableType::LIGHT_BULB,
+        "cannot set light_bulb_color on non light_bulb entity"
+      );
+      out.light_bulb_color = gformat_get_vec3_(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else
+    {
+      out_error = "gent decoding error. Invalid key.";
+      return out;
+    }
+  }
+  return out;
 }
 
 bool entities_collide(const Entity& ea, const Entity& eb)
@@ -150,4 +287,73 @@ renderer::Item renderer_item_player_rotation(const Entity& entity)
   out.mesh = part.mesh;
   out.material = part.material;
   return out;
+}
+
+Scene Scene::from_file(const char* path, Allocator& allocator, Error& out_error)
+{
+  Error error = SUCCESS;
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+
+  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
+  auto lines = file.split('\n', scratch_arena.allocator);
+
+  Scene scene = {};
+  usize entities_count = 0;
+  auto entity_cache = Map<String, Entity>::make(lines.size * 2, scratch_arena.allocator);
+  vec3 ambient_color = {};
+  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
+  {
+    Entity entity = {};
+    auto& line = lines[line_idx];
+    if (line[0] == '#')
+    {
+      continue;
+    }
+
+    auto parts = line.split(':', scratch_arena.allocator);
+    ERROR_ASSERT(parts.size == 2, out_error, "gscn decoding error. Invalid line.", scene);
+    auto key = parts[0].trim_whitespace();
+    auto value = parts[1].trim_whitespace();
+
+    if (key == "ambient_color")
+    {
+      ambient_color = gformat_get_vec3_(value, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
+      continue;
+    }
+
+    if (entity_cache.contains(key))
+    {
+      entity = *entity_cache[key];
+    }
+    else
+    {
+      auto entity_path =
+        key.prepend("data/", scratch_arena.allocator).append(".gent", scratch_arena.allocator);
+      entity = Entity::from_file(entity_path.to_cstr(scratch_arena.allocator), allocator, error);
+      ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
+      entity_cache.set(key, entity);
+    }
+
+    vec3 pos = gformat_get_vec3_(value, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
+
+    entity.pos = pos;
+
+    scene.entities[entities_count++] = entity;
+  }
+
+  for (usize entity_idx = 0; entity_idx < entities_count; ++entity_idx)
+  {
+    auto& model = assets::model_get(scene.entities[entity_idx].model);
+    for (usize part_idx = 0; part_idx < model.parts.size; ++part_idx)
+    {
+      auto& material = assets::material_get(model.parts[part_idx].material);
+      material.ambient_color = ambient_color;
+    }
+  }
+
+  return scene;
 }

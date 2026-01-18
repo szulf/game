@@ -6,24 +6,6 @@
 #include "camera.cpp"
 #include "renderer/renderer.cpp"
 #include "entity.cpp"
-#include "data/data.cpp"
-
-// NOTE(szulf): entities[EntityType::PLAYER].size should always be 1
-// NOTE(szulf): entities[EntityType::LIGHT_BULB].size should always be 1 (or 0)
-struct Entities
-{
-  Array<Entity> data[(usize) EntityType::COUNT];
-
-  force_inline Array<Entity>& operator[](EntityType idx)
-  {
-    return data[(usize) idx];
-  }
-
-  const force_inline Array<Entity>& operator[](EntityType idx) const
-  {
-    return data[(usize) idx];
-  }
-};
 
 struct Main
 {
@@ -39,11 +21,81 @@ struct Main
   Camera debug_camera;
   Camera gameplay_camera;
 
-  Entities entities;
+  Scene scene;
 };
 
 namespace game
 {
+
+// TODO: i feel like this function should be in a different file
+Input Input::from_file(const char* path, Error& out_error)
+{
+  game::Input input = {};
+  Error error = SUCCESS;
+
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+
+  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, input);
+  auto lines = file.split('\n', scratch_arena.allocator);
+
+  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
+  {
+    auto& line = lines[line_idx];
+    auto parts = line.split(':', scratch_arena.allocator);
+    ERROR_ASSERT(parts.size == 2, out_error, "gkey decoding error. Invalid line.", input);
+
+    auto action = parts[0].trim_whitespace();
+    auto key_str = parts[1].trim_whitespace();
+    auto key = string_to_key(key_str, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, input);
+
+    if (action == "move_front")
+    {
+      input.move_front.key = key;
+    }
+    else if (action == "move_back")
+    {
+      input.move_back.key = key;
+    }
+    else if (action == "move_left")
+    {
+      input.move_left.key = key;
+    }
+    else if (action == "move_right")
+    {
+      input.move_right.key = key;
+    }
+    else if (action == "interact")
+    {
+      input.interact.key = key;
+    }
+    else if (action == "toggle_camera_mode")
+    {
+      input.toggle_camera_mode.key = key;
+    }
+    else if (action == "toggle_display_bounding_boxes")
+    {
+      input.toggle_display_bounding_boxes.key = key;
+    }
+    else if (action == "camera_move_up")
+    {
+      input.camera_move_up.key = key;
+    }
+    else if (action == "camera_move_down")
+    {
+      input.camera_move_down.key = key;
+    }
+    else
+    {
+      out_error = "gkey decoding error. Invalid key.";
+      return input;
+    }
+  }
+
+  return input;
+}
 
 void spec(Spec& spec)
 {
@@ -70,33 +122,10 @@ void init(Memory& memory, Input& input)
   renderer::init(main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt initialize renderer");
 
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-
-  // TODO(szulf): load this from a file directly, after switching to toml
-  main.entities[EntityType::PLAYER] = Array<Entity>::make(ArrayType::STATIC, 1, main.allocator);
-  main.entities[EntityType::INTERACTABLE] =
-    Array<Entity>::make(ArrayType::STATIC, 1, main.allocator);
-  main.entities[EntityType::STATIC_COLLISION] =
-    Array<Entity>::make(ArrayType::STATIC, 150, main.allocator);
-
-  auto entities = data::scene_from_file("data/main.gscn", main.allocator, error);
+  main.scene = Scene::from_file("data/main.gscn", main.allocator, error);
   ASSERT(error == SUCCESS, "couldnt load scene");
-  for (usize i = 0; i < entities.size; ++i)
-  {
-    auto& entity = entities[i];
-    main.entities[entity.type].push(entity);
-  }
 
-  auto& texture = assets::texture_get(
-    assets::material_get(
-      assets::model_get(main.entities[EntityType::PLAYER][0].model).parts[0].material
-    )
-      .diffuse_map
-  );
-  unused(texture);
-
-  input = data::keymap_from_file("data/keymap.gkey", error);
+  input = Input::from_file("data/keymap.gkey", error);
   ASSERT(error == SUCCESS, "couldnt read keymap file");
 
   main.gameplay_camera = {};
@@ -127,8 +156,15 @@ void update(Memory& memory, Input& input, float dt)
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  Entity& player = main.entities[EntityType::PLAYER][0];
-  auto& interactables = main.entities[EntityType::INTERACTABLE];
+  Entity& player = main.scene.entities[0];
+  auto interactables = Array<Entity*>::make(ArrayType::STATIC, 100, scratch_arena.allocator);
+  for (usize i = 1; i < MAX_ENTITIES; ++i)
+  {
+    if (main.scene.entities[i].type == EntityType::INTERACTABLE)
+    {
+      interactables.push(&main.scene.entities[i]);
+    }
+  }
 
   if (input.toggle_camera_mode.ended_down && input.toggle_camera_mode.transition_count != 0)
   {
@@ -187,7 +223,7 @@ void update(Memory& memory, Input& input, float dt)
   {
     main.main_camera = &main.gameplay_camera;
 
-    // NOTE(szulf): rotation
+    // NOTE: rotation
     {
       if (acceleration != vec3{0.0f, 0.0f, 0.0f})
       {
@@ -199,7 +235,7 @@ void update(Memory& memory, Input& input, float dt)
       player.rotation = wrap_to_neg_pi_to_pi(player.rotation);
     }
 
-    // NOTE(szulf): movement and collisions
+    // NOTE: movement and collisions
     {
       acceleration *= PLAYER_MOVEMENT_SPEED;
 
@@ -219,72 +255,69 @@ void update(Memory& memory, Input& input, float dt)
 
       vec3 collision_normal = {};
       bool collided = false;
-      for (ENUM_CLASS_ENTRIES(EntityType, entity_type_idx))
+      for (usize i = 0; i < MAX_ENTITIES; ++i)
       {
-        if (entity_type_idx == EntityType::PLAYER)
+        auto& c = main.scene.entities[i];
+        if (c.type == EntityType::PLAYER)
         {
           continue;
         }
 
-        for (usize i = 0; i < main.entities[entity_type_idx].size; ++i)
+        if (c.pos.y != 0.0f)
         {
-          auto& c = main.entities[entity_type_idx][i];
-          if (c.pos.y != 0.0f)
-          {
-            continue;
-          }
-          vec3 rounded_pos = {round(new_pos.x), 0.0f, round(new_pos.z)};
-          if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
-              (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
-          {
-            continue;
-          }
-
-          Entity p = {};
-          p.pos = new_pos;
-          p.bounding_box = player.bounding_box;
-
-          if (!entities_collide(p, c))
-          {
-            continue;
-          }
-
-          auto collidable_front = c.pos.z + (0.5f * c.bounding_box.depth);
-          auto collidable_back = c.pos.z - (0.5f * c.bounding_box.depth);
-          auto collidable_left = c.pos.x - (0.5f * c.bounding_box.width);
-          auto collidable_right = c.pos.x + (0.5f * c.bounding_box.width);
-
-          auto player_front = p.pos.z + (0.5f * p.bounding_box.depth);
-          auto player_back = p.pos.z - (0.5f * p.bounding_box.depth);
-          auto player_left = p.pos.x - (0.5f * p.bounding_box.width);
-          auto player_right = p.pos.x + (0.5f * p.bounding_box.width);
-
-          auto back_overlap = abs(player_back - collidable_front);
-          auto front_overlap = abs(player_front - collidable_back);
-          auto left_overlap = abs(player_left - collidable_right);
-          auto right_overlap = abs(player_right - collidable_left);
-
-          auto collision_overlap =
-            min(min(min(back_overlap, front_overlap), left_overlap), right_overlap);
-
-          if (f32_equal(collision_overlap, back_overlap))
-          {
-            collision_normal.z = -1.0f;
-          }
-          else if (f32_equal(collision_overlap, front_overlap))
-          {
-            collision_normal.z = 1.0f;
-          }
-          else if (f32_equal(collision_overlap, left_overlap))
-          {
-            collision_normal.x = 1.0f;
-          }
-          else if (f32_equal(collision_overlap, right_overlap))
-          {
-            collision_normal.x = -1.0f;
-          }
-          collided = true;
+          continue;
         }
+        vec3 rounded_pos = {round(new_pos.x), 0.0f, round(new_pos.z)};
+        if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
+            (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
+        {
+          continue;
+        }
+
+        Entity p = {};
+        p.pos = new_pos;
+        p.bounding_box = player.bounding_box;
+
+        if (!entities_collide(p, c))
+        {
+          continue;
+        }
+
+        auto collidable_front = c.pos.z + (0.5f * c.bounding_box.depth);
+        auto collidable_back = c.pos.z - (0.5f * c.bounding_box.depth);
+        auto collidable_left = c.pos.x - (0.5f * c.bounding_box.width);
+        auto collidable_right = c.pos.x + (0.5f * c.bounding_box.width);
+
+        auto player_front = p.pos.z + (0.5f * p.bounding_box.depth);
+        auto player_back = p.pos.z - (0.5f * p.bounding_box.depth);
+        auto player_left = p.pos.x - (0.5f * p.bounding_box.width);
+        auto player_right = p.pos.x + (0.5f * p.bounding_box.width);
+
+        auto back_overlap = abs(player_back - collidable_front);
+        auto front_overlap = abs(player_front - collidable_back);
+        auto left_overlap = abs(player_left - collidable_right);
+        auto right_overlap = abs(player_right - collidable_left);
+
+        auto collision_overlap =
+          min(min(min(back_overlap, front_overlap), left_overlap), right_overlap);
+
+        if (f32_equal(collision_overlap, back_overlap))
+        {
+          collision_normal.z = -1.0f;
+        }
+        else if (f32_equal(collision_overlap, front_overlap))
+        {
+          collision_normal.z = 1.0f;
+        }
+        else if (f32_equal(collision_overlap, left_overlap))
+        {
+          collision_normal.x = 1.0f;
+        }
+        else if (f32_equal(collision_overlap, right_overlap))
+        {
+          collision_normal.x = -1.0f;
+        }
+        collided = true;
       }
 
       auto abs_collision_normal = abs(collision_normal);
@@ -296,24 +329,24 @@ void update(Memory& memory, Input& input, float dt)
       }
     }
 
-    // NOTE(szulf): interactions
+    // NOTE: interactions
     {
       if (input.interact.ended_down && input.interact.transition_count != 0)
       {
         for (usize i = 0; i < interactables.size; ++i)
         {
           auto& interactable = interactables[i];
-          auto vec = interactable.pos - player.pos;
+          auto vec = interactable->pos - player.pos;
           f32 dist = length2(vec);
           f32 orientation = atan2(-vec.x, vec.z);
           orientation = wrap_to_neg_pi_to_pi(orientation);
-          if (dist < square(interactable.interactable_radius) &&
+          if (dist < square(interactable->interactable_radius) &&
               abs(player.rotation - orientation) < 1.0f &&
-              interactable.interactable_type == InteractableType::LIGHT_BULB)
+              interactable->interactable_type == InteractableType::LIGHT_BULB)
           {
-            interactable.light_bulb_on = !interactable.light_bulb_on;
-            interactable.tint =
-              interactable.light_bulb_on ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
+            interactable->light_bulb_on = !interactable->light_bulb_on;
+            interactable->tint =
+              interactable->light_bulb_on ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
           }
         }
       }
@@ -328,14 +361,15 @@ void render(Memory& memory)
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  // NOTE(szulf): shadow map pass
+  // NOTE: shadow map pass
   f32 shadow_map_camera_far_plane;
   {
     vec3 pos = {};
-    for (usize i = 0; i < main.entities[EntityType::INTERACTABLE].size; ++i)
+    for (usize i = 0; i < MAX_ENTITIES; ++i)
     {
-      auto& entity = main.entities[EntityType::INTERACTABLE][i];
-      if (entity.interactable_type == InteractableType::LIGHT_BULB)
+      auto& entity = main.scene.entities[i];
+      if (entity.type == EntityType::INTERACTABLE &&
+          entity.interactable_type == InteractableType::LIGHT_BULB)
       {
         pos = entity.pos;
         pos.y += entity.light_height_offset;
@@ -376,7 +410,7 @@ void render(Memory& memory)
     pass.transforms = transforms;
 
     {
-      auto& entity = main.entities[EntityType::PLAYER][0];
+      auto& entity = main.scene.entities[0];
       auto items = renderer_item_entity(entity, scratch_arena.allocator);
       renderer::queue_items(pass, items);
     }
@@ -385,7 +419,7 @@ void render(Memory& memory)
     renderer::draw(pass);
   }
 
-  // NOTE(szulf): main draw pass
+  // NOTE: main draw pass
   {
     auto pass = renderer::pass_make(scratch_arena.allocator);
     pass.camera = *main.main_camera;
@@ -394,53 +428,50 @@ void render(Memory& memory)
     pass.width = platform::get_width();
     pass.height = platform::get_height();
 
-    for (ENUM_CLASS_ENTRIES(EntityType, entity_type_idx))
+    for (usize i = 0; i < MAX_ENTITIES; ++i)
     {
-      for (usize i = 0; i < main.entities[entity_type_idx].size; ++i)
+      auto& entity = main.scene.entities[i];
+      if (entity.has_model)
       {
-        auto& entity = main.entities[entity_type_idx][i];
-        if (entity.has_model)
-        {
-          auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
-          renderer::queue_items(pass, renderer_items);
-        }
-        if (entity.type == EntityType::INTERACTABLE &&
-            entity.interactable_type == InteractableType::LIGHT_BULB && entity.light_bulb_on)
-        {
-          renderer::Light light = {};
-          light.pos = entity.pos;
-          light.pos.y += entity.light_height_offset;
-          light.color = entity.light_bulb_color;
-          pass.lights.push(light);
-        }
-        if (main.display_bounding_boxes)
-        {
-          auto bounding_box_items = renderer_item_entity_bounding_box(entity);
-          renderer::queue_items(pass, bounding_box_items);
+        auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
+        renderer::queue_items(pass, renderer_items);
+      }
+      if (entity.type == EntityType::INTERACTABLE &&
+          entity.interactable_type == InteractableType::LIGHT_BULB && entity.light_bulb_on)
+      {
+        renderer::Light light = {};
+        light.pos = entity.pos;
+        light.pos.y += entity.light_height_offset;
+        light.color = entity.light_bulb_color;
+        pass.lights.push(light);
+      }
+      if (main.display_bounding_boxes)
+      {
+        auto bounding_box_items = renderer_item_entity_bounding_box(entity);
+        renderer::queue_items(pass, bounding_box_items);
 
-          switch (entity.type)
+        switch (entity.type)
+        {
+          case EntityType::INTERACTABLE:
           {
-            case EntityType::INTERACTABLE:
-            {
-              auto radius_items = renderer_item_entity_interactable_radius(entity);
-              renderer::queue_items(pass, radius_items);
-            }
-            break;
-
-            case EntityType::PLAYER:
-            {
-              auto rotation_items = renderer_item_player_rotation(entity);
-              renderer::queue_items(pass, rotation_items);
-            }
-            break;
-
-            case EntityType::STATIC_COLLISION:
-            case EntityType::COUNT:
-            default:
-            {
-            }
-            break;
+            auto radius_items = renderer_item_entity_interactable_radius(entity);
+            renderer::queue_items(pass, radius_items);
           }
+          break;
+
+          case EntityType::PLAYER:
+          {
+            auto rotation_items = renderer_item_player_rotation(entity);
+            renderer::queue_items(pass, rotation_items);
+          }
+          break;
+
+          case EntityType::STATIC_COLLISION:
+          case EntityType::COUNT:
+          default:
+          {
+          }
+          break;
         }
       }
     }

@@ -55,17 +55,19 @@ struct Entity
   InteractableType interactable_type;
   f32 interactable_radius;
 
-  // NOTE(szulf): lights (?)
+  // NOTE: lights (?)
   f32 light_height_offset;
 
-  // NOTE(szulf): light_bulb
+  // NOTE: light_bulb
   bool light_bulb_on;
   vec3 light_bulb_color;
 
-  // NOTE(szulf): read/write
+  // NOTE: read/write
   String name;
   String model_path;
   bool is_bounding_box_from_model;
+
+  static Entity from_file(const char* path, Allocator& allocator, Error& out_error);
 };
 
 bool entities_collide(const Entity& ea, const Entity& eb);
@@ -74,5 +76,15 @@ Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allo
 renderer::Item renderer_item_entity_bounding_box(const Entity& entity);
 renderer::Item renderer_item_entity_interactable_radius(const Entity& entity);
 renderer::Item renderer_item_player_rotation(const Entity& entity);
+
+#define MAX_ENTITIES 1000
+struct Scene
+{
+  vec3 ambient_color;
+
+  Entity entities[1000];
+
+  static Scene from_file(const char* path, Allocator& allocator, Error& out_error);
+};
 
 #endif

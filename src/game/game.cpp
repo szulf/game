@@ -22,6 +22,9 @@ struct Main
   Camera gameplay_camera;
 
   Scene scene;
+
+  Error errors[512];
+  usize error_count;
 };
 
 namespace game
@@ -120,13 +123,22 @@ void init(Memory& memory, Input& input)
   renderer::ManagerGPU::instance = &main.gpu_manager;
 
   renderer::init(main.allocator, error);
-  ASSERT(error == SUCCESS, "couldnt initialize renderer");
+  if (error != SUCCESS)
+  {
+    main.errors[main.error_count++] = error;
+  }
 
   main.scene = Scene::from_file("data/main.gscn", main.allocator, error);
-  ASSERT(error == SUCCESS, "couldnt load scene");
+  if (error != SUCCESS)
+  {
+    main.errors[main.error_count++] = error;
+  }
 
   input = Input::from_file("data/keymap.gkey", error);
-  ASSERT(error == SUCCESS, "couldnt read keymap file");
+  if (error != SUCCESS)
+  {
+    main.errors[main.error_count++] = error;
+  }
 
   main.gameplay_camera = {};
   main.gameplay_camera.type = CameraType::PERSPECTIVE;
@@ -144,6 +156,15 @@ void init(Memory& memory, Input& input)
   main.debug_camera = main.gameplay_camera;
 
   main.main_camera = &main.gameplay_camera;
+
+  if (main.error_count != 0)
+  {
+    print("Encountered %zu errors.\n", main.error_count);
+    for (usize i = 0; i < main.error_count; ++i)
+    {
+      print("%zu: %s\n", i, main.errors[i]);
+    }
+  }
 }
 
 void update(Memory& memory, Input& input, float dt)

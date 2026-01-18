@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-1. global error list
 2. free gpu resources
    - static models should survive the freeing
 3. new mega struct entity system?

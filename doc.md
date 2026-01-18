@@ -2,9 +2,8 @@
 
 ## SMALL TODOS: (ordered)
 
-2. free gpu resources
+3. free gpu resources
    - static models should survive the freeing
-3. new mega struct entity system?
 4. tests
    - what do i even test? and how?
    - do i want unit tests? or just in-game tests?

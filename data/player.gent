@@ -1,3 +1,7 @@
+controlled_by_player : true
+
+has_model : true
 model : assets/bean.obj
-type : PLAYER
+
+collidable : true
 bounding_box : *

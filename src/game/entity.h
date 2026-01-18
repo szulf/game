@@ -1,29 +1,9 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
-enum class EntityType
-{
-  PLAYER,
-  STATIC_COLLISION,
-  INTERACTABLE,
-
-  COUNT,
-};
-
-const char* entity_type_to_cstr(EntityType type);
-EntityType string_to_entity_type(const String& str, Error& out_error);
-
 #define PLAYER_MOVEMENT_SPEED 8.0f
 #define PLAYER_ROTATE_SPEED (3 * F32_PI)
 #define PLAYER_MASS 80.0f
-
-enum class InteractableType
-{
-  LIGHT_BULB,
-};
-
-const char* interactable_type_to_cstr(InteractableType type);
-InteractableType string_to_interactable_type(const String& str, Error& out_error);
 
 #define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
 #define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
@@ -38,29 +18,27 @@ struct BoundingBox
 
 struct Entity
 {
-  EntityType type;
+  vec3 pos;
 
+  bool controlled_by_player;
   f32 rotation;
   f32 target_rotation;
-  vec3 pos;
   vec3 velocity;
 
+  bool collidable;
   BoundingBox bounding_box;
 
   bool has_model;
   assets::ModelHandle model;
 
-  vec3 tint = {1.0f, 1.0f, 1.0f};
-
-  InteractableType interactable_type;
+  bool interactable;
   f32 interactable_radius;
 
-  // NOTE: lights (?)
+  bool emits_light;
   f32 light_height_offset;
+  vec3 light_color;
 
-  // NOTE: light_bulb
-  bool light_bulb_on;
-  vec3 light_bulb_color;
+  vec3 tint = {1.0f, 1.0f, 1.0f};
 
   // NOTE: read/write
   String name;
@@ -82,7 +60,8 @@ struct Scene
 {
   vec3 ambient_color;
 
-  Entity entities[1000];
+  Entity entities[MAX_ENTITIES];
+  usize entities_count;
 
   static Scene from_file(const char* path, Allocator& allocator, Error& out_error);
 };

@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 typedef uint8_t u8;
@@ -60,12 +59,6 @@ typedef double f64;
 
 #ifdef COMPILER_CLANG
 #  define breakpoint() __builtin_trap()
-#else
-#  error Unknown compiler, Supported compilers: clang
-#endif
-
-#ifdef COMPILER_CLANG
-#  define dll_export extern "C" __attribute((visibility("default")))
 #else
 #  error Unknown compiler, Supported compilers: clang
 #endif

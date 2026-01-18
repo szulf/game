@@ -177,16 +177,6 @@ void update(Memory& memory, Input& input, float dt)
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  Entity& player = main.scene.entities[0];
-  auto interactables = Array<Entity*>::make(ArrayType::STATIC, 100, scratch_arena.allocator);
-  for (usize i = 1; i < MAX_ENTITIES; ++i)
-  {
-    if (main.scene.entities[i].type == EntityType::INTERACTABLE)
-    {
-      interactables.push(&main.scene.entities[i]);
-    }
-  }
-
   if (input.toggle_camera_mode.ended_down && input.toggle_camera_mode.transition_count != 0)
   {
     main.camera_mode = !main.camera_mode;
@@ -244,130 +234,139 @@ void update(Memory& memory, Input& input, float dt)
   {
     main.main_camera = &main.gameplay_camera;
 
-    // NOTE: rotation
+    for (usize i = 0; i < main.scene.entities_count; ++i)
     {
-      if (acceleration != vec3{0.0f, 0.0f, 0.0f})
+      auto& entity = main.scene.entities[i];
+      if (entity.controlled_by_player)
       {
-        auto rot = atan2(-acceleration.x, acceleration.z);
-        player.target_rotation = rot;
-      }
-      f32 direction = wrap_to_neg_pi_to_pi(player.target_rotation - player.rotation);
-      player.rotation += direction * PLAYER_ROTATE_SPEED * dt;
-      player.rotation = wrap_to_neg_pi_to_pi(player.rotation);
-    }
-
-    // NOTE: movement and collisions
-    {
-      acceleration *= PLAYER_MOVEMENT_SPEED;
-
-      static const f32 friction_coefficient = 0.35f;
-      static const f32 normal_force = PLAYER_MASS * F32_G;
-      static const f32 friction_magnitude = friction_coefficient * normal_force;
-
-      vec3 friction_dir = -normalize(player.velocity);
-      vec3 friction_force = friction_dir * friction_magnitude;
-
-      vec3 drag = -3.0f * player.velocity;
-      vec3 friction = (friction_force / PLAYER_MASS) + drag;
-
-      acceleration += friction;
-      auto new_pos = 0.5f * acceleration * square(dt) + player.velocity * dt + player.pos;
-      player.velocity = acceleration * dt + player.velocity;
-
-      vec3 collision_normal = {};
-      bool collided = false;
-      for (usize i = 0; i < MAX_ENTITIES; ++i)
-      {
-        auto& c = main.scene.entities[i];
-        if (c.type == EntityType::PLAYER)
+        // NOTE: rotation
         {
-          continue;
-        }
-
-        if (c.pos.y != 0.0f)
-        {
-          continue;
-        }
-        vec3 rounded_pos = {round(new_pos.x), 0.0f, round(new_pos.z)};
-        if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
-            (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
-        {
-          continue;
-        }
-
-        Entity p = {};
-        p.pos = new_pos;
-        p.bounding_box = player.bounding_box;
-
-        if (!entities_collide(p, c))
-        {
-          continue;
-        }
-
-        auto collidable_front = c.pos.z + (0.5f * c.bounding_box.depth);
-        auto collidable_back = c.pos.z - (0.5f * c.bounding_box.depth);
-        auto collidable_left = c.pos.x - (0.5f * c.bounding_box.width);
-        auto collidable_right = c.pos.x + (0.5f * c.bounding_box.width);
-
-        auto player_front = p.pos.z + (0.5f * p.bounding_box.depth);
-        auto player_back = p.pos.z - (0.5f * p.bounding_box.depth);
-        auto player_left = p.pos.x - (0.5f * p.bounding_box.width);
-        auto player_right = p.pos.x + (0.5f * p.bounding_box.width);
-
-        auto back_overlap = abs(player_back - collidable_front);
-        auto front_overlap = abs(player_front - collidable_back);
-        auto left_overlap = abs(player_left - collidable_right);
-        auto right_overlap = abs(player_right - collidable_left);
-
-        auto collision_overlap =
-          min(min(min(back_overlap, front_overlap), left_overlap), right_overlap);
-
-        if (f32_equal(collision_overlap, back_overlap))
-        {
-          collision_normal.z = -1.0f;
-        }
-        else if (f32_equal(collision_overlap, front_overlap))
-        {
-          collision_normal.z = 1.0f;
-        }
-        else if (f32_equal(collision_overlap, left_overlap))
-        {
-          collision_normal.x = 1.0f;
-        }
-        else if (f32_equal(collision_overlap, right_overlap))
-        {
-          collision_normal.x = -1.0f;
-        }
-        collided = true;
-      }
-
-      auto abs_collision_normal = abs(collision_normal);
-      auto collision_normal_inverted = vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
-      player.pos = (abs_collision_normal * player.pos) + (new_pos * collision_normal_inverted);
-      if (collided)
-      {
-        player.velocity -= dot(player.velocity, collision_normal) * collision_normal;
-      }
-    }
-
-    // NOTE: interactions
-    {
-      if (input.interact.ended_down && input.interact.transition_count != 0)
-      {
-        for (usize i = 0; i < interactables.size; ++i)
-        {
-          auto& interactable = interactables[i];
-          auto vec = interactable->pos - player.pos;
-          f32 dist = length2(vec);
-          f32 orientation = atan2(-vec.x, vec.z);
-          orientation = wrap_to_neg_pi_to_pi(orientation);
-          if (dist < square(interactable->interactable_radius) &&
-              abs(player.rotation - orientation) < 1.0f &&
-              interactable->interactable_type == InteractableType::LIGHT_BULB)
+          if (acceleration != vec3{0.0f, 0.0f, 0.0f})
           {
-            interactable->light_bulb_on = !interactable->light_bulb_on;
-            interactable->tint =
-              interactable->light_bulb_on ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
+            auto rot = atan2(-acceleration.x, acceleration.z);
+            entity.target_rotation = rot;
+          }
+          f32 direction = wrap_to_neg_pi_to_pi(entity.target_rotation - entity.rotation);
+          entity.rotation += direction * PLAYER_ROTATE_SPEED * dt;
+          entity.rotation = wrap_to_neg_pi_to_pi(entity.rotation);
+        }
+
+        // NOTE: movement and collisions
+        {
+          acceleration *= PLAYER_MOVEMENT_SPEED;
+
+          static const f32 friction_coefficient = 0.35f;
+          static const f32 normal_force = PLAYER_MASS * F32_G;
+          static const f32 friction_magnitude = friction_coefficient * normal_force;
+
+          vec3 friction_dir = -normalize(entity.velocity);
+          vec3 friction_force = friction_dir * friction_magnitude;
+
+          vec3 drag = -3.0f * entity.velocity;
+          vec3 friction = (friction_force / PLAYER_MASS) + drag;
+
+          acceleration += friction;
+          auto new_pos = 0.5f * acceleration * square(dt) + entity.velocity * dt + entity.pos;
+          entity.velocity = acceleration * dt + entity.velocity;
+
+          vec3 collision_normal = {};
+          bool collided = false;
+          // TODO: still wrong? only checking collisions between the player and collidables
+          for (usize collidable_idx = 0; collidable_idx < main.scene.entities_count;
+               ++collidable_idx)
+          {
+            auto& c = main.scene.entities[collidable_idx];
+            if (&c == &entity || !c.collidable || c.pos.y != 0.0f)
+            {
+              continue;
+            }
+
+            vec3 rounded_pos = {round(new_pos.x), 0.0f, round(new_pos.z)};
+            if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
+                (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
+            {
+              continue;
+            }
+
+            Entity p = {};
+            p.pos = new_pos;
+            p.bounding_box = entity.bounding_box;
+
+            if (!entities_collide(p, c))
+            {
+              continue;
+            }
+
+            auto collidable_front = c.pos.z + (0.5f * c.bounding_box.depth);
+            auto collidable_back = c.pos.z - (0.5f * c.bounding_box.depth);
+            auto collidable_left = c.pos.x - (0.5f * c.bounding_box.width);
+            auto collidable_right = c.pos.x + (0.5f * c.bounding_box.width);
+
+            auto entity_front = p.pos.z + (0.5f * p.bounding_box.depth);
+            auto entity_back = p.pos.z - (0.5f * p.bounding_box.depth);
+            auto entity_left = p.pos.x - (0.5f * p.bounding_box.width);
+            auto entity_right = p.pos.x + (0.5f * p.bounding_box.width);
+
+            auto back_overlap = abs(entity_back - collidable_front);
+            auto front_overlap = abs(entity_front - collidable_back);
+            auto left_overlap = abs(entity_left - collidable_right);
+            auto right_overlap = abs(entity_right - collidable_left);
+
+            auto collision_overlap =
+              min(min(min(back_overlap, front_overlap), left_overlap), right_overlap);
+
+            if (f32_equal(collision_overlap, back_overlap))
+            {
+              collision_normal.z = -1.0f;
+            }
+            else if (f32_equal(collision_overlap, front_overlap))
+            {
+              collision_normal.z = 1.0f;
+            }
+            else if (f32_equal(collision_overlap, left_overlap))
+            {
+              collision_normal.x = 1.0f;
+            }
+            else if (f32_equal(collision_overlap, right_overlap))
+            {
+              collision_normal.x = -1.0f;
+            }
+            collided = true;
+          }
+
+          auto abs_collision_normal = abs(collision_normal);
+          auto collision_normal_inverted = vec3{1.0f, 0.0f, 1.0f} - abs_collision_normal;
+          entity.pos = (abs_collision_normal * entity.pos) + (new_pos * collision_normal_inverted);
+          if (collided)
+          {
+            entity.velocity -= dot(entity.velocity, collision_normal) * collision_normal;
+          }
+        }
+
+        // NOTE: interactions
+        if (input.interact.ended_down && input.interact.transition_count != 0)
+        {
+          for (usize interactable_idx = 0; interactable_idx < main.scene.entities_count;
+               ++interactable_idx)
+          {
+            auto& interactable = main.scene.entities[interactable_idx];
+            if (!interactable.interactable)
+            {
+              continue;
+            }
+            auto vec = interactable.pos - entity.pos;
+            f32 dist = length2(vec);
+            f32 orientation = atan2(-vec.x, vec.z);
+            orientation = wrap_to_neg_pi_to_pi(orientation);
+            if (dist < square(interactable.interactable_radius) &&
+                abs(entity.rotation - orientation) < 1.0f)
+            {
+              // TODO: this is light bulb specific behaviour, how do i work with other
+              // interactables?
+              interactable.emits_light = !interactable.emits_light;
+              interactable.tint =
+                interactable.emits_light ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
+            }
           }
         }
       }
@@ -386,11 +385,10 @@ void render(Memory& memory)
   f32 shadow_map_camera_far_plane;
   {
     vec3 pos = {};
-    for (usize i = 0; i < MAX_ENTITIES; ++i)
+    for (usize i = 0; i < main.scene.entities_count; ++i)
     {
       auto& entity = main.scene.entities[i];
-      if (entity.type == EntityType::INTERACTABLE &&
-          entity.interactable_type == InteractableType::LIGHT_BULB)
+      if (entity.emits_light)
       {
         pos = entity.pos;
         pos.y += entity.light_height_offset;
@@ -449,7 +447,7 @@ void render(Memory& memory)
     pass.width = platform::get_width();
     pass.height = platform::get_height();
 
-    for (usize i = 0; i < MAX_ENTITIES; ++i)
+    for (usize i = 0; i < main.scene.entities_count; ++i)
     {
       auto& entity = main.scene.entities[i];
       if (entity.has_model)
@@ -457,42 +455,30 @@ void render(Memory& memory)
         auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
         renderer::queue_items(pass, renderer_items);
       }
-      if (entity.type == EntityType::INTERACTABLE &&
-          entity.interactable_type == InteractableType::LIGHT_BULB && entity.light_bulb_on)
+      if (entity.emits_light)
       {
         renderer::Light light = {};
         light.pos = entity.pos;
         light.pos.y += entity.light_height_offset;
-        light.color = entity.light_bulb_color;
+        light.color = entity.light_color;
         pass.lights.push(light);
       }
       if (main.display_bounding_boxes)
       {
-        auto bounding_box_items = renderer_item_entity_bounding_box(entity);
-        renderer::queue_items(pass, bounding_box_items);
-
-        switch (entity.type)
+        if (entity.collidable)
         {
-          case EntityType::INTERACTABLE:
-          {
-            auto radius_items = renderer_item_entity_interactable_radius(entity);
-            renderer::queue_items(pass, radius_items);
-          }
-          break;
-
-          case EntityType::PLAYER:
-          {
-            auto rotation_items = renderer_item_player_rotation(entity);
-            renderer::queue_items(pass, rotation_items);
-          }
-          break;
-
-          case EntityType::STATIC_COLLISION:
-          case EntityType::COUNT:
-          default:
-          {
-          }
-          break;
+          auto bounding_box_items = renderer_item_entity_bounding_box(entity);
+          renderer::queue_items(pass, bounding_box_items);
+        }
+        if (entity.interactable)
+        {
+          auto radius_items = renderer_item_entity_interactable_radius(entity);
+          renderer::queue_items(pass, radius_items);
+        }
+        if (entity.controlled_by_player)
+        {
+          auto rotation_items = renderer_item_player_rotation(entity);
+          renderer::queue_items(pass, rotation_items);
         }
       }
     }

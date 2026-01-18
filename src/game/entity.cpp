@@ -1,59 +1,5 @@
 #include "entity.h"
 
-const char* entity_type_to_cstr(EntityType type)
-{
-  switch (type)
-  {
-    case EntityType::PLAYER:
-      return "PLAYER";
-    case EntityType::STATIC_COLLISION:
-      return "STATIC_COLLISION";
-    case EntityType::INTERACTABLE:
-      return "INTERACTABLE";
-    case EntityType::COUNT:
-      ASSERT(false, "no");
-  }
-}
-
-EntityType string_to_entity_type(const String& str, Error& out_error)
-{
-  if (str == "PLAYER")
-  {
-    return EntityType::PLAYER;
-  }
-  else if (str == "STATIC_COLLISION")
-  {
-    return EntityType::STATIC_COLLISION;
-  }
-  else if (str == "INTERACTABLE")
-  {
-    return EntityType::INTERACTABLE;
-  }
-
-  out_error = "Invalid entity type string.";
-  return (EntityType) 0;
-}
-
-const char* interactable_type_to_cstr(InteractableType type)
-{
-  switch (type)
-  {
-    case InteractableType::LIGHT_BULB:
-      return "LIGHT_BULB";
-  }
-}
-
-InteractableType string_to_interactable_type(const String& str, Error& out_error)
-{
-  if (str == "LIGHT_BULB")
-  {
-    return InteractableType::LIGHT_BULB;
-  }
-
-  out_error = "Invalid interactable type string.";
-  return (InteractableType) 0;
-}
-
 BoundingBox BoundingBox::from_model(assets::ModelHandle handle)
 {
   vec3 max_corner = {F32_MIN, 0, F32_MIN};
@@ -73,6 +19,20 @@ BoundingBox BoundingBox::from_model(assets::ModelHandle handle)
     }
   }
   return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
+}
+
+static bool gformat_get_bool_(const String& value, Error& out_error)
+{
+  if (value == "true")
+  {
+    return true;
+  }
+  else if (value == "false")
+  {
+    return false;
+  }
+  out_error = "gent decoding error. Invalid bool.";
+  return {};
 }
 
 static vec3 gformat_get_vec3_(const String& value, Error& out_error)
@@ -120,47 +80,38 @@ Entity Entity::from_file(const char* path, Allocator& allocator, Error& out_erro
 
     auto parts = line.split(':', scratch_arena.allocator);
     ERROR_ASSERT(parts.size == 2, out_error, "gent decoding error. Invalid line.", out);
-
     auto key = parts[0].trim_whitespace();
     auto value = parts[1].trim_whitespace();
 
     if (key == "pos")
     {
       out.pos = gformat_get_vec3_(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
     }
-    else if (key == "model")
+    else if (key == "controlled_by_player")
     {
-      out.has_model = true;
-      out.model_path = value.copy(allocator);
-      out.model =
-        assets::Model::from_file(out.model_path.to_cstr(scratch_arena.allocator), allocator, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+      out.controlled_by_player = gformat_get_bool_(value, error);
     }
-    else if (key == "type")
+    else if (key == "rotation")
     {
-      out.type = string_to_entity_type(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+      out.rotation = parse_f32(value, error);
     }
-    else if (key == "interactable_type")
+    else if (key == "target_rotation")
     {
-      ASSERT(
-        out.type == EntityType::INTERACTABLE,
-        "cannot set interactable_type on non interactable entity"
-      );
-      out.interactable_type = string_to_interactable_type(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+      out.target_rotation = parse_f32(value, error);
+    }
+    else if (key == "velocity")
+    {
+      out.velocity = gformat_get_vec3_(value, error);
+    }
+    else if (key == "collidable")
+    {
+      out.collidable = gformat_get_bool_(value, error);
     }
     else if (key == "bounding_box")
     {
       if (value == "*")
       {
-        ERROR_ASSERT(
-          out.has_model,
-          out_error,
-          "gent decoding error. Cannot calculate bounding box without model.",
-          out
-        );
+        ASSERT(out.has_model, "gent decoding error. Cannot calculate bounding box without model.");
         out.bounding_box = BoundingBox::from_model(out.model);
         out.is_bounding_box_from_model = true;
       }
@@ -169,45 +120,41 @@ Entity Entity::from_file(const char* path, Allocator& allocator, Error& out_erro
         ASSERT(false, "[TODO] load hardcoded bounding box");
       }
     }
-    else if (key == "tint")
+    else if (key == "has_model")
     {
-      out.tint = gformat_get_vec3_(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+      out.has_model = gformat_get_bool_(value, error);
+    }
+    else if (key == "model")
+    {
+      out.model_path = value.copy(allocator);
+      out.model =
+        assets::Model::from_file(out.model_path.to_cstr(scratch_arena.allocator), allocator, error);
+    }
+    else if (key == "interactable")
+    {
+      out.interactable = gformat_get_bool_(value, error);
     }
     else if (key == "interactable_radius")
     {
-      ASSERT(
-        out.type == EntityType::INTERACTABLE,
-        "cannot set 'interactable_radius' on non interactable entity"
-      );
       out.interactable_radius = parse_f32(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    }
+    else if (key == "emits_light")
+    {
+      out.emits_light = gformat_get_bool_(value, error);
     }
     else if (key == "light_height_offset")
     {
-      ASSERT(
-        out.type == EntityType::INTERACTABLE &&
-          out.interactable_type == InteractableType::LIGHT_BULB,
-        "cannot set 'light_height_offset' on non light entity"
-      );
       out.light_height_offset = parse_f32(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
     }
-    else if (key == "light_bulb_color")
+    else if (key == "light_color")
     {
-      ASSERT(
-        out.type == EntityType::INTERACTABLE &&
-          out.interactable_type == InteractableType::LIGHT_BULB,
-        "cannot set light_bulb_color on non light_bulb entity"
-      );
-      out.light_bulb_color = gformat_get_vec3_(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+      out.light_color = gformat_get_vec3_(value, error);
     }
-    else
+    else if (key == "tint")
     {
-      out_error = "gent decoding error. Invalid key.";
-      return out;
+      out.tint = gformat_get_vec3_(value, error);
     }
+    ERROR_ASSERT(error == SUCCESS, out_error, error, out);
   }
   return out;
 }
@@ -300,7 +247,6 @@ Scene Scene::from_file(const char* path, Allocator& allocator, Error& out_error)
   auto lines = file.split('\n', scratch_arena.allocator);
 
   Scene scene = {};
-  usize entities_count = 0;
   auto entity_cache = Map<String, Entity>::make(lines.size * 2, scratch_arena.allocator);
   vec3 ambient_color = {};
   for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
@@ -342,10 +288,10 @@ Scene Scene::from_file(const char* path, Allocator& allocator, Error& out_error)
 
     entity.pos = pos;
 
-    scene.entities[entities_count++] = entity;
+    scene.entities[scene.entities_count++] = entity;
   }
 
-  for (usize entity_idx = 0; entity_idx < entities_count; ++entity_idx)
+  for (usize entity_idx = 0; entity_idx < scene.entities_count; ++entity_idx)
   {
     auto& model = assets::model_get(scene.entities[entity_idx].model);
     for (usize part_idx = 0; part_idx < model.parts.size; ++part_idx)

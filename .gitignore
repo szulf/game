@@ -1,4 +1,5 @@
 build/
+build_release/
 .cache/
 .zed/
 source_todos.md

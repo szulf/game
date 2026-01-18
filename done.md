@@ -30,7 +30,7 @@
     - will be used for chaning the on/off state of the light bulb
     - and for possible changing the color of the ground
 
-
 ## 2. BIG TODO: core improvements
 
 1. global error list
+2. new mega struct entity system?

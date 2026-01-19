@@ -23,9 +23,9 @@ struct Array
   static Array<T> from(T* data, usize size);
 
   template <typename I>
-  force_inline T& operator[](I idx);
+  inline T& operator[](I idx);
   template <typename I>
-  const force_inline T& operator[](I idx) const;
+  inline const T& operator[](I idx) const;
 
   void push(const T& value);
   void push_range(const T* begin, const T* end);

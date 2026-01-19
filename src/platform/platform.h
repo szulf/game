@@ -14,6 +14,7 @@ String read_file_to_string(const char* path, Allocator& allocator, Error& out_er
 void write_entire_file(const char* path, const String& string, Error& out_error);
 u32 get_width();
 u32 get_height();
+u64 get_ns();
 
 }
 

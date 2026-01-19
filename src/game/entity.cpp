@@ -83,6 +83,7 @@ Entity Entity::from_file(const char* path, Allocator& allocator, Error& out_erro
     auto key = parts[0].trim_whitespace();
     auto value = parts[1].trim_whitespace();
 
+    // find-error off
     if (key == "pos")
     {
       out.pos = gformat_get_vec3_(value, error);
@@ -155,6 +156,7 @@ Entity Entity::from_file(const char* path, Allocator& allocator, Error& out_erro
       out.tint = gformat_get_vec3_(value, error);
     }
     ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    // find-error on
   }
   return out;
 }

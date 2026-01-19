@@ -19,6 +19,11 @@ u32 get_height()
   return g_height;
 }
 
+u64 get_ns()
+{
+  return SDL_GetTicksNS();
+}
+
 void* read_entire_file(const char* path, Allocator& allocator, usize& out_size, Error& out_error)
 {
   SDL_Storage* storage = SDL_OpenFileStorage(nullptr);
@@ -67,24 +72,86 @@ static SDL_Keycode sdlk_from_key(Key key)
 {
   switch (key)
   {
-    case Key::W:
-      return SDLK_W;
-    case Key::S:
-      return SDLK_S;
     case Key::A:
       return SDLK_A;
+    case Key::B:
+      return SDLK_B;
+    case Key::C:
+      return SDLK_C;
     case Key::D:
       return SDLK_D;
     case Key::E:
       return SDLK_E;
-    case Key::SPACE:
-      return SDLK_SPACE;
-    case Key::LSHIFT:
-      return SDLK_LSHIFT;
+    case Key::F:
+      return SDLK_F;
+    case Key::G:
+      return SDLK_G;
+    case Key::H:
+      return SDLK_H;
+    case Key::I:
+      return SDLK_I;
+    case Key::J:
+      return SDLK_J;
+    case Key::K:
+      return SDLK_K;
+    case Key::L:
+      return SDLK_L;
+    case Key::M:
+      return SDLK_M;
+    case Key::N:
+      return SDLK_N;
+    case Key::O:
+      return SDLK_O;
+    case Key::P:
+      return SDLK_P;
+    case Key::Q:
+      return SDLK_Q;
+    case Key::R:
+      return SDLK_R;
+    case Key::S:
+      return SDLK_S;
+    case Key::T:
+      return SDLK_T;
+    case Key::U:
+      return SDLK_U;
+    case Key::V:
+      return SDLK_V;
+    case Key::W:
+      return SDLK_W;
+    case Key::X:
+      return SDLK_X;
+    case Key::Y:
+      return SDLK_Y;
+    case Key::Z:
+      return SDLK_Z;
     case Key::F1:
       return SDLK_F1;
     case Key::F2:
       return SDLK_F2;
+    case Key::F3:
+      return SDLK_F3;
+    case Key::F4:
+      return SDLK_F4;
+    case Key::F5:
+      return SDLK_F5;
+    case Key::F6:
+      return SDLK_F6;
+    case Key::F7:
+      return SDLK_F7;
+    case Key::F8:
+      return SDLK_F8;
+    case Key::F9:
+      return SDLK_F9;
+    case Key::F10:
+      return SDLK_F10;
+    case Key::F11:
+      return SDLK_F11;
+    case Key::F12:
+      return SDLK_F12;
+    case Key::SPACE:
+      return SDLK_SPACE;
+    case Key::LSHIFT:
+      return SDLK_LSHIFT;
   }
   return (SDL_Keycode) -1;
 }
@@ -189,27 +256,11 @@ i32 main()
 
     {
       const bool* key_states = SDL_GetKeyboardState(nullptr);
-      input.move_front.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_front.key), nullptr)];
-      input.move_back.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_back.key), nullptr)];
-      input.move_left.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_left.key), nullptr)];
-      input.move_right.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.move_right.key), nullptr)];
-
-      input.interact.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.interact.key), nullptr)];
-
-      input.camera_move_up.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.camera_move_up.key), nullptr)];
-      input.camera_move_down.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.camera_move_down.key), nullptr)];
-
-      input.toggle_camera_mode.ended_down =
-        key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.toggle_camera_mode.key), nullptr)];
-      input.toggle_display_bounding_boxes.ended_down = key_states
-        [SDL_GetScancodeFromKey(sdlk_from_key(input.toggle_display_bounding_boxes.key), nullptr)];
+      for (usize i = 0; i < array_size(input.states); ++i)
+      {
+        input.states[i].ended_down =
+          key_states[SDL_GetScancodeFromKey(sdlk_from_key(input.states[i].key), nullptr)];
+      }
     }
 
     game::update(memory, input, 1.0f / (f32) FPS);

@@ -30,7 +30,7 @@ String String::make(const char* cstr, usize len)
   return s;
 }
 
-force_inline char String::operator[](usize idx) const
+inline char String::operator[](usize idx) const
 {
   ASSERT(idx < size, "string index out of bounds");
   return data[idx];
@@ -55,7 +55,7 @@ usize String::count(const char* c) const
   usize count = 0;
   for (usize i = 0; i < size - s.size + 1; ++i)
   {
-    if ((data + i) == s)
+    if (s == String::make(data + i, s.size))
     {
       ++count;
     }
@@ -242,7 +242,7 @@ f32 parse_f32(const String& str, Error& out_error)
       is_fraction = true;
       ++s;
     }
-    if (*s < '0' && *s > '9')
+    if (*s < '0' || *s > '9')
     {
       out_error = "Invalid f32 string. Invalid character found.";
       return 0.0f;
@@ -269,7 +269,7 @@ u32 parse_u32(const String& str, Error& out_error)
   u32 val = 0;
   while (s < str.data + str.size)
   {
-    if (*s < '0' && *s > '9')
+    if (*s < '0' || *s > '9')
     {
       out_error = "Invalid u32 string. Invalid character found.";
       return 0;
@@ -281,32 +281,32 @@ u32 parse_u32(const String& str, Error& out_error)
   return val;
 }
 
-force_inline bool operator==(const String& s1, const String& s2)
+inline bool operator==(const String& s1, const String& s2)
 {
   return s1.size == s2.size && mem_equal(s1.data, s2.data, s1.size);
 }
 
-force_inline bool operator==(const String& s1, const char* cstr)
+inline bool operator==(const String& s1, const char* cstr)
 {
   return s1.size == cstr_len(cstr) && mem_equal(s1.data, cstr, s1.size);
 }
 
-force_inline bool operator==(const char* cstr, const String& s1)
+inline bool operator==(const char* cstr, const String& s1)
 {
   return s1.size == cstr_len(cstr) && mem_equal(s1.data, cstr, s1.size);
 }
 
-force_inline bool operator!=(const String& sa, const String& sb)
+inline bool operator!=(const String& sa, const String& sb)
 {
   return !(sa == sb);
 }
 
-force_inline bool operator!=(const String& str, const char* cstr)
+inline bool operator!=(const String& str, const char* cstr)
 {
   return !(str == cstr);
 }
 
-force_inline bool operator!=(const char* cstr, const String& str)
+inline bool operator!=(const char* cstr, const String& str)
 {
   return !(str == cstr);
 }

@@ -34,3 +34,5 @@
 
 1. global error list
 2. new mega struct entity system?
+3. tests
+   - unit tests for base

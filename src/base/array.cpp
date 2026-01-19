@@ -2,7 +2,7 @@
 
 template <typename T>
 template <typename I>
-force_inline T& Array<T>::operator[](I idx)
+inline T& Array<T>::operator[](I idx)
 {
   ASSERT((usize) idx < size, "list index out of bounds");
   return data[idx];
@@ -10,7 +10,7 @@ force_inline T& Array<T>::operator[](I idx)
 
 template <typename T>
 template <typename I>
-const force_inline T& Array<T>::operator[](I idx) const
+inline const T& Array<T>::operator[](I idx) const
 {
   ASSERT((usize) idx < size, "list index out of bounds");
   return data[idx];

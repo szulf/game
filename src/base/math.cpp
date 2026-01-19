@@ -1,5 +1,14 @@
 #include "math.h"
 
+usize min(usize a, usize b)
+{
+  if (a > b)
+  {
+    return b;
+  }
+  return a;
+}
+
 usize pow(usize base, usize exponent)
 {
   usize val = 1;

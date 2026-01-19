@@ -13,11 +13,11 @@ struct String
   static String make(const char* cstr);
   static String make(const char* cstr, usize len);
 
-  force_inline char operator[](usize idx) const;
+  inline char operator[](usize idx) const;
 
   usize count(char c) const;
   usize count(const char* c) const;
-  usize find(char c, usize start_idx) const;
+  usize find(char c, usize start_idx = 0) const;
   usize find_last(char c) const;
 
   bool starts_with(const char* cstr) const;
@@ -36,6 +36,7 @@ struct String
   String trim_whitespace() const;
 
   // NOTE: removes directories and the extension
+  // NOTE: currently only '/' paths are supported
   String get_filename() const;
 
   const char* to_cstr(Allocator& allocator) const;
@@ -44,12 +45,12 @@ struct String
 f32 parse_f32(const String& str, Error& out_error);
 u32 parse_u32(const String& str, Error& out_error);
 
-force_inline bool operator==(const String& sa, const String& sb);
-force_inline bool operator==(const String& str, const char* cstr);
-force_inline bool operator==(const char* cstr, const String& str);
-force_inline bool operator!=(const String& sa, const String& sb);
-force_inline bool operator!=(const String& str, const char* cstr);
-force_inline bool operator!=(const char* cstr, const String& str);
+inline bool operator==(const String& sa, const String& sb);
+inline bool operator==(const String& str, const char* cstr);
+inline bool operator==(const char* cstr, const String& str);
+inline bool operator!=(const String& sa, const String& sb);
+inline bool operator!=(const String& str, const char* cstr);
+inline bool operator!=(const char* cstr, const String& str);
 
 template <>
 usize hash(const String& v);

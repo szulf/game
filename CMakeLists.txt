@@ -78,11 +78,11 @@ find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
 
 # NOTE: using unity build so thats the reason for just one source file
-add_executable(game_sdl3 src/platform/sdl3_gl.cpp)
-target_include_directories(game_sdl3 PRIVATE ${include_dirs})
-target_compile_options(game_sdl3 PRIVATE ${flags})
-target_compile_definitions(game_sdl3 PRIVATE ${definitions})
-target_link_libraries(game_sdl3 PRIVATE SDL3::SDL3 OpenGL)
+add_executable(game src/platform/sdl3_gl.cpp)
+target_include_directories(game PRIVATE ${include_dirs})
+target_compile_options(game PRIVATE ${flags})
+target_compile_definitions(game PRIVATE ${definitions})
+target_link_libraries(game PRIVATE SDL3::SDL3 OpenGL)
 
 # NOTE: run a python script to check for missing error handling
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -97,5 +97,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         VERBATIM
     )
 
-  add_dependencies(run_find_error game_sdl3)
+  add_dependencies(run_find_error game)
 endif()
+
+# NOTE: using unity build so thats the reason for just one source file
+add_executable(tests src/tests/tests.cpp)
+target_include_directories(tests PRIVATE ${include_dirs})
+target_compile_options(tests PRIVATE ${flags})
+target_compile_definitions(tests PRIVATE ${definitions})

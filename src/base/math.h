@@ -12,6 +12,7 @@
 #define U64_FNV_OFFSET 14695981039346656037UL
 #define U64_FNV_PRIME 1099511628211UL
 
+usize min(usize a, usize b);
 usize pow(usize base, usize exponent);
 
 i32 abs(i32 value);

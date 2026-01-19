@@ -16,6 +16,7 @@ struct Main
 
   bool camera_mode;
   bool display_bounding_boxes;
+  bool recording_test;
 
   Camera* main_camera;
   Camera debug_camera;
@@ -33,7 +34,7 @@ namespace game
 // TODO: i feel like this function should be in a different file
 Input Input::from_file(const char* path, Error& out_error)
 {
-  game::Input input = {};
+  Input input = {};
   Error error = SUCCESS;
 
   auto scratch_arena = ScratchArena::get();
@@ -487,5 +488,4 @@ void render(Memory& memory)
     renderer::draw(pass);
   }
 }
-
 }

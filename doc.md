@@ -2,20 +2,22 @@
 
 ## SMALL TODOS: (ordered)
 
-3. free gpu resources
+4. new renderer? (sokol like or my own new)
+   - free gpu resources
    - static models should survive the freeing
-4. tests
-   - what do i even test? and how?
-   - do i want unit tests? or just in-game tests?
-5. new renderer? (sokol like or my own new)
-6. worker threads?
+5. worker threads?
+6. change the fixed frame rate
 
 ---
 
 ## NEXT BIG TODOS: (unordered)
 
+- placing/destroying something on the ground
 - audio
-- map/entity/keymap editor
+- debug tools
+  - map/entity/keymap editor
+  - time scaling
+  - system for in game tests
 - profiler
 - inventory system
 

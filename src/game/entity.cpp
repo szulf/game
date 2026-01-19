@@ -21,146 +21,6 @@ BoundingBox BoundingBox::from_model(assets::ModelHandle handle)
   return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
 }
 
-static bool gformat_get_bool_(const String& value, Error& out_error)
-{
-  if (value == "true")
-  {
-    return true;
-  }
-  else if (value == "false")
-  {
-    return false;
-  }
-  out_error = "gent decoding error. Invalid bool.";
-  return {};
-}
-
-static vec3 gformat_get_vec3_(const String& value, Error& out_error)
-{
-  Error error = SUCCESS;
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-
-  vec3 out = {};
-
-  auto values = value.split(' ', scratch_arena.allocator);
-  ERROR_ASSERT(values.size == 3, out_error, "gent decoding error. Invalid vec3.", out);
-
-  out.x = parse_f32(values[0], error);
-  ERROR_ASSERT(error == SUCCESS, out_error, "gent decoding error. Invalid vec3.", out);
-  out.y = parse_f32(values[1], error);
-  ERROR_ASSERT(error == SUCCESS, out_error, "gent decoding error. Invalid vec3.", out);
-  out.z = parse_f32(values[2], error);
-  ERROR_ASSERT(error == SUCCESS, out_error, "gent decoding error. Invalid vec3.", out);
-
-  return out;
-}
-
-Entity Entity::from_file(const char* path, Allocator& allocator, Error& out_error)
-{
-  Error error = SUCCESS;
-  Entity out = {};
-
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-
-  out.name = String::make(path).get_filename().copy(allocator);
-
-  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, out);
-  auto lines = file.split('\n', scratch_arena.allocator);
-
-  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
-  {
-    auto& line = lines[line_idx];
-    if (line[0] == '#')
-    {
-      continue;
-    }
-
-    auto parts = line.split(':', scratch_arena.allocator);
-    ERROR_ASSERT(parts.size == 2, out_error, "gent decoding error. Invalid line.", out);
-    auto key = parts[0].trim_whitespace();
-    auto value = parts[1].trim_whitespace();
-
-    // find-error off
-    if (key == "pos")
-    {
-      out.pos = gformat_get_vec3_(value, error);
-    }
-    else if (key == "controlled_by_player")
-    {
-      out.controlled_by_player = gformat_get_bool_(value, error);
-    }
-    else if (key == "rotation")
-    {
-      out.rotation = parse_f32(value, error);
-    }
-    else if (key == "target_rotation")
-    {
-      out.target_rotation = parse_f32(value, error);
-    }
-    else if (key == "velocity")
-    {
-      out.velocity = gformat_get_vec3_(value, error);
-    }
-    else if (key == "collidable")
-    {
-      out.collidable = gformat_get_bool_(value, error);
-    }
-    else if (key == "bounding_box")
-    {
-      if (value == "*")
-      {
-        ASSERT(out.has_model, "gent decoding error. Cannot calculate bounding box without model.");
-        out.bounding_box = BoundingBox::from_model(out.model);
-        out.is_bounding_box_from_model = true;
-      }
-      else
-      {
-        ASSERT(false, "[TODO] load hardcoded bounding box");
-      }
-    }
-    else if (key == "has_model")
-    {
-      out.has_model = gformat_get_bool_(value, error);
-    }
-    else if (key == "model")
-    {
-      out.model_path = value.copy(allocator);
-      out.model =
-        assets::Model::from_file(out.model_path.to_cstr(scratch_arena.allocator), allocator, error);
-    }
-    else if (key == "interactable")
-    {
-      out.interactable = gformat_get_bool_(value, error);
-    }
-    else if (key == "interactable_radius")
-    {
-      out.interactable_radius = parse_f32(value, error);
-    }
-    else if (key == "emits_light")
-    {
-      out.emits_light = gformat_get_bool_(value, error);
-    }
-    else if (key == "light_height_offset")
-    {
-      out.light_height_offset = parse_f32(value, error);
-    }
-    else if (key == "light_color")
-    {
-      out.light_color = gformat_get_vec3_(value, error);
-    }
-    else if (key == "tint")
-    {
-      out.tint = gformat_get_vec3_(value, error);
-    }
-    ERROR_ASSERT(error == SUCCESS, out_error, error, out);
-    // find-error on
-  }
-  return out;
-}
-
 bool entities_collide(const Entity& ea, const Entity& eb)
 {
   auto& ax = ea.pos.x;
@@ -238,16 +98,142 @@ renderer::Item renderer_item_player_rotation(const Entity& entity)
   return out;
 }
 
-Scene Scene::from_file(const char* path, Allocator& allocator, Error& out_error)
+template <>
+Entity Serializer::read<Entity>(
+  const String& str,
+  Error& out_error,
+  Allocator* allocator,
+  SourceType source_type
+)
+{
+  ASSERT(allocator != nullptr, "cannot pass a nullptr to Serializer::read<Entity>()");
+
+  Error error = SUCCESS;
+  Entity out = {};
+
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+
+  String source = take_source(str, source_type, scratch_arena.allocator, out_error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+
+  auto lines = source.split('\n', scratch_arena.allocator);
+  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
+  {
+    auto& line = lines[line_idx];
+    if (line[0] == '#')
+    {
+      continue;
+    }
+
+    auto parts = line.split(':', scratch_arena.allocator);
+    ERROR_ASSERT(parts.size == 2, out_error, "gent decoding error. Invalid line.", out);
+    auto key = parts[0].trim_whitespace();
+    auto value = parts[1].trim_whitespace();
+
+    // find-error off
+    if (key == "pos")
+    {
+      out.pos = read<vec3>(value, error);
+    }
+    else if (key == "controlled_by_player")
+    {
+      out.controlled_by_player = read<bool>(value, error);
+    }
+    else if (key == "rotation")
+    {
+      out.rotation = read<f32>(value, error);
+    }
+    else if (key == "target_rotation")
+    {
+      out.target_rotation = read<f32>(value, error);
+    }
+    else if (key == "velocity")
+    {
+      out.velocity = read<vec3>(value, error);
+    }
+    else if (key == "collidable")
+    {
+      out.collidable = read<bool>(value, error);
+    }
+    else if (key == "bounding_box")
+    {
+      if (value == "*")
+      {
+        ASSERT(out.has_model, "gent decoding error. Cannot calculate bounding box without model.");
+        out.bounding_box = BoundingBox::from_model(out.model);
+        out.is_bounding_box_from_model = true;
+      }
+      else
+      {
+        auto bb = read<vec2>(value, error);
+        out.bounding_box.width = bb.x;
+        out.bounding_box.depth = bb.y;
+      }
+    }
+    else if (key == "has_model")
+    {
+      out.has_model = read<bool>(value, error);
+    }
+    else if (key == "model")
+    {
+      out.model_path = value.copy(*allocator);
+      out.model = assets::Model::from_file(
+        out.model_path.to_cstr(scratch_arena.allocator),
+        *allocator,
+        error
+      );
+    }
+    else if (key == "interactable")
+    {
+      out.interactable = read<bool>(value, error);
+    }
+    else if (key == "interactable_radius")
+    {
+      out.interactable_radius = read<f32>(value, error);
+    }
+    else if (key == "emits_light")
+    {
+      out.emits_light = read<bool>(value, error);
+    }
+    else if (key == "light_height_offset")
+    {
+      out.light_height_offset = read<f32>(value, error);
+    }
+    else if (key == "light_color")
+    {
+      out.light_color = read<vec3>(value, error);
+    }
+    else if (key == "tint")
+    {
+      out.tint = read<vec3>(value, error);
+    }
+    else if (key == "name")
+    {
+      out.name = value.copy(*allocator);
+    }
+    ERROR_ASSERT(error == SUCCESS, out_error, error, out);
+    // find-error on
+  }
+  return out;
+}
+
+template <>
+Scene Serializer::read<Scene>(
+  const String& str,
+  Error& out_error,
+  Allocator* allocator,
+  SourceType source_type
+)
 {
   Error error = SUCCESS;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  String source = take_source(str, source_type, scratch_arena.allocator, out_error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  auto lines = file.split('\n', scratch_arena.allocator);
 
+  auto lines = source.split('\n', scratch_arena.allocator);
   Scene scene = {};
   auto entity_cache = Map<String, Entity>::make(lines.size * 2, scratch_arena.allocator);
   vec3 ambient_color = {};
@@ -267,7 +253,7 @@ Scene Scene::from_file(const char* path, Allocator& allocator, Error& out_error)
 
     if (key == "ambient_color")
     {
-      ambient_color = gformat_get_vec3_(value, error);
+      ambient_color = read<vec3>(value, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
       continue;
     }
@@ -280,12 +266,12 @@ Scene Scene::from_file(const char* path, Allocator& allocator, Error& out_error)
     {
       auto entity_path =
         key.prepend("data/", scratch_arena.allocator).append(".gent", scratch_arena.allocator);
-      entity = Entity::from_file(entity_path.to_cstr(scratch_arena.allocator), allocator, error);
+      entity = read<Entity>(entity_path, error, allocator, SourceType::FILE);
       ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
       entity_cache.set(key, entity);
     }
 
-    vec3 pos = gformat_get_vec3_(value, error);
+    auto pos = read<vec3>(value, error);
     ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
 
     entity.pos = pos;

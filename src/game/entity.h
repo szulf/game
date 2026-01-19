@@ -44,8 +44,6 @@ struct Entity
   String name;
   String model_path;
   bool is_bounding_box_from_model;
-
-  static Entity from_file(const char* path, Allocator& allocator, Error& out_error);
 };
 
 bool entities_collide(const Entity& ea, const Entity& eb);
@@ -62,8 +60,6 @@ struct Scene
 
   Entity entities[MAX_ENTITIES];
   usize entities_count;
-
-  static Scene from_file(const char* path, Allocator& allocator, Error& out_error);
 };
 
 #endif

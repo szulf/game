@@ -1,3 +1,5 @@
+name : player
+
 controlled_by_player : true
 
 has_model : true

@@ -331,56 +331,6 @@ bool test_string_get_filename()
   return name == "file";
 }
 
-bool test_string_parse_f32_succ()
-{
-  auto str = String::make("3.1415");
-  Error error = SUCCESS;
-  // find-error off
-  f32 val = parse_f32(str, error);
-  return error == SUCCESS && f32_equal(val, 3.1415f);
-  // find-error on
-}
-
-bool test_string_parse_f32_fail()
-{
-  auto str = String::make("3.1415f");
-  Error error = SUCCESS;
-  // find-error off
-  parse_f32(str, error);
-  return error != SUCCESS;
-  // find-error on
-}
-
-bool test_string_parse_u32_succ()
-{
-  auto str = String::make("69420");
-  Error error = SUCCESS;
-  // find-error off
-  auto val = parse_u32(str, error);
-  return error == SUCCESS && val == 69420;
-  // find-error on
-}
-
-bool test_string_parse_u32_fail_negative()
-{
-  auto str = String::make("-69420");
-  Error error = SUCCESS;
-  // find-error off
-  parse_u32(str, error);
-  return error != SUCCESS;
-  // find-error on
-}
-
-bool test_string_parse_u32_fail_char()
-{
-  auto str = String::make("69420.");
-  Error error = SUCCESS;
-  // find-error off
-  parse_u32(str, error);
-  return error != SUCCESS;
-  // find-error on
-}
-
 i32 main()
 {
   TestRunner runner{};
@@ -409,11 +359,6 @@ i32 main()
   runner.add({"String::split()", test_string_split});
   runner.add({"String::trim_whitespace()", test_string_trim_whitespace});
   runner.add({"String::get_filename()", test_string_get_filename});
-  runner.add({"parse_f32() success", test_string_parse_f32_succ});
-  runner.add({"parse_f32() fail", test_string_parse_f32_fail});
-  runner.add({"parse_u32() success", test_string_parse_u32_succ});
-  runner.add({"parse_u32() fail negative", test_string_parse_u32_fail_negative});
-  runner.add({"parse_u32() fail char", test_string_parse_u32_fail_char});
 
   runner.run();
 

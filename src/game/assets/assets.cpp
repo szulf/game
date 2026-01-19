@@ -149,11 +149,11 @@ static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allo
 static vec3 obj_color_from_parts(const Array<String>& parts, Error& out_error)
 {
   Error error = SUCCESS;
-  f32 r = parse_f32(parts[1], error);
+  f32 r = Serializer::read<f32>(parts[1], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  f32 g = parse_f32(parts[2], error);
+  f32 g = Serializer::read<f32>(parts[2], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  f32 b = parse_f32(parts[3], error);
+  f32 b = Serializer::read<f32>(parts[3], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   return {r, g, b};
 }
@@ -237,7 +237,7 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
         out_error,
         "Obj decoding error. Invalid Ns(specular_exponent)",
       );
-      f32 exponent = parse_f32(parts[1], error);
+      f32 exponent = Serializer::read<f32>(parts[1], error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.specular_exponent = exponent;
     }
@@ -257,7 +257,7 @@ static void obj_parse_vertex(f32* points, usize points_size, const String& line,
   ASSERT(parts.size - 1 <= points_size, "out of bounds on points");
   for (usize i = 1; i < parts.size; ++i)
   {
-    auto num = parse_f32(parts[i], error);
+    auto num = Serializer::read<f32>(parts[i], error);
     if (error != SUCCESS)
     {
       out_error = error;
@@ -315,7 +315,7 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           const auto parts = splits[i].split('/', scratch_arena.allocator);
           for (usize part_idx = 0; part_idx < parts.size; ++part_idx)
           {
-            auto num = parse_u32(parts[part_idx], error);
+            auto num = Serializer::read<u32>(parts[part_idx], error);
             if (error != SUCCESS)
             {
               out_error = error;

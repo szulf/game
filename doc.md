@@ -2,11 +2,11 @@
 
 ## SMALL TODOS: (ordered)
 
-4. new renderer? (sokol like or my own new)
+5. new renderer? (sokol like or my own new)
    - free gpu resources
    - static models should survive the freeing
-5. worker threads?
-6. change the fixed frame rate
+6. worker threads?
+7. change the fixed frame rate
 
 ---
 

@@ -65,8 +65,6 @@ struct Input
   vec2 mouse_pos;
   vec2 mouse_relative;
   vec2 mouse_pos_last;
-
-  static Input from_file(const char* path, Error& out_error);
 };
 
 void spec(Spec& spec);

@@ -1,6 +1,7 @@
 #include "base/base.cpp"
 #include "platform/platform.h"
 
+#include "serializer.cpp"
 #include "image.cpp"
 #include "assets/assets.cpp"
 #include "camera.cpp"
@@ -28,21 +29,26 @@ struct Main
   usize error_count;
 };
 
-namespace game
-{
-
 // TODO: i feel like this function should be in a different file
-Input Input::from_file(const char* path, Error& out_error)
+template <>
+game::Input Serializer::read<game::Input>(
+  const String& str,
+  Error& out_error,
+  Allocator* allocator,
+  SourceType source_type
+)
 {
-  Input input = {};
+  unused(allocator);
+
+  game::Input input = {};
   Error error = SUCCESS;
 
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  auto source = take_source(str, source_type, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, input);
-  auto lines = file.split('\n', scratch_arena.allocator);
+  auto lines = source.split('\n', scratch_arena.allocator);
 
   for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
   {
@@ -101,6 +107,9 @@ Input Input::from_file(const char* path, Error& out_error)
   return input;
 }
 
+namespace game
+{
+
 void spec(Spec& spec)
 {
   spec.window_name = "game";
@@ -129,13 +138,23 @@ void init(Memory& memory, Input& input)
     main.errors[main.error_count++] = error;
   }
 
-  main.scene = Scene::from_file("data/main.gscn", main.allocator, error);
+  main.scene = Serializer::read<Scene>(
+    String::make("data/main.gscn"),
+    error,
+    &main.allocator,
+    Serializer::SourceType::FILE
+  );
   if (error != SUCCESS)
   {
     main.errors[main.error_count++] = error;
   }
 
-  input = Input::from_file("data/keymap.gkey", error);
+  input = Serializer::read<Input>(
+    String::make("data/keymap.gkey"),
+    error,
+    nullptr,
+    Serializer::SourceType::FILE
+  );
   if (error != SUCCESS)
   {
     main.errors[main.error_count++] = error;

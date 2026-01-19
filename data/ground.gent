@@ -1,3 +1,5 @@
+name : ground
+
 has_model : true
 model : assets/cube.obj
 

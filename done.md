@@ -36,3 +36,4 @@
 2. new mega struct entity system?
 3. tests
    - unit tests for base
+4. serializer

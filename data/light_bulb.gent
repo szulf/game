@@ -1,3 +1,5 @@
+name : light_bulb
+
 has_model : true
 model : assets/light_bulb.obj
 
@@ -5,11 +7,11 @@ collidable : true
 bounding_box : *
 
 emits_light : false
-light_color : 1.0 1.0 0.7
+light_color : (1.0, 1.0, 0.7)
 light_height_offset : -0.25
 
 interactable : true
 interactable_radius : 0.8
 
 # TODO: shouldnt i get this from the in code constant somehow?
-tint : 0.1 0.1 0.1
+tint : (0.1, 0.1, 0.1)

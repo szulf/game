@@ -13,7 +13,7 @@ struct BoundingBox
   f32 width;
   f32 depth;
 
-  static BoundingBox from_model(assets::ModelHandle model);
+  static BoundingBox from_mesh(MeshHandle mesh, const Assets& assets);
 };
 
 struct Entity
@@ -28,8 +28,8 @@ struct Entity
   bool collidable;
   BoundingBox bounding_box;
 
-  bool has_model;
-  assets::ModelHandle model;
+  bool renderable;
+  MeshHandle mesh;
 
   bool interactable;
   f32 interactable_radius;
@@ -42,16 +42,11 @@ struct Entity
 
   // NOTE: read/write
   String name;
-  String model_path;
+  String mesh_path;
   bool is_bounding_box_from_model;
 };
 
 bool entities_collide(const Entity& ea, const Entity& eb);
-
-Array<renderer::Item> renderer_item_entity(const Entity& entity, Allocator& allocator);
-renderer::Item renderer_item_entity_bounding_box(const Entity& entity);
-renderer::Item renderer_item_entity_interactable_radius(const Entity& entity);
-renderer::Item renderer_item_player_rotation(const Entity& entity);
 
 #define MAX_ENTITIES 1000
 struct Scene
@@ -61,5 +56,8 @@ struct Scene
   Entity entities[MAX_ENTITIES];
   usize entities_count;
 };
+
+Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& out_error);
+Scene load_gscn(const char* path, Assets& assets, Allocator& allocator, Error& out_error);
 
 #endif

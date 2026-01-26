@@ -1,19 +1,18 @@
 #include "base/base.cpp"
 #include "platform/platform.h"
 
-#include "serializer.cpp"
 #include "image.cpp"
-#include "assets/assets.cpp"
+#include "assets.cpp"
 #include "camera.cpp"
-#include "renderer/renderer.cpp"
+#include "renderer.cpp"
 #include "entity.cpp"
 
 struct Main
 {
   Allocator allocator;
 
-  assets::Manager assets_manager;
-  renderer::ManagerGPU gpu_manager;
+  Assets assets;
+  Renderer renderer;
 
   bool camera_mode;
   bool display_bounding_boxes;
@@ -30,23 +29,14 @@ struct Main
 };
 
 // TODO: i feel like this function should be in a different file
-template <>
-game::Input Serializer::read<game::Input>(
-  const String& str,
-  Error& out_error,
-  Allocator* allocator,
-  SourceType source_type
-)
+game::Input load_gkey(const char* path, Error& out_error)
 {
-  unused(allocator);
-
   game::Input input = {};
   Error error = SUCCESS;
-
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  auto source = take_source(str, source_type, scratch_arena.allocator, error);
+  auto source = platform::read_file_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, input);
   auto lines = source.split('\n', scratch_arena.allocator);
 
@@ -127,34 +117,17 @@ void init(Memory& memory, Input& input)
   main.allocator.buffer = (u8*) memory.memory + sizeof(Main);
   main.allocator.type = AllocatorType::ARENA;
 
-  main.assets_manager = assets::Manager::make(main.allocator);
-  assets::Manager::instance = &main.assets_manager;
-  main.gpu_manager = renderer::ManagerGPU::make(main.allocator);
-  renderer::ManagerGPU::instance = &main.gpu_manager;
+  main.assets = Assets::make(main.allocator);
 
-  renderer::init(main.allocator, error);
+  main.renderer = Renderer::make(main.assets, main.allocator);
+
+  main.scene = load_gscn("data/main.gscn", main.assets, main.allocator, error);
   if (error != SUCCESS)
   {
     main.errors[main.error_count++] = error;
   }
 
-  main.scene = Serializer::read<Scene>(
-    String::make("data/main.gscn"),
-    error,
-    &main.allocator,
-    Serializer::SourceType::FILE
-  );
-  if (error != SUCCESS)
-  {
-    main.errors[main.error_count++] = error;
-  }
-
-  input = Serializer::read<Input>(
-    String::make("data/keymap.gkey"),
-    error,
-    nullptr,
-    Serializer::SourceType::FILE
-  );
+  input = load_gkey("data/keymap.gkey", error);
   if (error != SUCCESS)
   {
     main.errors[main.error_count++] = error;
@@ -397,12 +370,11 @@ void update(Memory& memory, Input& input, float dt)
 void render(Memory& memory)
 {
   auto& main = *(Main*) memory.memory;
-
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
   // NOTE: shadow map pass
-  f32 shadow_map_camera_far_plane;
+  Camera shadow_map_camera = {};
   {
     vec3 pos = {};
     for (usize i = 0; i < main.scene.entities_count; ++i)
@@ -416,95 +388,79 @@ void render(Memory& memory)
       }
     }
 
-    Camera shadow_map_camera = main.gameplay_camera;
+    shadow_map_camera = main.gameplay_camera;
     shadow_map_camera.pos = pos;
     shadow_map_camera.pitch = 0.0f;
     shadow_map_camera.yaw = F32_PI;
     shadow_map_camera.near_plane = 0.1f;
-    shadow_map_camera.far_plane = shadow_map_camera_far_plane = 25.0f;
+    shadow_map_camera.far_plane = 25.0f;
     shadow_map_camera.using_vertical_fov = false;
     shadow_map_camera.fov = F32_PI / 2.0f;
-    shadow_map_camera.viewport_width = SHADOW_CUBEMAP_WIDTH;
-    shadow_map_camera.viewport_height = SHADOW_CUBEMAP_HEIGHT;
+    shadow_map_camera.viewport_width = RenderData::SHADOW_CUBEMAP_WIDTH;
+    shadow_map_camera.viewport_height = RenderData::SHADOW_CUBEMAP_HEIGHT;
     shadow_map_camera.update_vectors();
 
-    mat4 light_proj_mat = shadow_map_camera.projection();
-    mat4 transforms[6] = {
-      light_proj_mat * mat4::look_at(pos, pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * mat4::look_at(pos, pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
-      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * mat4::look_at(pos, pos + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
-    };
-
-    auto pass = renderer::pass_make(scratch_arena.allocator);
-    pass.camera = shadow_map_camera;
-    pass.override_shader = true;
-    pass.shader = assets::SHADER_SHADOW_DEPTH;
-    pass.framebuffer_id = renderer::shadow_framebuffer_id;
-    pass.width = SHADOW_CUBEMAP_WIDTH;
-    pass.height = SHADOW_CUBEMAP_HEIGHT;
-    pass.transforms_count = 6;
-    pass.transforms = transforms;
-
-    {
-      auto& entity = main.scene.entities[0];
-      auto items = renderer_item_entity(entity, scratch_arena.allocator);
-      renderer::queue_items(pass, items);
-    }
-
-    renderer::sort_items(pass);
-    renderer::draw(pass);
-  }
-
-  // NOTE: main draw pass
-  {
-    auto pass = renderer::pass_make(scratch_arena.allocator);
-    pass.camera = *main.main_camera;
-    pass.shadow_map = &renderer::shadow_cubemap;
-    pass.shadow_map_camera_far_plane = shadow_map_camera_far_plane;
-    pass.width = platform::get_width();
-    pass.height = platform::get_height();
+    auto pass = main.renderer.begin_pass(
+      RenderPassType::POINT_SHADOW_MAP,
+      shadow_map_camera,
+      scratch_arena.allocator
+    );
 
     for (usize i = 0; i < main.scene.entities_count; ++i)
     {
       auto& entity = main.scene.entities[i];
-      if (entity.has_model)
+      if (entity.controlled_by_player && entity.renderable)
       {
-        auto renderer_items = renderer_item_entity(entity, scratch_arena.allocator);
-        renderer::queue_items(pass, renderer_items);
+        pass.draw_mesh(entity.mesh, entity.pos, entity.rotation);
+      }
+    }
+
+    pass.finish();
+  }
+
+  // NOTE: main draw pass
+  {
+    auto pass =
+      main.renderer.begin_pass(RenderPassType::FORWARD, *main.main_camera, scratch_arena.allocator);
+    pass.use_shadow_map(shadow_map_camera);
+
+    for (usize i = 0; i < main.scene.entities_count; ++i)
+    {
+      const auto& entity = main.scene.entities[i];
+      if (entity.renderable)
+      {
+        pass.draw_mesh(entity.mesh, entity.pos, entity.rotation, entity.tint);
       }
       if (entity.emits_light)
       {
-        renderer::Light light = {};
-        light.pos = entity.pos;
-        light.pos.y += entity.light_height_offset;
-        light.color = entity.light_color;
-        pass.lights.push(light);
+        vec3 pos = entity.pos;
+        pos.y += entity.light_height_offset;
+        pass.set_light(pos, entity.light_color);
       }
+
       if (main.display_bounding_boxes)
       {
-        if (entity.collidable)
+        if (entity.controlled_by_player)
         {
-          auto bounding_box_items = renderer_item_entity_bounding_box(entity);
-          renderer::queue_items(pass, bounding_box_items);
+          pass.draw_line(entity.pos, 0.6f, entity.rotation, {1.0f, 0.0f, 0.0f});
+        }
+        if (entity.collidable && f32_equal(entity.pos.y, 0.0f))
+        {
+          pass.draw_cube_wires(
+            entity.pos,
+            {entity.bounding_box.width, 1.0f, entity.bounding_box.depth},
+            {0.0f, 1.0f, 0.0f}
+          );
         }
         if (entity.interactable)
         {
-          auto radius_items = renderer_item_entity_interactable_radius(entity);
-          renderer::queue_items(pass, radius_items);
-        }
-        if (entity.controlled_by_player)
-        {
-          auto rotation_items = renderer_item_player_rotation(entity);
-          renderer::queue_items(pass, rotation_items);
+          pass.draw_ring(entity.pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f});
         }
       }
     }
 
-    renderer::sort_items(pass);
-    renderer::draw(pass);
+    pass.finish();
   }
 }
+
 }

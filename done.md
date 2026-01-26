@@ -37,3 +37,7 @@
 3. tests
    - unit tests for base
 4. serializer
+5. new renderer
+   - new api
+   - free gpu resources
+   - static models survive the freeing

@@ -58,6 +58,8 @@ extern PFNGLFRAMEBUFFERTEXTUREPROC glFramebufferTexture;
 extern PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
 extern PFNGLVERTEXATTRIBDIVISORPROC glVertexAttribDivisor;
 extern PFNGLDRAWELEMENTSINSTANCEDPROC glDrawElementsInstanced;
+extern PFNGLDELETEPROGRAMPROC glDeleteProgram;
+extern PFNGLDELETETEXTURESPROC glDeleteTextures;
 void setup_gl_functions();
 
 #ifdef MODE_DEBUG

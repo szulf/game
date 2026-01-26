@@ -2,11 +2,9 @@
 
 ## SMALL TODOS: (ordered)
 
-5. new renderer? (sokol like or my own new)
-   - free gpu resources
-   - static models should survive the freeing
 6. worker threads?
 7. change the fixed frame rate
+8. rewrite to get lsp working? (no unity build)
 
 ---
 

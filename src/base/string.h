@@ -42,6 +42,12 @@ struct String
   const char* to_cstr(Allocator& allocator) const;
 };
 
+f32 parse_f32(const String& source, Error& out_error);
+u32 parse_u32(const String& source, Error& out_error);
+bool parse_bool(const String& source, Error& out_error);
+vec2 parse_vec2(const String& source, Error& out_error);
+vec3 parse_vec3(const String& source, Error& out_error);
+
 inline bool operator==(const String& sa, const String& sb);
 inline bool operator==(const String& str, const char* cstr);
 inline bool operator==(const char* cstr, const String& str);

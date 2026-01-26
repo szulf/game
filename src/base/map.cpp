@@ -104,6 +104,37 @@ const MapEntry<K, V>* Map<K, V>::entry(const K& key) const
 }
 
 template <typename K, typename V>
+MapEntry<K, V>* Map<K, V>::entry(const K& key)
+{
+  usize idx = hash(key) % cap;
+  usize i = idx;
+  bool looped = false;
+  while (true)
+  {
+    if (!entries[i].set)
+    {
+      break;
+    }
+    if (entries[i].key == key)
+    {
+      return &entries[i];
+    }
+    ++i;
+    if (i == cap)
+    {
+      i = 0;
+      looped = true;
+    }
+    if (looped && i == idx)
+    {
+      break;
+    }
+  }
+  ASSERT(false, "map entry not found");
+  return nullptr;
+}
+
+template <typename K, typename V>
 void Map<K, V>::set(const K& key, const V& value)
 {
   usize idx = hash(key) % cap;
@@ -160,4 +191,21 @@ bool Map<K, V>::contains(const K& key) const
     }
   }
   return false;
+}
+
+template <typename K, typename V>
+void Map<K, V>::remove(const K& key)
+{
+  auto* e = entry(key);
+  ASSERT(e != nullptr, "trying to remove a map entry with a non existent key");
+  e->set = false;
+}
+
+template <typename K, typename V>
+void Map<K, V>::clear()
+{
+  for (usize i = 0; i < cap; ++i)
+  {
+    entries[i].set = false;
+  }
 }

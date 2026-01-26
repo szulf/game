@@ -1,7 +1,7 @@
 name : ground
 
-has_model : true
-model : assets/cube.obj
+renderable : true
+mesh : assets/cube.obj
 
 collidable : true
 bounding_box : *

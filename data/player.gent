@@ -2,8 +2,8 @@ name : player
 
 controlled_by_player : true
 
-has_model : true
-model : assets/bean.obj
+renderable: true
+mesh : assets/bean.obj
 
 collidable : true
 bounding_box : *

@@ -216,10 +216,4 @@ enum class Key
 const char* key_to_cstr(Key key);
 Key string_to_key(const String& str, Error& out_error);
 
-enum class RenderingPrimitive
-{
-  TRIANGLES,
-  LINE_STRIP,
-};
-
 #endif

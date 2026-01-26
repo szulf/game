@@ -1,7 +1,7 @@
 name : light_bulb
 
-has_model : true
-model : assets/light_bulb.obj
+renderable : true
+mesh : assets/light_bulb.obj
 
 collidable : true
 bounding_box : *

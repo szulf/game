@@ -1,176 +1,86 @@
 #include "assets.h"
 
 template <>
-usize hash(const usize& value)
+void AssetType<MeshHandle, MeshData>::destroy_all()
 {
-  return value;
+  size = StaticModel_COUNT;
+  mem_set(data + StaticModel_COUNT, 0, (MAX - StaticModel_COUNT) * sizeof(MeshData));
 }
 
-template <>
-usize hash(const assets::ShaderHandle& value)
+Assets Assets::make(Allocator& allocator)
 {
-  return value;
-}
-
-namespace assets
-{
-
-Manager* Manager::instance = nullptr;
-
-Manager Manager::make(Allocator& allocator)
-{
-  Manager out = {};
-  out.textures = Array<Texture>::make(ArrayType::STATIC, 100, allocator);
-  out.materials = Array<Material>::make(ArrayType::STATIC, 100, allocator);
-  out.meshes = Array<Mesh>::make(ArrayType::STATIC, 100, allocator);
-  out.models = Array<Model>::make(ArrayType::STATIC, 100, allocator);
+  Assets out = {};
 
   out.texture_handles = Map<String, TextureHandle>::make(100, allocator);
   out.material_handles = Map<String, MaterialHandle>::make(100, allocator);
+
   return out;
-}
-
-Texture& texture_get(TextureHandle handle)
-{
-  return Manager::instance->textures[handle];
-}
-
-TextureHandle texture_set(const Texture& texture)
-{
-  Manager::instance->textures.push(texture);
-  return Manager::instance->textures.size - 1;
-}
-
-Mesh& mesh_get(MeshHandle handle)
-{
-  return Manager::instance->meshes[handle - 1];
-}
-
-MeshHandle mesh_set(const Mesh& mesh)
-{
-  Manager::instance->meshes.push(mesh);
-  return Manager::instance->meshes.size;
-}
-
-Model& model_get(ModelHandle handle)
-{
-  return Manager::instance->models[handle - 1];
-}
-
-ModelHandle model_set(const Model& model)
-{
-  Manager::instance->models.push(model);
-  return Manager::instance->models.size;
-}
-
-Material& material_get(MaterialHandle handle)
-{
-  return Manager::instance->materials[handle - 1];
-}
-
-MaterialHandle material_set(const Material& material)
-{
-  Manager::instance->materials.push(material);
-  return Manager::instance->materials.size;
-}
-
-MaterialHandle material_handle_get(const String& key)
-{
-  return *Manager::instance->material_handles[key];
-}
-
-void material_handle_set(const String& key, MaterialHandle handle)
-{
-  Manager::instance->material_handles.set(key, handle);
-}
-
-bool material_handle_exists(const String& key)
-{
-  return Manager::instance->material_handles.contains(key);
-}
-
-TextureHandle texture_handle_get(const String& key)
-{
-  return *Manager::instance->texture_handles[key];
-}
-
-void texture_handle_set(const String& key, TextureHandle handle)
-{
-  Manager::instance->texture_handles.set(key, handle);
-}
-
-bool texture_handle_exists(const String& key)
-{
-  return Manager::instance->texture_handles.contains(key);
 }
 
 struct ObjContext
 {
+  MeshData out;
+
   Array<String> lines;
   usize idx;
+
   Map<Vertex, usize> vertex_map;
   Array<vec3> positions;
   Array<vec3> normals;
   Array<vec2> uvs;
+
   Allocator* allocator;
-  usize mesh_count;
-  usize pos_count;
-  usize normal_count;
-  usize uv_count;
 };
 
-static TextureHandle obj_get_texture_by_path(const String& path, Allocator& allocator)
+TextureHandle obj_get_texture_by_path_(const String& path, Assets& assets, Allocator& allocator)
 {
   Error error = SUCCESS;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  if (texture_handle_exists(path))
+  if (assets.texture_handles.contains(path))
   {
-    return texture_handle_get(path);
+    return *assets.texture_handles[path];
   }
 
-  TextureOptions options = {};
   auto img = Image::from_file(path.to_cstr(scratch_arena.allocator), allocator, error);
   if (error != SUCCESS)
   {
     img = Image::error_placeholder();
-    options.wrapping_x = TextureWrappingOptions::MIRRORED_REPEAT;
-    options.wrapping_y = TextureWrappingOptions::MIRRORED_REPEAT;
-    options.filter_magnifying = TextureFilteringOptions::NEAREST;
-    options.filter_minifying = TextureFilteringOptions::NEAREST;
   }
-  auto texture_handle = texture_set({img, options});
+  TextureData texture = {};
+  texture.image = img;
+  auto texture_handle = assets.textures.set(texture);
   auto allocated_path = path.copy(allocator);
-  texture_handle_set(allocated_path, texture_handle);
+  assets.texture_handles.set(allocated_path, texture_handle);
   return texture_handle;
 }
 
-static vec3 obj_color_from_parts(const Array<String>& parts, Error& out_error)
+vec3 obj_color_from_parts_(const Array<String>& parts, Error& out_error)
 {
   Error error = SUCCESS;
-  f32 r = Serializer::read<f32>(parts[1], error);
+  f32 r = parse_f32(parts[1], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  f32 g = Serializer::read<f32>(parts[2], error);
+  f32 g = parse_f32(parts[2], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  f32 b = Serializer::read<f32>(parts[3], error);
+  f32 b = parse_f32(parts[3], error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   return {r, g, b};
 }
 
-static void obj_set_shader(Material& material, const String& material_name)
+void obj_set_shader_(Material& material, const String& material_name)
 {
   if (material_name == "light_bulb")
   {
-    material.shader = SHADER_DEFAULT;
+    material.shader = ShaderHandle::DEFAULT;
   }
   else
   {
-    material.shader = SHADER_LIGHTING;
+    material.shader = ShaderHandle::LIGHTING;
   }
 }
 
-static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& out_error)
+void obj_parse_mtl_file_(const char* path, Assets& assets, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
   bool parsing = false;
@@ -190,13 +100,13 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
     if (parts[0] == "newmtl")
     {
       ERROR_ASSERT(parts.size == 2, out_error, "Obj decoding error. Invalid newmtl.", );
-      if (!material_handle_exists(parts[1]))
+      if (!assets.material_handles.contains(parts[1]))
       {
         if (parsing)
         {
-          obj_set_shader(material, material_name);
-          auto material_handle = material_set(material);
-          material_handle_set(material_name, material_handle);
+          obj_set_shader_(material, material_name);
+          auto material_handle = assets.materials.set(material);
+          assets.material_handles.set(material_name, material_handle);
         }
 
         parsing = true;
@@ -213,20 +123,20 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
       auto base_file_path = String::make("assets/");
       auto texture_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
 
-      auto texture_handle = obj_get_texture_by_path(texture_file_path, allocator);
+      auto texture_handle = obj_get_texture_by_path_(texture_file_path, assets, allocator);
       material.diffuse_map = texture_handle;
     }
     else if (parts[0] == "Kd")
     {
       ERROR_ASSERT(parts.size == 4, out_error, "Obj decoding error. Invalid Kd(diffuse color).", );
-      vec3 color = obj_color_from_parts(parts, error);
+      vec3 color = obj_color_from_parts_(parts, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.diffuse_color = color;
     }
     else if (parts[0] == "Ks")
     {
       ERROR_ASSERT(parts.size == 4, out_error, "Obj decoding error. Invalid Ks(specular color).", );
-      vec3 color = obj_color_from_parts(parts, error);
+      vec3 color = obj_color_from_parts_(parts, error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.specular_color = color;
     }
@@ -237,18 +147,18 @@ static void obj_parse_mtl_file(const char* path, Allocator& allocator, Error& ou
         out_error,
         "Obj decoding error. Invalid Ns(specular_exponent)",
       );
-      f32 exponent = Serializer::read<f32>(parts[1], error);
+      f32 exponent = parse_f32(parts[1], error);
       ERROR_ASSERT(error == SUCCESS, out_error, error, );
       material.specular_exponent = exponent;
     }
   }
 
-  obj_set_shader(material, material_name);
-  auto material_handle = material_set(material);
-  material_handle_set(material_name, material_handle);
+  obj_set_shader_(material, material_name);
+  auto material_handle = assets.materials.set(material);
+  assets.material_handles.set(material_name, material_handle);
 }
 
-static void obj_parse_vertex(f32* points, usize points_size, const String& line, Error& out_error)
+void obj_parse_vertex_(f32* points, usize points_size, const String& line, Error& out_error)
 {
   Error error = SUCCESS;
   auto scratch_arena = ScratchArena::get();
@@ -257,7 +167,7 @@ static void obj_parse_vertex(f32* points, usize points_size, const String& line,
   ASSERT(parts.size - 1 <= points_size, "out of bounds on points");
   for (usize i = 1; i < parts.size; ++i)
   {
-    auto num = Serializer::read<f32>(parts[i], error);
+    auto num = parse_f32(parts[i], error);
     if (error != SUCCESS)
     {
       out_error = error;
@@ -267,23 +177,18 @@ static void obj_parse_vertex(f32* points, usize points_size, const String& line,
   }
 }
 
-static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
+void obj_parse_object_(ObjContext& ctx, Assets& assets, Error& out_error)
 {
   Error error = SUCCESS;
-  usize indices_amount = 0;
+  Submesh submesh = {};
+  submesh.index_offset = ctx.out.indices.size;
   bool parsing = true;
   auto idx_old = ctx.idx;
   for (; parsing && ctx.idx < ctx.lines.size; ++ctx.idx)
   {
     switch (ctx.lines[ctx.idx][0])
     {
-      case 'f':
-      {
-        indices_amount += 3;
-      }
-      break;
       case 'o':
-      case 'g':
       {
         parsing = false;
       }
@@ -291,9 +196,6 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
     }
   }
   ctx.idx = idx_old;
-  auto mesh_indices = Array<u32>::make(ArrayType::STATIC, indices_amount, *ctx.allocator);
-  auto mesh_vertices = Array<Vertex>::make(ArrayType::DYNAMIC, 1, *ctx.allocator);
-  MaterialHandle material_handle = {};
 
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
@@ -315,12 +217,8 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           const auto parts = splits[i].split('/', scratch_arena.allocator);
           for (usize part_idx = 0; part_idx < parts.size; ++part_idx)
           {
-            auto num = Serializer::read<u32>(parts[part_idx], error);
-            if (error != SUCCESS)
-            {
-              out_error = error;
-              return {};
-            }
+            auto num = parse_u32(parts[part_idx], error);
+            ERROR_ASSERT(error == SUCCESS, out_error, error, );
             indices[idx] = num - 1;
             ++idx;
           }
@@ -330,14 +228,15 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           vertex.normal = ctx.normals[indices[2]];
           if (ctx.vertex_map.contains(vertex))
           {
-            mesh_indices.push(*(u32*) ctx.vertex_map[vertex]);
+            ctx.out.indices.push(*(u32*) ctx.vertex_map[vertex]);
           }
           else
           {
-            ctx.vertex_map.set(vertex, mesh_vertices.size);
-            mesh_indices.push((u32) mesh_vertices.size);
-            mesh_vertices.push(vertex);
+            ctx.vertex_map.set(vertex, ctx.out.vertices.size);
+            ctx.out.indices.push((u32) ctx.out.vertices.size);
+            ctx.out.vertices.push(vertex);
           }
+          ++submesh.index_count;
         }
       }
       break;
@@ -349,12 +248,8 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           case ' ':
           {
             f32 points[3];
-            obj_parse_vertex(points, 3, line, error);
-            if (error != SUCCESS)
-            {
-              out_error = error;
-              return {};
-            }
+            obj_parse_vertex_(points, 3, line, error);
+            ERROR_ASSERT(error == SUCCESS, out_error, error, );
             vec3 vec = {points[0], points[1], points[2]};
             ctx.positions.push(vec);
           }
@@ -363,12 +258,8 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           case 'n':
           {
             f32 points[3];
-            obj_parse_vertex(points, 3, line, error);
-            if (error != SUCCESS)
-            {
-              out_error = error;
-              return {};
-            }
+            obj_parse_vertex_(points, 3, line, error);
+            ERROR_ASSERT(error == SUCCESS, out_error, error, );
             ctx.normals.push({points[0], points[1], points[2]});
           }
           break;
@@ -376,12 +267,8 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
           case 't':
           {
             f32 points[2];
-            obj_parse_vertex(points, 2, line, error);
-            if (error != SUCCESS)
-            {
-              out_error = error;
-              return {};
-            }
+            obj_parse_vertex_(points, 2, line, error);
+            ERROR_ASSERT(error == SUCCESS, out_error, error, );
             ctx.uvs.push({points[0], points[1]});
           }
           break;
@@ -392,21 +279,20 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
       case 'u':
       {
         const auto parts = line.split(' ', scratch_arena.allocator);
-        if (parts.size != 2 || parts[0] != "usemtl")
-        {
-          out_error = "Obj decoding error. Invalid usemtl.";
-          return {};
-        }
+        ERROR_ASSERT(
+          parts.size == 2 && parts[0] == "usemtl",
+          out_error,
+          "Obj decoding error. Invalid usemtl.",
+        );
         ASSERT(
-          material_handle_exists(parts[1]),
+          assets.material_handles.contains(parts[1]),
           "material with name %s does not exist",
           parts[1].to_cstr(scratch_arena.allocator)
         );
-        material_handle = material_handle_get(parts[1]);
+        submesh.material = *assets.material_handles[parts[1]];
       }
       break;
 
-      case 'g':
       case 'o':
       {
         parsing = false;
@@ -417,16 +303,12 @@ static MeshMaterialPair obj_parse_object(ObjContext& ctx, Error& out_error)
     back_idx = ctx.idx;
   }
 
-  return {
-    mesh_set({mesh_vertices, mesh_indices, RenderingPrimitive::TRIANGLES}),
-    material_handle,
-  };
+  ctx.out.submeshes.push(submesh);
 }
 
-ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_error)
+MeshHandle Assets::load_obj(const char* path, Allocator& allocator, Error& out_error)
 {
   Error error = SUCCESS;
-  Model model = {};
   ObjContext ctx = {};
   ctx.allocator = &allocator;
   auto scratch_arena = ScratchArena::get();
@@ -436,6 +318,10 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
   ctx.lines = file.split('\n', scratch_arena.allocator);
 
   usize vertex_count = 0;
+  usize submesh_count = 0;
+  usize pos_count = 0;
+  usize normal_count = 0;
+  usize uv_count = 0;
   for (usize i = 0; i < ctx.lines.size; ++i)
   {
     const auto& line = ctx.lines[i];
@@ -446,10 +332,9 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
     }
     switch (line[0])
     {
-      case 'g':
       case 'o':
       {
-        ++ctx.mesh_count;
+        ++submesh_count;
       }
       break;
       case 'v':
@@ -458,17 +343,17 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
         {
           case ' ':
           {
-            ++ctx.pos_count;
+            ++pos_count;
           }
           break;
           case 'n':
           {
-            ++ctx.normal_count;
+            ++normal_count;
           }
           break;
           case 't':
           {
-            ++ctx.uv_count;
+            ++uv_count;
           }
           break;
         }
@@ -482,11 +367,14 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
     }
   }
 
-  model.parts = Array<MeshMaterialPair>::make(ArrayType::STATIC, ctx.mesh_count, allocator);
-  ctx.positions = Array<vec3>::make(ArrayType::STATIC, ctx.pos_count, scratch_arena.allocator);
-  ctx.normals = Array<vec3>::make(ArrayType::STATIC, ctx.normal_count, scratch_arena.allocator);
-  ctx.uvs = Array<vec2>::make(ArrayType::STATIC, ctx.uv_count, scratch_arena.allocator);
-  ctx.vertex_map = Map<Vertex, usize>::make(vertex_count * 3, scratch_arena.allocator);
+  ctx.out.submeshes = Array<Submesh>::make(ArrayType::STATIC, submesh_count, allocator);
+  ctx.out.vertices = Array<Vertex>::make(ArrayType::DYNAMIC, 100, allocator);
+  ctx.out.indices = Array<u32>::make(ArrayType::STATIC, vertex_count, allocator);
+
+  ctx.positions = Array<vec3>::make(ArrayType::STATIC, pos_count, scratch_arena.allocator);
+  ctx.normals = Array<vec3>::make(ArrayType::STATIC, normal_count, scratch_arena.allocator);
+  ctx.uvs = Array<vec2>::make(ArrayType::STATIC, uv_count, scratch_arena.allocator);
+  ctx.vertex_map = Map<Vertex, usize>::make(vertex_count * 2, scratch_arena.allocator);
 
   for (ctx.idx = 0; ctx.idx < ctx.lines.size; ++ctx.idx)
   {
@@ -494,16 +382,10 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
     switch (line[0])
     {
       case 'o':
-      case 'g':
       {
         ++ctx.idx;
-        auto mesh_material_pair = obj_parse_object(ctx, error);
-        if (error != SUCCESS)
-        {
-          out_error = error;
-          return {};
-        }
-        model.parts.push(mesh_material_pair);
+        obj_parse_object_(ctx, *this, error);
+        ERROR_ASSERT(error == SUCCESS, out_error, error, {});
         --ctx.idx;
       }
       break;
@@ -518,7 +400,12 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
         }
         auto base_file_path = String::make("assets/");
         auto mtl_file_path = base_file_path.append(parts[1], scratch_arena.allocator);
-        obj_parse_mtl_file(mtl_file_path.to_cstr(scratch_arena.allocator), allocator, error);
+        obj_parse_mtl_file_(
+          mtl_file_path.to_cstr(scratch_arena.allocator),
+          *this,
+          allocator,
+          error
+        );
         if (error != SUCCESS)
         {
           out_error = error;
@@ -529,7 +416,27 @@ ModelHandle Model::from_file(const char* path, Allocator& allocator, Error& out_
     }
   }
 
-  return model_set(model);
+  return meshes.set(ctx.out);
 }
 
+void Assets::destroy_all()
+{
+  textures.destroy_all();
+  materials.destroy_all();
+  meshes.destroy_all();
+
+  texture_handles.clear();
+  material_handles.clear();
+}
+
+template <>
+usize hash(const usize& value)
+{
+  return value;
+}
+
+template <>
+usize hash(const ShaderHandle& value)
+{
+  return (usize) value;
 }

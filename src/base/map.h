@@ -21,8 +21,12 @@ struct Map
   V* operator[](const K& key);
 
   const MapEntry<K, V>* entry(const K& key) const;
+  MapEntry<K, V>* entry(const K& key);
   void set(const K& key, const V& value);
   bool contains(const K& key) const;
+
+  void remove(const K& key);
+  void clear();
 };
 
 #endif

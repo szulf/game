@@ -1,6 +1,10 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include "base/base.h"
+
+#include "assets.h"
+
 #define PLAYER_MOVEMENT_SPEED 8.0f
 #define PLAYER_ROTATE_SPEED (3 * F32_PI)
 #define PLAYER_MASS 80.0f

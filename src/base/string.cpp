@@ -30,12 +30,6 @@ String String::make(const char* cstr, usize len)
   return s;
 }
 
-inline char String::operator[](usize idx) const
-{
-  ASSERT(idx < size, "string index out of bounds");
-  return data[idx];
-}
-
 usize String::count(char c) const
 {
   usize count = 0;
@@ -354,36 +348,6 @@ vec3 parse_vec3(const String& source, Error& out_error)
   ERROR_ASSERT(error == SUCCESS, out_error, error, out);
 
   return out;
-}
-
-inline bool operator==(const String& s1, const String& s2)
-{
-  return s1.size == s2.size && mem_equal(s1.data, s2.data, s1.size);
-}
-
-inline bool operator==(const String& s1, const char* cstr)
-{
-  return s1.size == cstr_len(cstr) && mem_equal(s1.data, cstr, s1.size);
-}
-
-inline bool operator==(const char* cstr, const String& s1)
-{
-  return s1.size == cstr_len(cstr) && mem_equal(s1.data, cstr, s1.size);
-}
-
-inline bool operator!=(const String& sa, const String& sb)
-{
-  return !(sa == sb);
-}
-
-inline bool operator!=(const String& str, const char* cstr)
-{
-  return !(str == cstr);
-}
-
-inline bool operator!=(const char* cstr, const String& str)
-{
-  return !(str == cstr);
 }
 
 template <>

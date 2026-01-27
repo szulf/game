@@ -1,5 +1,9 @@
 #include "gl_functions.h"
 
+#include <SDL3/SDL.h>
+
+#include "base/base.h"
+
 #define LOAD_SDL_GL_PROC(type, name) name = (type) SDL_GL_GetProcAddress(#name)
 
 void setup_gl_functions()

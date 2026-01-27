@@ -1,7 +1,9 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
-#include "gl_functions.h"
+#include "base/base.h"
+#include "base/memory.h"
+#include "base/string.h"
 
 namespace platform
 {
@@ -14,6 +16,53 @@ u32 get_height();
 u64 get_ns();
 
 }
+
+enum class Key
+{
+  A = 1,
+  B,
+  C,
+  D,
+  E,
+  F,
+  G,
+  H,
+  I,
+  J,
+  K,
+  L,
+  M,
+  N,
+  O,
+  P,
+  Q,
+  R,
+  S,
+  T,
+  U,
+  V,
+  W,
+  X,
+  Y,
+  Z,
+  F1,
+  F2,
+  F3,
+  F4,
+  F5,
+  F6,
+  F7,
+  F8,
+  F9,
+  F10,
+  F11,
+  F12,
+  SPACE,
+  LSHIFT,
+};
+
+const char* key_to_cstr(Key key);
+Key string_to_key(const String& str, Error& out_error);
 
 namespace game
 {
@@ -67,7 +116,7 @@ struct Input
 void spec(Spec& spec);
 void init(Memory& memory, Input& input);
 void update_tick(Memory& memory, Input& input, float dt);
-void update_frame(Memory& memory);
+void update_frame(Memory& memory, f32 alpha);
 void render(Memory& memory);
 void event(Memory& memory);
 

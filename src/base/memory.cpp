@@ -1,5 +1,7 @@
 #include "memory.h"
 
+#include <stdlib.h>
+
 void mem_copy(void* dest, const void* src, usize n)
 {
   memcpy(dest, src, n);

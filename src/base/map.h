@@ -1,6 +1,11 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include "memory.h"
+
+template <typename T>
+usize hash(const T& value);
+
 template <typename K, typename V>
 struct MapEntry
 {
@@ -28,5 +33,7 @@ struct Map
   void remove(const K& key);
   void clear();
 };
+
+#include "map_impl.h"
 
 #endif

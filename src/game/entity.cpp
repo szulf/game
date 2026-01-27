@@ -1,5 +1,7 @@
 #include "entity.h"
 
+#include "platform/platform.h"
+
 BoundingBox BoundingBox::from_mesh(MeshHandle handle, const Assets& assets)
 {
   vec3 max_corner = {F32_MIN, 0, F32_MIN};

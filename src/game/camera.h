@@ -1,6 +1,9 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include "base/base.h"
+#include "base/math.h"
+
 #define CAMERA_WORLD_UP vec3{0.0f, 1.0f, 0.0f}
 #define CAMERA_SPEED 4.0f
 #define CAMERA_SENSITIVITY 0.8f

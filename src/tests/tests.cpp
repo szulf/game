@@ -1,4 +1,7 @@
-#include "base/base.cpp"
+#include "base/base.h"
+#include "base/map.h"
+#include "base/string.h"
+#include "base/array.h"
 
 typedef bool (*TestFN)();
 

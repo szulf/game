@@ -1,7 +1,8 @@
-#include "game/game.cpp"
-
+#include <stdlib.h>
 #include <SDL3/SDL.h>
-#include "gl_functions.cpp"
+
+#include "platform.h"
+#include "gl_functions.h"
 
 static u32 g_width = 0;
 static u32 g_height = 0;

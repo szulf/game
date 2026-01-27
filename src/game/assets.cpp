@@ -1,5 +1,7 @@
 #include "assets.h"
 
+#include "platform/platform.h"
+
 template <>
 void AssetType<MeshHandle, MeshData>::destroy_all()
 {

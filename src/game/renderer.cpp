@@ -1,5 +1,8 @@
 #include "renderer.h"
 
+#include "platform/platform.h"
+#include "platform/gl_functions.h"
+
 u32 shader_load_(const char* path, ShaderType shader_type, Error& out_error)
 {
   Error error = SUCCESS;

@@ -1,5 +1,7 @@
 #include "math.h"
 
+#include <math.h>
+
 usize min(usize a, usize b)
 {
   if (a > b)

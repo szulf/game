@@ -1,6 +1,11 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include "base.h"
+
+#define U64_FNV_OFFSET 14695981039346656037UL
+#define U64_FNV_PRIME 1099511628211UL
+
 #define KB(x) (x * 1024)
 #define MB(x) (KB(x) * 1024l)
 #define GB(x) (MB(x) * 1024l)

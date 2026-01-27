@@ -1,16 +1,12 @@
 #ifndef MATH_H
 #define MATH_H
 
-#include <math.h>
-#include <stdlib.h>
+#include "base.h"
 
 #define F32_EPSILON 1.1920928955078125e-07f
 #define F32_PI 3.141592653589793238462643383279502884197169399375105820974944592307f
 
 #define F32_G 9.81f
-
-#define U64_FNV_OFFSET 14695981039346656037UL
-#define U64_FNV_PRIME 1099511628211UL
 
 usize min(usize a, usize b);
 usize pow(usize base, usize exponent);

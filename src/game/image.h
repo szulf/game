@@ -1,6 +1,9 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
+#include "base/base.h"
+#include "base/memory.h"
+
 #define IMAGE_MAX_SIZE (1 << 24)
 
 #define IMAGE_ERROR_INVALID_FILTER "Image decoding error. Invalid filter."

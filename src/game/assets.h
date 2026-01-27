@@ -1,6 +1,14 @@
 #ifndef ASSETS_H
 #define ASSETS_H
 
+#include "base/base.h"
+#include "base/math.h"
+#include "base/vertex.h"
+#include "base/array.h"
+#include "base/string.h"
+
+#include "image.h"
+
 enum class ShaderHandle
 {
   DEFAULT,

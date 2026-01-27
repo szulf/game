@@ -1,6 +1,9 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
+#include "base.h"
+#include "memory.h"
+
 enum class ArrayType
 {
   STATIC,
@@ -32,5 +35,7 @@ struct Array
   void dynamic_finish();
   void sort(bool (*sort_fn)(const T& a, const T& b));
 };
+
+#include "array_impl.h"
 
 #endif

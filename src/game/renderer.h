@@ -1,6 +1,12 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+#include "base/base.h"
+#include "base/map.h"
+
+#include "assets.h"
+#include "camera.h"
+
 enum class ShaderType
 {
   VERTEX,
@@ -137,7 +143,7 @@ struct RenderPass
 };
 
 // TODO: should this be here?
-enum UBO_Index : GLuint
+enum UBO_Index
 {
   UBO_INDEX_CAMERA = 0,
   UBO_INDEX_LIGHTS,

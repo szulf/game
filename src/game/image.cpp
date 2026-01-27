@@ -1,5 +1,9 @@
 #include "image.h"
 
+#include "base/math.h"
+
+#include "platform/platform.h"
+
 enum ImagePngColorFormat
 {
   IMAGE_COLOR_FORMAT_GRAYSCALE = 0,

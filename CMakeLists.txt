@@ -77,12 +77,33 @@ set(include_dirs src)
 find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
 
-# NOTE: using unity build so thats the reason for just one source file
-add_executable(game src/platform/sdl3_gl.cpp)
+add_library(base STATIC
+  src/base/array.h
+  src/base/base.h
+  src/base/map.h
+  src/base/math.h src/base/math.cpp
+  src/base/memory.h src/base/memory.cpp
+  src/base/string.h src/base/string.cpp
+  src/base/vertex.h src/base/vertex.cpp
+)
+target_compile_options(base PRIVATE ${flags})
+target_compile_definitions(base PRIVATE ${definitions})
+
+add_executable(game
+  src/platform/platform.h src/platform/sdl3_gl.cpp
+  src/platform/gl_functions.h src/platform/gl_functions.cpp
+
+  src/game/assets.h src/game/assets.cpp
+  src/game/camera.h src/game/camera.cpp
+  src/game/entity.h src/game/entity.cpp
+  src/game/image.h src/game/image.cpp
+  src/game/renderer.h src/game/renderer.cpp
+  src/game/game.cpp
+)
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})
 target_compile_definitions(game PRIVATE ${definitions})
-target_link_libraries(game PRIVATE SDL3::SDL3 OpenGL)
+target_link_libraries(game PRIVATE base SDL3::SDL3 OpenGL)
 
 # NOTE: run a python script to check for missing error handling
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -100,8 +121,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_dependencies(run_find_error game)
 endif()
 
-# NOTE: using unity build so thats the reason for just one source file
 add_executable(tests src/tests/tests.cpp)
 target_include_directories(tests PRIVATE ${include_dirs})
 target_compile_options(tests PRIVATE ${flags})
 target_compile_definitions(tests PRIVATE ${definitions})
+target_link_libraries(tests base)

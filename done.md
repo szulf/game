@@ -43,3 +43,4 @@
    - static models survive the freeing
 6. move away from the fixed frame rate
    - fixed tick time ("Fix Your Timestep!" article)
+7. rewrite to get lsp working? (no unity build)

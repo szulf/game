@@ -2,8 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-7. rewrite to get lsp working? (no unity build)
-
 ---
 
 ## NEXT BIG TODOS: (unordered)

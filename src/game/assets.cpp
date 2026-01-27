@@ -3,7 +3,7 @@
 #include "platform/platform.h"
 
 template <>
-void AssetType<MeshHandle, MeshData>::destroy_all()
+void AssetType<MeshHandle, MeshData, 100>::destroy_all()
 {
   size = StaticModel_COUNT;
   mem_set(data + StaticModel_COUNT, 0, (MAX - StaticModel_COUNT) * sizeof(MeshData));
@@ -45,12 +45,16 @@ TextureHandle obj_get_texture_by_path_(const String& path, Assets& assets, Alloc
     return *assets.texture_handles[path];
   }
 
+  TextureData texture = {};
   auto img = Image::from_file(path.to_cstr(scratch_arena.allocator), allocator, error);
   if (error != SUCCESS)
   {
     img = Image::error_placeholder();
+    texture.mag_filter = TextureFilteringOption::NEAREST;
+    texture.min_filter = TextureFilteringOption::NEAREST;
+    texture.wrap_s = TextureWrappingOption::REPEAT;
+    texture.wrap_t = TextureWrappingOption::REPEAT;
   }
-  TextureData texture = {};
   texture.image = img;
   auto texture_handle = assets.textures.set(texture);
   auto allocated_path = path.copy(allocator);

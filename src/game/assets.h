@@ -16,11 +16,28 @@ enum class ShaderHandle
   SHADOW_DEPTH,
 };
 
+enum class TextureWrappingOption
+{
+  REPEAT,
+  MIRRORED_REPEAT,
+  CLAMP_TO_EDGE,
+  CLAMP_TO_BORDER,
+};
+
+enum class TextureFilteringOption
+{
+  LINEAR,
+  NEAREST,
+};
+
 typedef usize TextureHandle;
 struct TextureData
 {
   Image image;
-  // TODO: options
+  TextureWrappingOption wrap_s;
+  TextureWrappingOption wrap_t;
+  TextureFilteringOption min_filter;
+  TextureFilteringOption mag_filter;
 };
 
 typedef usize MaterialHandle;
@@ -67,7 +84,7 @@ struct MeshData
   RenderPrimitive primitive;
 };
 
-template <typename Handle, typename T>
+template <typename Handle, typename T, usize AMOUNT>
 struct AssetType
 {
   Handle set(const T& t)
@@ -81,7 +98,6 @@ struct AssetType
     return data[(usize) handle];
   }
 
-  // TODO: should not destroy static models
   void destroy_all()
   {
     size = 0;
@@ -91,8 +107,7 @@ struct AssetType
   usize size;
 
 private:
-  // TODO: take from template?
-  static constexpr usize MAX = 100;
+  static constexpr usize MAX = AMOUNT;
   T data[MAX];
 };
 
@@ -104,9 +119,9 @@ struct Assets
 
   void destroy_all();
 
-  AssetType<TextureHandle, TextureData> textures;
-  AssetType<MaterialHandle, Material> materials;
-  AssetType<MeshHandle, MeshData> meshes;
+  AssetType<TextureHandle, TextureData, 100> textures;
+  AssetType<MaterialHandle, Material, 100> materials;
+  AssetType<MeshHandle, MeshData, 100> meshes;
 
   Map<String, TextureHandle> texture_handles;
   Map<String, MaterialHandle> material_handles;

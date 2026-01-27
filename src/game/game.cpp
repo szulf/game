@@ -525,7 +525,6 @@ void update_tick(Memory& memory, Input& input, float dt)
 
           vec3 collision_normal = {};
           bool collided = false;
-          // TODO: still wrong? only checking collisions between the player and collidables
           for (usize collidable_idx = 0; collidable_idx < main.scene.entities_count;
                ++collidable_idx)
           {

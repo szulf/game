@@ -203,30 +203,56 @@ void AssetTypeGPU<ShaderHandle, Shader>::destroy_all()
   destroy(ShaderHandle::SHADOW_DEPTH);
 }
 
+static GLint gl_wrapping_option_(TextureWrappingOption option)
+{
+  switch (option)
+  {
+    case TextureWrappingOption::REPEAT:
+      return GL_REPEAT;
+    case TextureWrappingOption::MIRRORED_REPEAT:
+      return GL_MIRRORED_REPEAT;
+    case TextureWrappingOption::CLAMP_TO_EDGE:
+      return GL_CLAMP_TO_EDGE;
+    case TextureWrappingOption::CLAMP_TO_BORDER:
+      return GL_CLAMP_TO_BORDER;
+  }
+}
+
+static GLint gl_filtering_option_(TextureFilteringOption option)
+{
+  switch (option)
+  {
+    case TextureFilteringOption::LINEAR:
+      return GL_LINEAR;
+    case TextureFilteringOption::NEAREST:
+      return GL_NEAREST;
+  }
+}
+
 template <>
 void AssetTypeGPU<TextureHandle, TextureGPU>::create(TextureHandle handle)
 {
-  auto& img = assets->textures.get(handle).image;
+  auto& texture = assets->textures.get(handle);
   TextureGPU t = {};
 
   glGenTextures(1, &t.id);
   glBindTexture(GL_TEXTURE_2D, t.id);
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_wrapping_option_(texture.wrap_s));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl_wrapping_option_(texture.wrap_t));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filtering_option_(texture.min_filter));
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filtering_option_(texture.mag_filter));
 
   glTexImage2D(
     GL_TEXTURE_2D,
     0,
     GL_RGBA8,
-    (GLsizei) img.width,
-    (GLsizei) img.height,
+    (GLsizei) texture.image.width,
+    (GLsizei) texture.image.height,
     0,
     GL_RGBA,
     GL_UNSIGNED_BYTE,
-    img.data
+    texture.image.data
   );
   glGenerateMipmap(GL_TEXTURE_2D);
 

@@ -19,9 +19,13 @@ struct BoundingBox
 struct Entity
 {
   vec3 pos;
+  vec3 prev_pos;
+  vec3 rendered_pos;
 
   bool controlled_by_player;
   f32 rotation;
+  f32 prev_rotation;
+  f32 rendered_rotation;
   f32 target_rotation;
   vec3 velocity;
 

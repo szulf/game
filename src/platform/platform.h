@@ -3,9 +3,6 @@
 
 #include "gl_functions.h"
 
-static u32 FPS = 165;
-#define MSPF (1000 / FPS)
-
 namespace platform
 {
 
@@ -69,7 +66,8 @@ struct Input
 
 void spec(Spec& spec);
 void init(Memory& memory, Input& input);
-void update(Memory& memory, Input& input, float dt);
+void update_tick(Memory& memory, Input& input, float dt);
+void update_frame(Memory& memory);
 void render(Memory& memory);
 void event(Memory& memory);
 

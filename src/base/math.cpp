@@ -152,6 +152,76 @@ bool f32_equal(f32 a, f32 b)
   return abs(a - b) <= (F32_EPSILON * max(abs(a), abs(b)));
 }
 
+vec2 operator-(const vec2& vec)
+{
+  return {-vec.x, -vec.y};
+}
+
+vec2 operator+(const vec2& va, const vec2& vb)
+{
+  return {va.x + vb.x, va.y + vb.y};
+}
+
+vec2 operator-(const vec2& va, const vec2& vb)
+{
+  return {va.x - vb.x, va.y - vb.y};
+}
+
+vec2 operator*(const vec2& vec, f32 scalar)
+{
+  return {vec.x * scalar, vec.y * scalar};
+}
+
+vec2 operator*(f32 scalar, const vec2& vec)
+{
+  return {vec.x * scalar, vec.y * scalar};
+}
+
+vec2 operator*(const vec2& va, const vec2& vb)
+{
+  return {va.x * vb.x, va.y * vb.y};
+}
+
+vec2 operator/(const vec2& vec, f32 scalar)
+{
+  return {vec.x / scalar, vec.y / scalar};
+}
+
+vec2& operator+=(vec2& va, const vec2& vb)
+{
+  va.x += vb.x;
+  va.y += vb.y;
+  return va;
+}
+
+vec2& operator-=(vec2& va, const vec2& vb)
+{
+  va.x -= vb.x;
+  va.y -= vb.y;
+  return va;
+}
+
+vec2& operator*=(vec2& va, f32 scalar)
+{
+  va.x *= scalar;
+  va.y *= scalar;
+  return va;
+}
+
+vec2& operator*=(vec2& va, const vec2& vb)
+{
+  va.x *= vb.x;
+  va.y *= vb.y;
+  return va;
+}
+
+vec2& operator/=(vec2& va, f32 scalar)
+{
+  va.x /= scalar;
+  va.y /= scalar;
+  return va;
+}
+
 bool operator==(const vec2& va, const vec2& vb)
 {
   return f32_equal(va.x, vb.x) && f32_equal(va.y, vb.y);

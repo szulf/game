@@ -41,3 +41,5 @@
    - new api
    - free gpu resources
    - static models survive the freeing
+6. move away from the fixed frame rate
+   - fixed tick time ("Fix Your Timestep!" article)

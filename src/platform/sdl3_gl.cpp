@@ -187,6 +187,7 @@ i32 main()
   SDL_GLContext gl_context = SDL_GL_CreateContext(window);
   ASSERT(gl_context, "failed to create sdl3 opengl context");
   setup_gl_functions();
+  // SDL_GL_SetSwapInterval(0);
 
 #ifdef GAME_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
@@ -206,16 +207,18 @@ i32 main()
 
   game::init(memory, input);
 
+  f32 dt = 0.05f;
+  f32 current_time = (f32) SDL_GetTicks() / 1000.0f;
+  f32 accumulator = 0.0f;
+
   while (true)
   {
-    auto start_ms = SDL_GetTicks();
+    f32 new_time = (f32) SDL_GetTicks() / 1000.0f;
+    f32 frame_time = new_time - current_time;
+    current_time = new_time;
+    accumulator += frame_time;
 
     SDL_WarpMouseInWindow(window, (f32) g_width / 2.0f, (f32) g_height / 2.0f);
-
-    for (usize i = 0; i < array_size(input.states); ++i)
-    {
-      input.states[i].transition_count = 0;
-    }
 
     SDL_Event e;
     while (SDL_PollEvent(&e))
@@ -263,17 +266,21 @@ i32 main()
       }
     }
 
-    game::update(memory, input, 1.0f / (f32) FPS);
+    while (accumulator >= dt)
+    {
+      game::update_tick(memory, input, dt);
+      accumulator -= dt;
+
+      for (usize i = 0; i < array_size(input.states); ++i)
+      {
+        input.states[i].transition_count = 0;
+      }
+    }
+
+    game::update_frame(memory, accumulator / dt);
 
     game::render(memory);
     SDL_GL_SwapWindow(window);
-
-    auto end_ms = SDL_GetTicks();
-    auto ms_in_frame = end_ms - start_ms;
-    if (ms_in_frame < MSPF)
-    {
-      SDL_Delay((u32) (MSPF - ms_in_frame));
-    }
   }
 
   // NOTE: code never gets here

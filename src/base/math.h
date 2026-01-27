@@ -43,6 +43,19 @@ struct vec2
   f32 y;
 };
 
+vec2 operator-(const vec2& vec);
+vec2 operator+(const vec2& va, const vec2& vb);
+vec2 operator-(const vec2& va, const vec2& vb);
+vec2 operator*(const vec2& vec, f32 scalar);
+vec2 operator*(f32 scalar, const vec2& vec);
+vec2 operator*(const vec2& va, const vec2& vb);
+vec2 operator/(const vec2& vec, f32 scalar);
+vec2& operator+=(vec2& va, const vec2& vb);
+vec2& operator-=(vec2& va, const vec2& vb);
+vec2& operator*=(vec2& va, f32 scalar);
+vec2& operator*=(vec2& va, const vec2& vb);
+vec2& operator/=(vec2& va, f32 scalar);
+
 bool operator==(const vec2& va, const vec2& vb);
 
 struct vec3

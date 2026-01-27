@@ -1,4 +1,5 @@
 #include "base/base.cpp"
+#include "base/math.h"
 #include "platform/platform.h"
 
 #include "image.cpp"
@@ -160,9 +161,16 @@ void init(Memory& memory, Input& input)
   }
 }
 
-void update(Memory& memory, Input& input, float dt)
+void update_tick(Memory& memory, Input& input, float dt)
 {
   auto& main = *(Main*) memory.memory;
+
+  for (usize i = 0; i < main.scene.entities_count; ++i)
+  {
+    auto& entity = main.scene.entities[i];
+    entity.prev_pos = entity.pos;
+    entity.prev_rotation = entity.rotation;
+  }
 
   main.gameplay_camera.viewport_width = main.debug_camera.viewport_width = platform::get_width();
   main.gameplay_camera.viewport_height = main.debug_camera.viewport_height = platform::get_height();
@@ -367,6 +375,20 @@ void update(Memory& memory, Input& input, float dt)
   }
 }
 
+void update_frame(Memory& memory, f32 alpha)
+{
+  auto& main = *(Main*) memory.memory;
+  for (usize i = 0; i < main.scene.entities_count; ++i)
+  {
+    auto& entity = main.scene.entities[i];
+    entity.rendered_pos = entity.pos * alpha + entity.prev_pos * (1.0f - alpha);
+    vec2 prev_rot_vec = {-sin(entity.prev_rotation), cos(entity.prev_rotation)};
+    vec2 rot_vec = {-sin(entity.rotation), cos(entity.rotation)};
+    vec2 rendered_rot_vec = rot_vec * alpha + prev_rot_vec * (1.0f - alpha);
+    entity.rendered_rotation = atan2(-rendered_rot_vec.x, rendered_rot_vec.y);
+  }
+}
+
 void render(Memory& memory)
 {
   auto& main = *(Main*) memory.memory;
@@ -411,7 +433,7 @@ void render(Memory& memory)
       auto& entity = main.scene.entities[i];
       if (entity.controlled_by_player && entity.renderable)
       {
-        pass.draw_mesh(entity.mesh, entity.pos, entity.rotation);
+        pass.draw_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation);
       }
     }
 
@@ -429,11 +451,11 @@ void render(Memory& memory)
       const auto& entity = main.scene.entities[i];
       if (entity.renderable)
       {
-        pass.draw_mesh(entity.mesh, entity.pos, entity.rotation, entity.tint);
+        pass.draw_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation, entity.tint);
       }
       if (entity.emits_light)
       {
-        vec3 pos = entity.pos;
+        vec3 pos = entity.rendered_pos;
         pos.y += entity.light_height_offset;
         pass.set_light(pos, entity.light_color);
       }
@@ -442,19 +464,19 @@ void render(Memory& memory)
       {
         if (entity.controlled_by_player)
         {
-          pass.draw_line(entity.pos, 0.6f, entity.rotation, {1.0f, 0.0f, 0.0f});
+          pass.draw_line(entity.rendered_pos, 0.6f, entity.rendered_rotation, {1.0f, 0.0f, 0.0f});
         }
         if (entity.collidable && f32_equal(entity.pos.y, 0.0f))
         {
           pass.draw_cube_wires(
-            entity.pos,
+            entity.rendered_pos,
             {entity.bounding_box.width, 1.0f, entity.bounding_box.depth},
             {0.0f, 1.0f, 0.0f}
           );
         }
         if (entity.interactable)
         {
-          pass.draw_ring(entity.pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f});
+          pass.draw_ring(entity.rendered_pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f});
         }
       }
     }

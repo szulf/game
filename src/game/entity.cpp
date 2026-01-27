@@ -58,6 +58,7 @@ Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& 
     if (key == "pos")
     {
       out.pos = parse_vec3(value, error);
+      out.rendered_pos = out.prev_pos = out.pos;
     }
     else if (key == "controlled_by_player")
     {
@@ -66,6 +67,7 @@ Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& 
     else if (key == "rotation")
     {
       out.rotation = parse_f32(value, error);
+      out.rendered_rotation = out.prev_rotation = out.rotation;
     }
     else if (key == "target_rotation")
     {

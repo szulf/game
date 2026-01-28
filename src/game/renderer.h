@@ -122,9 +122,10 @@ struct RenderPass
   void draw_line(const vec3& pos, f32 length, f32 rotation, const vec3& color);
 
   // NOTE: supports rendering only a single point light since that is what i need for the game,
-  // would not be too hard to implement more lights (will implement directional lights later)
+  // would not be too hard to implement more lights (will implement directional light later)
   void set_light(const vec3& pos, const vec3& color);
-  // TODO: i feel like this method should take more arguments
+  // TODO: i feel like this method should take more arguments,
+  // probably will fix itself when i will implement the directional light shadow map
   void use_shadow_map(const Camera& shadow_map_camera);
 
   void finish();
@@ -138,27 +139,32 @@ struct RenderPass
 
   Array<RenderItem> items;
   Light light;
+  vec3 ambient_color;
 
   const Camera* shadow_map_camera;
-};
-
-// TODO: should this be here?
-enum UBO_Index
-{
-  UBO_INDEX_CAMERA = 0,
-  UBO_INDEX_LIGHTS,
 };
 
 struct Renderer
 {
   static Renderer make(Assets& assets, Allocator& allocator);
 
-  RenderPass begin_pass(RenderPassType type, const Camera& camera, Allocator& allocator);
+  RenderPass begin_pass(
+    RenderPassType type,
+    const Camera& camera,
+    Allocator& allocator,
+    const vec3& ambient_color = {1.0f, 1.0f, 1.0f}
+  );
 
   Assets* assets;
   AssetsGPU assets_gpu;
 
   RenderData data;
+};
+
+enum UBO_Index
+{
+  UBO_INDEX_CAMERA = 0,
+  UBO_INDEX_LIGHTS,
 };
 
 struct STD140Camera

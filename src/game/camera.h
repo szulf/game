@@ -19,6 +19,8 @@ struct Camera
   CameraType type;
 
   vec3 pos;
+  vec3 prev_pos;
+  vec3 rendered_pos;
   vec3 front;
   vec3 up;
   vec3 right;

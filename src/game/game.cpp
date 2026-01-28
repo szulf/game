@@ -5,6 +5,8 @@
 #include "renderer.h"
 #include "entity.h"
 
+game::Input load_gkey(const char* path, Error& out_error);
+
 struct Main
 {
   Allocator allocator;
@@ -25,331 +27,6 @@ struct Main
   Error errors[512];
   usize error_count;
 };
-
-// TODO: i feel like this function should be in a different file
-const char* key_to_cstr(Key key)
-{
-  switch (key)
-  {
-    case Key::A:
-      return "A";
-    case Key::B:
-      return "B";
-    case Key::C:
-      return "C";
-    case Key::D:
-      return "D";
-    case Key::E:
-      return "E";
-    case Key::F:
-      return "F";
-    case Key::G:
-      return "G";
-    case Key::H:
-      return "H";
-    case Key::I:
-      return "I";
-    case Key::J:
-      return "J";
-    case Key::K:
-      return "K";
-    case Key::L:
-      return "L";
-    case Key::M:
-      return "M";
-    case Key::N:
-      return "N";
-    case Key::O:
-      return "O";
-    case Key::P:
-      return "P";
-    case Key::Q:
-      return "Q";
-    case Key::R:
-      return "R";
-    case Key::S:
-      return "S";
-    case Key::T:
-      return "T";
-    case Key::U:
-      return "U";
-    case Key::V:
-      return "V";
-    case Key::W:
-      return "W";
-    case Key::X:
-      return "X";
-    case Key::Y:
-      return "Y";
-    case Key::Z:
-      return "Z";
-    case Key::F1:
-      return "F1";
-    case Key::F2:
-      return "F2";
-    case Key::F3:
-      return "F3";
-    case Key::F4:
-      return "F4";
-    case Key::F5:
-      return "F5";
-    case Key::F6:
-      return "F6";
-    case Key::F7:
-      return "F7";
-    case Key::F8:
-      return "F8";
-    case Key::F9:
-      return "F9";
-    case Key::F10:
-      return "F10";
-    case Key::F11:
-      return "F11";
-    case Key::F12:
-      return "F12";
-    case Key::SPACE:
-      return "SPACE";
-    case Key::LSHIFT:
-      return "LSHIFT";
-  }
-}
-
-// TODO: i feel like this function should be in a different file
-Key string_to_key(const String& str, Error& out_error)
-{
-  if (str == "A")
-  {
-    return Key::A;
-  }
-  else if (str == "B")
-  {
-    return Key::B;
-  }
-  else if (str == "C")
-  {
-    return Key::C;
-  }
-  else if (str == "D")
-  {
-    return Key::D;
-  }
-  else if (str == "E")
-  {
-    return Key::E;
-  }
-  else if (str == "F")
-  {
-    return Key::F;
-  }
-  else if (str == "G")
-  {
-    return Key::G;
-  }
-  else if (str == "H")
-  {
-    return Key::H;
-  }
-  else if (str == "I")
-  {
-    return Key::I;
-  }
-  else if (str == "J")
-  {
-    return Key::J;
-  }
-  else if (str == "K")
-  {
-    return Key::K;
-  }
-  else if (str == "L")
-  {
-    return Key::L;
-  }
-  else if (str == "M")
-  {
-    return Key::M;
-  }
-  else if (str == "N")
-  {
-    return Key::N;
-  }
-  else if (str == "O")
-  {
-    return Key::O;
-  }
-  else if (str == "P")
-  {
-    return Key::P;
-  }
-  else if (str == "Q")
-  {
-    return Key::Q;
-  }
-  else if (str == "R")
-  {
-    return Key::R;
-  }
-  else if (str == "S")
-  {
-    return Key::S;
-  }
-  else if (str == "T")
-  {
-    return Key::T;
-  }
-  else if (str == "U")
-  {
-    return Key::U;
-  }
-  else if (str == "V")
-  {
-    return Key::V;
-  }
-  else if (str == "W")
-  {
-    return Key::W;
-  }
-  else if (str == "X")
-  {
-    return Key::X;
-  }
-  else if (str == "Y")
-  {
-    return Key::Y;
-  }
-  else if (str == "Z")
-  {
-    return Key::Z;
-  }
-  else if (str == "F1")
-  {
-    return Key::F1;
-  }
-  else if (str == "F2")
-  {
-    return Key::F2;
-  }
-  else if (str == "F3")
-  {
-    return Key::F3;
-  }
-  else if (str == "F4")
-  {
-    return Key::F4;
-  }
-  else if (str == "F5")
-  {
-    return Key::F5;
-  }
-  else if (str == "F6")
-  {
-    return Key::F6;
-  }
-  else if (str == "F7")
-  {
-    return Key::F7;
-  }
-  else if (str == "F8")
-  {
-    return Key::F8;
-  }
-  else if (str == "F9")
-  {
-    return Key::F9;
-  }
-  else if (str == "F10")
-  {
-    return Key::F10;
-  }
-  else if (str == "F11")
-  {
-    return Key::F11;
-  }
-  else if (str == "F12")
-  {
-    return Key::F12;
-  }
-  else if (str == "SPACE")
-  {
-    return Key::SPACE;
-  }
-  else if (str == "LSHIFT")
-  {
-    return Key::LSHIFT;
-  }
-
-  out_error = "Invalid key string.";
-  return (Key) 0;
-}
-
-// TODO: i feel like this function should be in a different file
-game::Input load_gkey(const char* path, Error& out_error)
-{
-  game::Input input = {};
-  Error error = SUCCESS;
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-
-  auto source = platform::read_file_to_string(path, scratch_arena.allocator, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, input);
-  auto lines = source.split('\n', scratch_arena.allocator);
-
-  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
-  {
-    auto& line = lines[line_idx];
-    auto parts = line.split(':', scratch_arena.allocator);
-    ERROR_ASSERT(parts.size == 2, out_error, "gkey decoding error. Invalid line.", input);
-
-    auto action = parts[0].trim_whitespace();
-    auto key_str = parts[1].trim_whitespace();
-    auto key = string_to_key(key_str, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, input);
-
-    if (action == "move_front")
-    {
-      input.move_front.key = key;
-    }
-    else if (action == "move_back")
-    {
-      input.move_back.key = key;
-    }
-    else if (action == "move_left")
-    {
-      input.move_left.key = key;
-    }
-    else if (action == "move_right")
-    {
-      input.move_right.key = key;
-    }
-    else if (action == "interact")
-    {
-      input.interact.key = key;
-    }
-    else if (action == "toggle_camera_mode")
-    {
-      input.toggle_camera_mode.key = key;
-    }
-    else if (action == "toggle_display_bounding_boxes")
-    {
-      input.toggle_display_bounding_boxes.key = key;
-    }
-    else if (action == "camera_move_up")
-    {
-      input.camera_move_up.key = key;
-    }
-    else if (action == "camera_move_down")
-    {
-      input.camera_move_down.key = key;
-    }
-    else
-    {
-      out_error = "gkey decoding error. Invalid key.";
-      return input;
-    }
-  }
-
-  return input;
-}
 
 namespace game
 {
@@ -389,7 +66,8 @@ void init(Memory& memory, Input& input)
 
   main.gameplay_camera = {};
   main.gameplay_camera.type = CameraType::PERSPECTIVE;
-  main.gameplay_camera.pos = {0.0f, 12.0f, 8.0f};
+  main.gameplay_camera.rendered_pos = main.gameplay_camera.prev_pos =
+    main.gameplay_camera.pos = {0.0f, 12.0f, 8.0f};
   main.gameplay_camera.yaw = -90.0f;
   main.gameplay_camera.pitch = -55.0f;
   main.gameplay_camera.near_plane = 0.1f;
@@ -417,13 +95,6 @@ void init(Memory& memory, Input& input)
 void update_tick(Memory& memory, Input& input, float dt)
 {
   auto& main = *(Main*) memory.memory;
-
-  for (usize i = 0; i < main.scene.entities_count; ++i)
-  {
-    auto& entity = main.scene.entities[i];
-    entity.prev_pos = entity.pos;
-    entity.prev_rotation = entity.rotation;
-  }
 
   main.gameplay_camera.viewport_width = main.debug_camera.viewport_width = platform::get_width();
   main.gameplay_camera.viewport_height = main.debug_camera.viewport_height = platform::get_height();
@@ -463,6 +134,10 @@ void update_tick(Memory& memory, Input& input, float dt)
   if (main.camera_mode)
   {
     main.main_camera = &main.debug_camera;
+
+    main.gameplay_camera.prev_pos = main.gameplay_camera.pos;
+    main.debug_camera.prev_pos = main.debug_camera.pos;
+
     if (input.camera_move_up.ended_down)
     {
       acceleration.y += 1.0f;
@@ -471,13 +146,6 @@ void update_tick(Memory& memory, Input& input, float dt)
     {
       acceleration.y += -1.0f;
     }
-
-    f32 x_offset = input.mouse_relative.x * CAMERA_SENSITIVITY;
-    f32 y_offset = input.mouse_relative.y * CAMERA_SENSITIVITY;
-    main.debug_camera.yaw += x_offset;
-    main.debug_camera.pitch -= y_offset;
-    main.debug_camera.pitch = clamp(main.debug_camera.pitch, -89.0f, 89.0f);
-    main.debug_camera.update_vectors();
 
     auto forward = cross(CAMERA_WORLD_UP, main.debug_camera.right);
     main.debug_camera.pos += forward * (-acceleration.z * CAMERA_SPEED * dt);
@@ -491,6 +159,9 @@ void update_tick(Memory& memory, Input& input, float dt)
     for (usize i = 0; i < main.scene.entities_count; ++i)
     {
       auto& entity = main.scene.entities[i];
+      entity.prev_pos = entity.pos;
+      entity.prev_rotation = entity.rotation;
+
       if (entity.controlled_by_player)
       {
         // NOTE: rotation
@@ -627,17 +298,32 @@ void update_tick(Memory& memory, Input& input, float dt)
   }
 }
 
-void update_frame(Memory& memory, f32 alpha)
+void update_frame(Memory& memory, Input& input, f32 alpha)
 {
   auto& main = *(Main*) memory.memory;
-  for (usize i = 0; i < main.scene.entities_count; ++i)
+  if (main.camera_mode)
   {
-    auto& entity = main.scene.entities[i];
-    entity.rendered_pos = entity.pos * alpha + entity.prev_pos * (1.0f - alpha);
-    vec2 prev_rot_vec = {-sin(entity.prev_rotation), cos(entity.prev_rotation)};
-    vec2 rot_vec = {-sin(entity.rotation), cos(entity.rotation)};
-    vec2 rendered_rot_vec = rot_vec * alpha + prev_rot_vec * (1.0f - alpha);
-    entity.rendered_rotation = atan2(-rendered_rot_vec.x, rendered_rot_vec.y);
+    f32 x_offset = input.mouse_relative.x * CAMERA_SENSITIVITY;
+    f32 y_offset = input.mouse_relative.y * CAMERA_SENSITIVITY;
+    main.debug_camera.yaw += x_offset;
+    main.debug_camera.pitch -= y_offset;
+    main.debug_camera.pitch = clamp(main.debug_camera.pitch, -89.0f, 89.0f);
+    main.debug_camera.update_vectors();
+
+    main.debug_camera.rendered_pos =
+      main.debug_camera.pos * alpha + main.debug_camera.prev_pos * (1.0f - alpha);
+  }
+  else
+  {
+    for (usize i = 0; i < main.scene.entities_count; ++i)
+    {
+      auto& entity = main.scene.entities[i];
+      entity.rendered_pos = entity.pos * alpha + entity.prev_pos * (1.0f - alpha);
+      vec2 prev_rot_vec = {-sin(entity.prev_rotation), cos(entity.prev_rotation)};
+      vec2 rot_vec = {-sin(entity.rotation), cos(entity.rotation)};
+      vec2 rendered_rot_vec = rot_vec * alpha + prev_rot_vec * (1.0f - alpha);
+      entity.rendered_rotation = atan2(-rendered_rot_vec.x, rendered_rot_vec.y);
+    }
   }
 }
 
@@ -694,8 +380,12 @@ void render(Memory& memory)
 
   // NOTE: main draw pass
   {
-    auto pass =
-      main.renderer.begin_pass(RenderPassType::FORWARD, *main.main_camera, scratch_arena.allocator);
+    auto pass = main.renderer.begin_pass(
+      RenderPassType::FORWARD,
+      *main.main_camera,
+      scratch_arena.allocator,
+      main.scene.ambient_color
+    );
     pass.use_shadow_map(shadow_map_camera);
 
     for (usize i = 0; i < main.scene.entities_count; ++i)

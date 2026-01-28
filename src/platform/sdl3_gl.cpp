@@ -278,7 +278,7 @@ i32 main()
       }
     }
 
-    game::update_frame(memory, accumulator / dt);
+    game::update_frame(memory, input, accumulator / dt);
 
     game::render(memory);
     SDL_GL_SwapWindow(window);

@@ -1,7 +1,5 @@
 #include "image.h"
 
-#include "base/math.h"
-
 #include "platform/platform.h"
 
 enum ImagePngColorFormat

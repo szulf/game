@@ -99,6 +99,7 @@ add_executable(game
   src/game/image.h src/game/image.cpp
   src/game/renderer.h src/game/renderer.cpp
   src/game/game.cpp
+  src/game/keys.cpp
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})

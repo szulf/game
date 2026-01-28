@@ -2,7 +2,7 @@
 
 mat4 Camera::look_at() const
 {
-  return mat4::look_at(pos, pos + front, up);
+  return mat4::look_at(rendered_pos, rendered_pos + front, up);
 }
 
 mat4 Camera::projection() const

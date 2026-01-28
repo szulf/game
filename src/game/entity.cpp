@@ -42,6 +42,8 @@ Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& 
   String source = platform::read_file_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, out);
 
+  bool calculate_bounding_box = false;
+
   auto lines = source.split('\n', scratch_arena.allocator);
   for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
   {
@@ -85,12 +87,9 @@ Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& 
     }
     else if (key == "bounding_box")
     {
-      // TODO: allow for defining 'bounding_box : *' before the mesh?
       if (value == "*")
       {
-        ASSERT(out.renderable, "gent decoding error. Cannot calculate on non renderable entity.");
-        out.bounding_box = BoundingBox::from_mesh(out.mesh, assets);
-        out.is_bounding_box_from_model = true;
+        calculate_bounding_box = true;
       }
       else
       {
@@ -139,6 +138,14 @@ Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& 
     ERROR_ASSERT(error == SUCCESS, out_error, error, out);
     // find-error on
   }
+
+  if (calculate_bounding_box)
+  {
+    ASSERT(out.renderable, "gent decoding error. Cannot calculate on non renderable entity.");
+    out.bounding_box = BoundingBox::from_mesh(out.mesh, assets);
+    out.is_bounding_box_from_model = true;
+  }
+
   return out;
 }
 

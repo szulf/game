@@ -116,7 +116,7 @@ struct Input
 void spec(Spec& spec);
 void init(Memory& memory, Input& input);
 void update_tick(Memory& memory, Input& input, float dt);
-void update_frame(Memory& memory, f32 alpha);
+void update_frame(Memory& memory, Input& input, f32 alpha);
 void render(Memory& memory);
 void event(Memory& memory);
 

@@ -618,8 +618,12 @@ void RenderPass::finish()
     glUseProgram(shader.id);
 
     {
-      // TODO: actually set the ambient color
-      glUniform3f(glGetUniformLocation(shader.id, "material.ambient"), 0.1f, 0.1f, 0.1f);
+      glUniform3f(
+        glGetUniformLocation(shader.id, "material.ambient"),
+        ambient_color.x,
+        ambient_color.y,
+        ambient_color.z
+      );
       glUniform3f(
         glGetUniformLocation(shader.id, "material.diffuse"),
         material.diffuse_color.x,
@@ -885,7 +889,12 @@ Renderer Renderer::make(Assets& assets, Allocator& allocator)
   return out;
 }
 
-RenderPass Renderer::begin_pass(RenderPassType type, const Camera& camera, Allocator& allocator)
+RenderPass Renderer::begin_pass(
+  RenderPassType type,
+  const Camera& camera,
+  Allocator& allocator,
+  const vec3& ambient_color
+)
 {
   RenderPass out = {};
 
@@ -897,6 +906,7 @@ RenderPass Renderer::begin_pass(RenderPassType type, const Camera& camera, Alloc
   out.camera = &camera;
 
   out.items = Array<RenderItem>::make(ArrayType::DYNAMIC, 100, allocator);
+  out.ambient_color = ambient_color;
 
   return out;
 }

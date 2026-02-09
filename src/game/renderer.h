@@ -65,12 +65,11 @@ struct AssetTypeGPU
 
   Map<Handle, T> data;
   Assets* assets;
-  RenderData* render_data;
 };
 
 struct AssetsGPU
 {
-  static AssetsGPU make(RenderData& render_data, Assets& assets, Allocator& allocator);
+  static AssetsGPU make(Assets& assets, Allocator& allocator);
   void destroy_all();
 
   AssetTypeGPU<ShaderHandle, Shader> shaders;
@@ -134,7 +133,6 @@ struct RenderPass
 
   Assets* assets;
   AssetsGPU* assets_gpu;
-  RenderData* data;
   const Camera* camera;
 
   Array<RenderItem> items;
@@ -157,8 +155,6 @@ struct Renderer
 
   Assets* assets;
   AssetsGPU assets_gpu;
-
-  RenderData data;
 };
 
 enum UBO_Index

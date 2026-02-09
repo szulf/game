@@ -3,6 +3,8 @@
 #include "platform/platform.h"
 #include "platform/gl_functions.h"
 
+static RenderData render_data = {};
+
 u32 shader_load_(const char* path, ShaderType shader_type, Error& out_error)
 {
   Error error = SUCCESS;
@@ -323,7 +325,7 @@ void AssetTypeGPU<MeshHandle, MeshGPU>::create(MeshHandle handle)
   }
 
   {
-    glBindBuffer(GL_ARRAY_BUFFER, render_data->instance_data_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     // NOTE: model matrix
     glVertexAttribPointer(
       3,
@@ -406,20 +408,17 @@ void AssetTypeGPU<MeshHandle, MeshGPU>::destroy_all()
   }
 }
 
-AssetsGPU AssetsGPU::make(RenderData& render_data, Assets& assets, Allocator& allocator)
+AssetsGPU AssetsGPU::make(Assets& assets, Allocator& allocator)
 {
   AssetsGPU out = {};
 
   out.shaders.data = Map<ShaderHandle, Shader>::make(100, allocator);
-  out.shaders.render_data = &render_data;
   out.shaders.assets = &assets;
 
   out.textures.data = Map<TextureHandle, TextureGPU>::make(100, allocator);
-  out.textures.render_data = &render_data;
   out.textures.assets = &assets;
 
   out.meshes.data = Map<MeshHandle, MeshGPU>::make(100, allocator);
-  out.meshes.render_data = &render_data;
   out.meshes.assets = &assets;
 
   return out;
@@ -544,7 +543,7 @@ void RenderPass::finish()
     break;
     case RenderPassType::POINT_SHADOW_MAP:
     {
-      glBindFramebuffer(GL_FRAMEBUFFER, data->shadow_framebuffer_id);
+      glBindFramebuffer(GL_FRAMEBUFFER, render_data.shadow_framebuffer_id);
     }
     break;
   }
@@ -558,7 +557,7 @@ void RenderPass::finish()
     camera_std140.view_pos = camera->pos;
     camera_std140.proj_view = camera->projection() * camera->look_at();
     camera_std140.far_plane = camera->far_plane;
-    glBindBuffer(GL_UNIFORM_BUFFER, data->camera_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera_std140), &camera_std140);
   }
 
@@ -569,7 +568,7 @@ void RenderPass::finish()
     light_std140.constant = Light::CONSTANT;
     light_std140.linear = Light::LINEAR;
     light_std140.quadratic = Light::QUADRATIC;
-    glBindBuffer(GL_UNIFORM_BUFFER, data->lights_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, render_data.lights_ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Light), &light_std140);
   }
 
@@ -676,7 +675,7 @@ void RenderPass::finish()
     {
       glActiveTexture(GL_TEXTURE1);
 
-      glBindTexture(GL_TEXTURE_CUBE_MAP, data->shadow_cubemap.id);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap.id);
       glUniform1i(glGetUniformLocation(shader.id, "shadow_map"), 1);
 
       glUniform1f(
@@ -687,7 +686,7 @@ void RenderPass::finish()
 
     glBindVertexArray(assets_gpu->meshes.get(item.mesh).vao);
 
-    glBindBuffer(GL_ARRAY_BUFFER, data->instance_data_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     glBufferSubData(
       GL_ARRAY_BUFFER,
       0,
@@ -812,18 +811,18 @@ Renderer Renderer::make(Assets& assets, Allocator& allocator)
 
   glEnable(GL_DEPTH_TEST);
 
-  glGenBuffers(1, &out.data.camera_ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, out.data.camera_ubo);
+  glGenBuffers(1, &render_data.camera_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Camera), nullptr, GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_CAMERA, out.data.camera_ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_CAMERA, render_data.camera_ubo);
 
-  glGenBuffers(1, &out.data.lights_ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, out.data.lights_ubo);
+  glGenBuffers(1, &render_data.lights_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.lights_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Light), nullptr, GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_LIGHTS, out.data.lights_ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_LIGHTS, render_data.lights_ubo);
 
-  glGenTextures(1, &out.data.shadow_cubemap.id);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, out.data.shadow_cubemap.id);
+  glGenTextures(1, &render_data.shadow_cubemap.id);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap.id);
   for (i32 i = 0; i < 6; ++i)
   {
     glTexImage2D(
@@ -844,19 +843,19 @@ Renderer Renderer::make(Assets& assets, Allocator& allocator)
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-  glGenFramebuffers(1, &out.data.shadow_framebuffer_id);
-  glBindFramebuffer(GL_FRAMEBUFFER, out.data.shadow_framebuffer_id);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, out.data.shadow_cubemap.id, 0);
+  glGenFramebuffers(1, &render_data.shadow_framebuffer_id);
+  glBindFramebuffer(GL_FRAMEBUFFER, render_data.shadow_framebuffer_id);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, render_data.shadow_cubemap.id, 0);
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  glGenBuffers(1, &out.data.instance_data_buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, out.data.instance_data_buffer);
+  glGenBuffers(1, &render_data.instance_data_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
   glBufferData(GL_ARRAY_BUFFER, InstanceData::MAX * sizeof(InstanceData), nullptr, GL_STATIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  out.assets_gpu = AssetsGPU::make(out.data, *out.assets, allocator);
+  out.assets_gpu = AssetsGPU::make(*out.assets, allocator);
 
   static_model_init_(
     StaticModel_CUBE_WIRES,
@@ -902,7 +901,6 @@ RenderPass Renderer::begin_pass(
 
   out.assets = assets;
   out.assets_gpu = &assets_gpu;
-  out.data = &data;
   out.camera = &camera;
 
   out.items = Array<RenderItem>::make(ArrayType::DYNAMIC, 100, allocator);

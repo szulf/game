@@ -1,6 +1,7 @@
 #include "image.h"
 
-#include "platform/platform.h"
+#include "base/math.h"
+#include "os/os.h"
 
 enum ImagePngColorFormat
 {
@@ -606,7 +607,7 @@ Image Image::from_file(const char* path, Allocator& allocator, Error& err)
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
   usize file_size;
-  void* file = platform::read_entire_file(path, scratch_arena.allocator, file_size, error);
+  void* file = os::read(path, scratch_arena.allocator, file_size, error);
   ERROR_ASSERT(error == SUCCESS, err, error, img);
   if (file == nullptr)
   {

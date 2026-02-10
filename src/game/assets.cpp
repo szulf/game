@@ -1,6 +1,6 @@
 #include "assets.h"
 
-#include "platform/platform.h"
+#include "os/os.h"
 
 template <>
 void AssetType<MeshHandle, MeshData, 100>::destroy_all()
@@ -92,7 +92,7 @@ void obj_parse_mtl_file_(const char* path, Assets& assets, Allocator& allocator,
   bool parsing = false;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
-  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  auto file = os::read_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, );
   auto lines = file.split('\n', scratch_arena.allocator);
 
@@ -319,7 +319,7 @@ MeshHandle Assets::load_obj(const char* path, Allocator& allocator, Error& out_e
   ctx.allocator = &allocator;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
-  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  auto file = os::read_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
   ctx.lines = file.split('\n', scratch_arena.allocator);
 

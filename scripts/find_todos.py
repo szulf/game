@@ -157,5 +157,3 @@ with open(output_file, "w", encoding="utf-8") as md_file:
 
                 except Exception as e:
                     print(f"Error reading {file_path}: {e}")
-
-print(f"Markdown file '{output_file}' created.")

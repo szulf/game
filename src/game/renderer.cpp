@@ -1,7 +1,7 @@
 #include "renderer.h"
 
-#include "platform/platform.h"
-#include "platform/gl_functions.h"
+#include "os/os.h"
+#include "os/gl_functions.h"
 
 static RenderData render_data = {};
 
@@ -10,7 +10,7 @@ u32 shader_load_(const char* path, ShaderType shader_type, Error& out_error)
   Error error = SUCCESS;
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
-  auto file = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  auto file = os::read_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
 
   u32 shader;

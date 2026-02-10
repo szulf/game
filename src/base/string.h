@@ -91,7 +91,4 @@ inline bool operator!=(const char* cstr, const String& str)
 template <>
 usize hash(const String& v);
 
-// TODO: maybe implement format myself in the future?
-#define fmt(buf, buf_size, format, ...) libc::snprintf(buf, buf_size, format, __VA_ARGS__)
-
 #endif

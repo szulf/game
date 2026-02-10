@@ -1,6 +1,6 @@
 #include "entity.h"
 
-#include "platform/platform.h"
+#include "os/os.h"
 
 BoundingBox BoundingBox::from_mesh(MeshHandle handle, const Assets& assets)
 {
@@ -39,7 +39,7 @@ Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& 
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  String source = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  auto source = os::read_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, out);
 
   bool calculate_bounding_box = false;
@@ -155,7 +155,7 @@ Scene load_gscn(const char* path, Assets& assets, Allocator& allocator, Error& o
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  String source = platform::read_file_to_string(path, scratch_arena.allocator, error);
+  auto source = os::read_to_string(path, scratch_arena.allocator, error);
   ERROR_ASSERT(error == SUCCESS, out_error, error, {});
 
   auto lines = source.split('\n', scratch_arena.allocator);

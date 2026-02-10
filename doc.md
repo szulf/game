@@ -1,13 +1,21 @@
-## BIG TODO: core improvements
+## BIG TODO: platform layer rewrite
 
 ## SMALL TODOS: (ordered)
+
+2. more c like to get dynamic reload back?
+3. introduce threading capabilities(threads, mutexes, atomics)
 
 ---
 
 ## NEXT BIG TODOS: (unordered)
 
-- placing/destroying something on the ground
 - audio
+
+- change the interaction mechanic, interaction by key is stupid for my game,
+  - i need more interaction by mouse click and the interaction radius would be on the player and
+  - not on the interactable entities
+
+- placing/destroying something on the ground
 - debug tools
   - map/entity/keymap editor
   - time scaling

@@ -1,11 +1,94 @@
-#include "platform/platform.h"
-
+#include "game.h"
 #include "assets.h"
 #include "camera.h"
 #include "renderer.h"
 #include "entity.h"
 
-game::Input load_gkey(const char* path, Error& out_error);
+enum class Action
+{
+  MOVE_FRONT,
+  MOVE_BACK,
+  MOVE_LEFT,
+  MOVE_RIGHT,
+  INTERACT,
+
+  CAMERA_MOVE_UP,
+  CAMERA_MOVE_DOWN,
+  TOGGLE_CAMERA_MODE,
+  TOGGLE_DISPLAY_BOUNDING_BOXES,
+
+  COUNT,
+};
+
+typedef enum_array<Action, os::Key> Keymap;
+
+Keymap load_gkey(const char* path, Error& out_error)
+{
+  Keymap keymap = {};
+  Error error = SUCCESS;
+  auto scratch_arena = ScratchArena::get();
+  defer(scratch_arena.release());
+
+  auto source = os::read_to_string(path, scratch_arena.allocator, error);
+  ERROR_ASSERT(error == SUCCESS, out_error, error, keymap);
+  auto lines = source.split('\n', scratch_arena.allocator);
+
+  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
+  {
+    auto& line = lines[line_idx];
+    auto parts = line.split(':', scratch_arena.allocator);
+    ERROR_ASSERT(parts.size == 2, out_error, "gkey decoding error. Invalid line.", keymap);
+
+    auto action = parts[0].trim_whitespace();
+    auto key_str = parts[1].trim_whitespace();
+    auto key = os::string_to_key(key_str, error);
+    ERROR_ASSERT(error == SUCCESS, out_error, error, keymap);
+
+    if (action == "move_front")
+    {
+      keymap[Action::MOVE_FRONT] = key;
+    }
+    else if (action == "move_back")
+    {
+      keymap[Action::MOVE_BACK] = key;
+    }
+    else if (action == "move_left")
+    {
+      keymap[Action::MOVE_LEFT] = key;
+    }
+    else if (action == "move_right")
+    {
+      keymap[Action::MOVE_RIGHT] = key;
+    }
+    else if (action == "interact")
+    {
+      keymap[Action::INTERACT] = key;
+    }
+    else if (action == "toggle_camera_mode")
+    {
+      keymap[Action::TOGGLE_CAMERA_MODE] = key;
+    }
+    else if (action == "toggle_display_bounding_boxes")
+    {
+      keymap[Action::TOGGLE_DISPLAY_BOUNDING_BOXES] = key;
+    }
+    else if (action == "camera_move_up")
+    {
+      keymap[Action::CAMERA_MOVE_UP] = key;
+    }
+    else if (action == "camera_move_down")
+    {
+      keymap[Action::CAMERA_MOVE_DOWN] = key;
+    }
+    else
+    {
+      out_error = "gkey decoding error. Invalid key.";
+      return keymap;
+    }
+  }
+
+  return keymap;
+}
 
 struct Main
 {
@@ -24,6 +107,8 @@ struct Main
 
   Scene scene;
 
+  Keymap keymap;
+
   Error errors[512];
   usize error_count;
 };
@@ -31,15 +116,7 @@ struct Main
 namespace game
 {
 
-void spec(Spec& spec)
-{
-  spec.window_name = "game";
-  spec.width = 1280;
-  spec.height = 720;
-  spec.memory_size = GB(2);
-}
-
-void init(Memory& memory, Input& input)
+void init(Memory& memory, os::Window& window)
 {
   Error error = SUCCESS;
   auto& main = *(Main*) memory.memory;
@@ -58,7 +135,7 @@ void init(Memory& memory, Input& input)
     main.errors[main.error_count++] = error;
   }
 
-  input = load_gkey("data/keymap.gkey", error);
+  main.keymap = load_gkey("data/keymap.gkey", error);
   if (error != SUCCESS)
   {
     main.errors[main.error_count++] = error;
@@ -72,8 +149,8 @@ void init(Memory& memory, Input& input)
   main.gameplay_camera.pitch = -55.0f;
   main.gameplay_camera.near_plane = 0.1f;
   main.gameplay_camera.far_plane = 1000.0f;
-  main.gameplay_camera.viewport_width = platform::get_width();
-  main.gameplay_camera.viewport_height = platform::get_height();
+  main.gameplay_camera.viewport_width = window.dimensions.width;
+  main.gameplay_camera.viewport_height = window.dimensions.height;
   main.gameplay_camera.using_vertical_fov = true;
   main.gameplay_camera.fov = 0.25f * F32_PI;
   main.gameplay_camera.update_vectors();
@@ -92,40 +169,42 @@ void init(Memory& memory, Input& input)
   }
 }
 
-void update_tick(Memory& memory, Input& input, float dt)
+void update_tick(Memory& memory, os::Window& window, f32 dt)
 {
   auto& main = *(Main*) memory.memory;
 
-  main.gameplay_camera.viewport_width = main.debug_camera.viewport_width = platform::get_width();
-  main.gameplay_camera.viewport_height = main.debug_camera.viewport_height = platform::get_height();
+  main.gameplay_camera.viewport_width = main.debug_camera.viewport_width = window.dimensions.width;
+  main.gameplay_camera.viewport_height = main.debug_camera.viewport_height =
+    window.dimensions.height;
 
   auto scratch_arena = ScratchArena::get();
   defer(scratch_arena.release());
 
-  if (input.toggle_camera_mode.ended_down && input.toggle_camera_mode.transition_count != 0)
+  if (window.input[main.keymap[Action::TOGGLE_CAMERA_MODE]].ended_down &&
+      window.input[main.keymap[Action::TOGGLE_CAMERA_MODE]].transition_count != 0)
   {
     main.camera_mode = !main.camera_mode;
   }
-  if (input.toggle_display_bounding_boxes.ended_down &&
-      input.toggle_display_bounding_boxes.transition_count != 0)
+  if (window.input[main.keymap[Action::TOGGLE_DISPLAY_BOUNDING_BOXES]].ended_down &&
+      window.input[main.keymap[Action::TOGGLE_DISPLAY_BOUNDING_BOXES]].transition_count != 0)
   {
     main.display_bounding_boxes = !main.display_bounding_boxes;
   }
 
   vec3 acceleration = {};
-  if (input.move_front.ended_down)
+  if (window.input[main.keymap[Action::MOVE_FRONT]].ended_down)
   {
     acceleration.z += -1.0f;
   }
-  if (input.move_back.ended_down)
+  if (window.input[main.keymap[Action::MOVE_BACK]].ended_down)
   {
     acceleration.z += 1.0f;
   }
-  if (input.move_left.ended_down)
+  if (window.input[main.keymap[Action::MOVE_LEFT]].ended_down)
   {
     acceleration.x += -1.0f;
   }
-  if (input.move_right.ended_down)
+  if (window.input[main.keymap[Action::MOVE_RIGHT]].ended_down)
   {
     acceleration.x += 1.0f;
   }
@@ -135,14 +214,16 @@ void update_tick(Memory& memory, Input& input, float dt)
   {
     main.main_camera = &main.debug_camera;
 
+    window.consume_mouse_pointer();
+
     main.gameplay_camera.prev_pos = main.gameplay_camera.pos;
     main.debug_camera.prev_pos = main.debug_camera.pos;
 
-    if (input.camera_move_up.ended_down)
+    if (window.input[main.keymap[Action::CAMERA_MOVE_UP]].ended_down)
     {
       acceleration.y += 1.0f;
     }
-    if (input.camera_move_down.ended_down)
+    if (window.input[main.keymap[Action::CAMERA_MOVE_DOWN]].ended_down)
     {
       acceleration.y += -1.0f;
     }
@@ -155,6 +236,8 @@ void update_tick(Memory& memory, Input& input, float dt)
   else
   {
     main.main_camera = &main.gameplay_camera;
+
+    window.release_mouse_pointer();
 
     for (usize i = 0; i < main.scene.entities_count; ++i)
     {
@@ -177,6 +260,8 @@ void update_tick(Memory& memory, Input& input, float dt)
         }
 
         // NOTE: movement and collisions
+        // TODO: this is still a little wrong in some cases,
+        // maybe use a better algorithm overall to improve this
         {
           acceleration *= PLAYER_MOVEMENT_SPEED;
 
@@ -268,7 +353,8 @@ void update_tick(Memory& memory, Input& input, float dt)
         }
 
         // NOTE: interactions
-        if (input.interact.ended_down && input.interact.transition_count != 0)
+        if (window.input[main.keymap[Action::INTERACT]].ended_down &&
+            window.input[main.keymap[Action::INTERACT]].transition_count != 0)
         {
           for (usize interactable_idx = 0; interactable_idx < main.scene.entities_count;
                ++interactable_idx)
@@ -298,13 +384,13 @@ void update_tick(Memory& memory, Input& input, float dt)
   }
 }
 
-void update_frame(Memory& memory, Input& input, f32 alpha)
+void update_frame(Memory& memory, os::Window& window, f32 alpha)
 {
   auto& main = *(Main*) memory.memory;
   if (main.camera_mode)
   {
-    f32 x_offset = input.mouse_relative.x * CAMERA_SENSITIVITY;
-    f32 y_offset = input.mouse_relative.y * CAMERA_SENSITIVITY;
+    f32 x_offset = window.input.mouse_delta.x * CAMERA_SENSITIVITY;
+    f32 y_offset = window.input.mouse_delta.y * CAMERA_SENSITIVITY;
     main.debug_camera.yaw += x_offset;
     main.debug_camera.pitch -= y_offset;
     main.debug_camera.pitch = clamp(main.debug_camera.pitch, -89.0f, 89.0f);

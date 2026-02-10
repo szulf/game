@@ -44,3 +44,7 @@
 6. move away from the fixed frame rate
    - fixed tick time ("Fix Your Timestep!" article)
 7. rewrite to get lsp working? (no unity build)
+
+## 3. BIG TODO: platform layer rewrite
+
+1. rewrite the whole main file to be platform agnostic

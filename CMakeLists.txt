@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(game
     VERSION 1.0
@@ -72,7 +73,7 @@ set(flags
   "$<$<AND:${compiler_clang},$<OR:${mode_release},${mode_release_no_assert}>>:${clang_flags_release}>"
 )
 
-set(include_dirs src)
+set(include_dirs src vendor)
 
 find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
@@ -89,28 +90,37 @@ add_library(base STATIC
 target_compile_options(base PRIVATE ${flags})
 target_compile_definitions(base PRIVATE ${definitions})
 
+add_library(platform STATIC
+  src/os/os.h src/os/os_sdl3.cpp
+  src/os/gl_functions.h src/os/gl_functions_sdl3.cpp
+)
+target_include_directories(platform PRIVATE ${include_dirs})
+target_compile_options(platform PRIVATE ${flags})
+target_compile_definitions(platform PRIVATE ${definitions})
+target_link_libraries(platform PRIVATE base SDL3::SDL3 OpenGL)
+
+# TODO: should game be a library?
+# it would be easy to get hot-reloading back tbf
 add_executable(game
-  src/platform/platform.h src/platform/sdl3_gl.cpp
-  src/platform/gl_functions.h src/platform/gl_functions.cpp
+  src/main.cpp
+  src/game/game.h src/game/game.cpp
 
   src/game/assets.h src/game/assets.cpp
   src/game/camera.h src/game/camera.cpp
   src/game/entity.h src/game/entity.cpp
   src/game/image.h src/game/image.cpp
   src/game/renderer.h src/game/renderer.cpp
-  src/game/game.cpp
-  src/game/keys.cpp
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})
 target_compile_definitions(game PRIVATE ${definitions})
-target_link_libraries(game PRIVATE base SDL3::SDL3 OpenGL)
+target_link_libraries(game PRIVATE base platform SDL3::SDL3 OpenGL)
 
 # NOTE: run a python script to check for missing error handling
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   find_package(Python3 REQUIRED)
-  set(FIND_ERROR_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_error.py")
 
+  set(FIND_ERROR_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_error.py")
   add_custom_target(
         run_find_error ALL
         COMMAND ${Python3_EXECUTABLE} "${FIND_ERROR_SCRIPT}"
@@ -118,8 +128,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         COMMENT "Error handling check (find_error.py)"
         VERBATIM
     )
-
   add_dependencies(run_find_error game)
+
+  set(FIND_TODOS_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_todos.py")
+  add_custom_target(
+      run_find_todos ALL
+      COMMAND ${Python3_EXECUTABLE} "${FIND_TODOS_SCRIPT}"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      COMMENT "Gathering todos from source files (find_todos.py)"
+      VERBATIM
+  )
+  add_dependencies(run_find_todos game)
 endif()
 
 add_executable(tests src/tests/tests.cpp)

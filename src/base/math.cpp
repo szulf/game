@@ -1,52 +1,6 @@
 #include "math.h"
 
-#include <math.h>
-
-usize min(usize a, usize b)
-{
-  if (a > b)
-  {
-    return b;
-  }
-  return a;
-}
-
-usize pow(usize base, usize exponent)
-{
-  usize val = 1;
-  for (usize i = 0; i < exponent; ++i)
-  {
-    val *= base;
-  }
-  return val;
-}
-
-i32 abs(i32 value)
-{
-  if (value < 0)
-  {
-    return -value;
-  }
-  return value;
-}
-
-f32 max(f32 a, f32 b)
-{
-  if (a > b)
-  {
-    return a;
-  }
-  return b;
-}
-
-f32 min(f32 a, f32 b)
-{
-  if (a > b)
-  {
-    return b;
-  }
-  return a;
-}
+#include <cmath>
 
 f32 clamp(f32 val, f32 lower, f32 upper)
 {
@@ -59,79 +13,6 @@ f32 clamp(f32 val, f32 lower, f32 upper)
     return upper;
   }
   return val;
-}
-
-f32 abs(f32 value)
-{
-  return fabsf(value);
-}
-
-// NOTE: this probably loses some precision, but im casting to i32 in the middle so it would
-// lose it anyway
-f32 floor(f32 value)
-{
-  return (f32) (i32) value;
-}
-
-// NOTE: this probably loses some precision, but im casting to i32 in the middle so it would
-// lose it anyway
-f32 ceil(f32 value)
-{
-  if (value - (f32) ((i32) value) > 0)
-  {
-    return (f32) ((i32) value + 1);
-  }
-  return (f32) (i32) value;
-}
-
-f32 round(f32 value)
-{
-  auto int_value = (f32) ((i32) value);
-  auto t = value - int_value;
-  if (t >= 0.5f)
-  {
-    return int_value + 1.0f;
-  }
-  else if (t <= -0.5f)
-  {
-    return int_value - 1.0f;
-  }
-  return int_value;
-}
-
-f32 sqrt(f32 value)
-{
-  return sqrtf(value);
-}
-
-f32 sin(f32 value)
-{
-  return sinf(value);
-}
-
-f32 cos(f32 value)
-{
-  return cosf(value);
-}
-
-f32 tan(f32 value)
-{
-  return tanf(value);
-}
-
-f32 asin(f32 value)
-{
-  return asinf(value);
-}
-
-f32 acos(f32 value)
-{
-  return acosf(value);
-}
-
-f32 atan2(f32 y, f32 x)
-{
-  return atan2f(y, x);
 }
 
 f32 wrap_to_neg_pi_to_pi(f32 value)

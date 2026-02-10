@@ -48,3 +48,4 @@
 ## 3. BIG TODO: platform layer rewrite
 
 1. rewrite the whole main file to be platform agnostic
+2. introduce threading capabilities(threads, mutexes, atomics)

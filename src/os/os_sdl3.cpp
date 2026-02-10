@@ -1,3 +1,5 @@
+#include "SDL3/SDL_atomic.h"
+#include "SDL3/SDL_thread.h"
 #include "os.h"
 
 #include "SDL3/SDL_mouse.h"
@@ -599,4 +601,24 @@ void free(void* ptr)
 {
   return SDL_free(ptr);
 }
+
+Thread Thread::make(ThreadFN fn, const char* name, void* data)
+{
+  Thread out = {};
+  out.handle = SDL_CreateThread(fn, name, data);
+  return out;
+}
+
+void Thread::detach()
+{
+  SDL_DetachThread((SDL_Thread*) handle);
+}
+
+i32 Thread::wait()
+{
+  int status;
+  SDL_WaitThread((SDL_Thread*) handle, &status);
+  return status;
+}
+
 }

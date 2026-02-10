@@ -47,7 +47,7 @@ typedef double f64;
 // TODO: maybe implement printf myself in the future
 #define print(...) printf(__VA_ARGS__)
 
-#define unused(x) ((void) (sizeof(x)))
+#define unused(x) ((void) (x))
 
 #define array_size(arr) (sizeof(arr) / sizeof(*arr))
 

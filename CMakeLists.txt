@@ -34,7 +34,6 @@ set(clang_flags_common
   -Wno-old-style-cast -Wno-missing-prototypes -Wno-double-promotion
   -Wno-documentation-unknown-command -Wno-reserved-macro-identifier
   -Wno-gnu-anonymous-struct -Wno-nested-anon-types
-  -nostdlib++ -nostdinc++
 )
 set(clang_flags_debug
   -g3 -O0

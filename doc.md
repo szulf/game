@@ -1,15 +1,13 @@
-## BIG TODO: platform layer rewrite
+## BIG TODO: audio
 
 ## SMALL TODOS: (ordered)
 
-2. more c like to get dynamic reload back?
-3. introduce threading capabilities(threads, mutexes, atomics)
+1. write a spsc queue
+2. do the audio(multithreaded)
 
 ---
 
 ## NEXT BIG TODOS: (unordered)
-
-- audio
 
 - change the interaction mechanic, interaction by key is stupid for my game,
   - i need more interaction by mouse click and the interaction radius would be on the player and

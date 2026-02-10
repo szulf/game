@@ -8,25 +8,26 @@
 
 #define F32_G 9.81f
 
-usize min(usize a, usize b);
-usize pow(usize base, usize exponent);
+#include <algorithm>
+#include <cmath>
 
-i32 abs(i32 value);
+using std::abs;
+using std::acos;
+using std::asin;
+using std::atan2;
+using std::ceil;
+using std::cos;
+using std::floor;
+using std::max;
+using std::min;
+using std::pow;
+using std::round;
+using std::sin;
+using std::sqrt;
+using std::tan;
 
-f32 max(f32 a, f32 b);
-f32 min(f32 a, f32 b);
 f32 clamp(f32 val, f32 a, f32 b);
-f32 abs(f32 value);
-f32 floor(f32 value);
-f32 ceil(f32 value);
-f32 round(f32 value);
-f32 sqrt(f32 value);
-f32 sin(f32 value);
-f32 cos(f32 value);
-f32 tan(f32 value);
-f32 asin(f32 value);
-f32 acos(f32 value);
-f32 atan2(f32 y, f32 x);
+
 f32 wrap_to_neg_pi_to_pi(f32 value);
 f32 radians(f32 deg);
 f32 square(f32 value);

@@ -5,6 +5,8 @@
 #include "base/string.h"
 #include "base/enum_array.h"
 
+#include <atomic>
+
 namespace os
 {
 
@@ -74,6 +76,7 @@ struct Input
 
   enum_array<Key, KeyState> states;
 
+  // TODO: should these really be floats?
   vec2 mouse_pos;
   vec2 mouse_delta;
   vec2 mouse_pos_last;
@@ -113,6 +116,22 @@ f32 time_now();
 
 void* alloc(usize bytes);
 void free(void* ptr);
+
+struct Thread
+{
+  typedef i32 (*ThreadFN)(void* data);
+
+  static Thread make(ThreadFN fn, const char* name, void* data);
+  void detach();
+  i32 wait();
+
+  void* handle;
+};
+
+// NOTE: i dont like using stl, but i cant be bothered to setup atomics
+// TODO: maybe implement atomic myself in the future
+template <typename T>
+using Atomic = std::atomic<T>;
 
 }
 

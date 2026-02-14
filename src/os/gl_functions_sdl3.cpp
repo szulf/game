@@ -1,8 +1,8 @@
 #include "gl_functions.h"
 
-#include <SDL3/SDL.h>
+#include <print>
 
-#include "base/base.h"
+#include <SDL3/SDL.h>
 
 #define LOAD_SDL_GL_PROC(type, name) name = (type) SDL_GL_GetProcAddress(#name)
 
@@ -167,8 +167,8 @@ void APIENTRY debug_callback(
       break;
   }
 
-  print(
-    "[OpenGL Debug] Source: %s | Type: %s | Severity: %s | ID: %u\n    Message: %s\n",
+  std::println(
+    "[OpenGL Debug] Source: {} | Type: {} | Severity: {} | ID: {}\n    Message: {}",
     source_str,
     type_str,
     severity_str,

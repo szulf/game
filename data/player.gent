@@ -3,7 +3,7 @@ name : player
 controlled_by_player : true
 
 collidable : true
-bounding_box : *
+dynamically_calculated_bounding_box : true
 
 renderable: true
 mesh : assets/bean.obj

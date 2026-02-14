@@ -1,17 +1,44 @@
 #include "renderer.h"
 
-#include "os/os.h"
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+
+#include "base/enum_array.h"
+#include "game/assets.h"
 #include "os/gl_functions.h"
 
+// TODO: should be owned by the Renderer class,
+// but cant be bothered to work more on the renderer for now
 static RenderData render_data = {};
 
-u32 shader_load_(const char* path, ShaderType shader_type, Error& out_error)
+static std::string_view shader_type_to_string(ShaderType type)
 {
-  Error error = SUCCESS;
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-  auto file = os::read_to_string(path, scratch_arena.allocator, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
+  switch (type)
+  {
+    case ShaderType::VERTEX:
+      return "Vertex";
+    case ShaderType::FRAGMENT:
+      return "Fragment";
+    case ShaderType::GEOMETRY:
+      return "Geometry";
+    default:
+      return "Invalid";
+  }
+}
+
+u32 shader_load_(const std::filesystem::path& path, ShaderType shader_type)
+{
+  std::ifstream file_stream{path};
+  if (file_stream.fail())
+  {
+    throw std::runtime_error{
+      std::format("[SHADER] File reading error. (path: {}).", path.string())
+    };
+  }
+  std::stringstream ss{};
+  ss << file_stream.rdbuf();
+  auto file = ss.str();
 
   u32 shader;
   switch (shader_type)
@@ -33,7 +60,7 @@ u32 shader_load_(const char* path, ShaderType shader_type, Error& out_error)
     break;
   }
 
-  auto shader_src = file.to_cstr(scratch_arena.allocator);
+  auto shader_src = file.c_str();
   glShaderSource(shader, 1, &shader_src, nullptr);
   glCompileShader(shader);
   GLint compiled;
@@ -43,55 +70,32 @@ u32 shader_load_(const char* path, ShaderType shader_type, Error& out_error)
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetShaderInfoLog(shader, 1024, &log_length, message);
-    switch (shader_type)
-    {
-      case ShaderType::VERTEX:
-      {
-        print("vertex shader compilation failed with message:\n%s\n", message);
-        out_error = "Vertex shader compilation error.";
-      }
-      break;
-      case ShaderType::FRAGMENT:
-      {
-        print("fragment shader compilation failed with message:\n%s\n", message);
-        out_error = "Fragment shader compilation error.";
-      }
-      break;
-      case ShaderType::GEOMETRY:
-      {
-        print("geometry shader compilation failed with message:\n%s\n", message);
-        out_error = "Geometry shader compilation error.";
-      }
-      break;
-    }
-    return (u32) -1;
+    throw std::runtime_error{std::format(
+      "Shader compilation({}) failed with a message:\n{}",
+      shader_type_to_string(shader_type),
+      message
+    )};
   }
 
   return shader;
 }
 
-Shader shader_link_(
-  u32 vertex_shader,
-  u32 fragment_shader,
-  bool use_geometry,
-  u32 geometry_shader,
-  Error& out_error
-)
+u32 shader_link_(u32 vertex_shader, u32 fragment_shader, std::optional<u32> geometry_shader)
 {
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex_shader);
   glAttachShader(program, fragment_shader);
-  if (use_geometry)
+  if (geometry_shader)
   {
-    glAttachShader(program, geometry_shader);
+    glAttachShader(program, *geometry_shader);
   }
   glLinkProgram(program);
 
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
-  if (use_geometry)
+  if (geometry_shader)
   {
-    glDeleteShader(geometry_shader);
+    glDeleteShader(*geometry_shader);
   }
 
   GLint program_linked;
@@ -101,108 +105,95 @@ Shader shader_link_(
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
-    print("failed to link shaders with message:\n%s\n", message);
-    out_error = "Failed to link shaders.";
-    return {};
+    throw std::runtime_error{std::format("Failed to link shaders with message:\n{}", message)};
   }
-  Shader out = {};
-  out.id = program;
+  return program;
+}
+
+struct ShaderDescription
+{
+  const char* vertex{};
+  const char* fragment{};
+  const char* geometry{};
+};
+
+u32 shader_create_(const ShaderDescription& desc)
+{
+  auto vertex_shader = shader_load_(desc.vertex, ShaderType::VERTEX);
+  auto fragment_shader = shader_load_(desc.fragment, ShaderType::FRAGMENT);
+
+  if (desc.geometry)
+  {
+    auto geometry_shader = shader_load_(desc.geometry, ShaderType::GEOMETRY);
+    auto shader = shader_link_(vertex_shader, fragment_shader, geometry_shader);
+    return shader;
+  }
+
+  auto shader = shader_link_(vertex_shader, fragment_shader, std::nullopt);
+  return shader;
+}
+
+constexpr static EnumArray<ShaderHandle, ShaderDescription> shader_descriptions = []()
+{
+  EnumArray<ShaderHandle, ShaderDescription> out{};
+  out[ShaderHandle::DEFAULT] = {
+    .vertex = "shaders/shader.vert",
+    .fragment = "shaders/default.frag",
+  };
+  out[ShaderHandle::LIGHTING] = {
+    .vertex = "shaders/shader.vert",
+    .fragment = "shaders/lighting.frag",
+  };
+  out[ShaderHandle::SHADOW_DEPTH] = {
+    .vertex = "shaders/shadow_depth.vert",
+    .fragment = "shaders/shadow_depth.frag",
+    .geometry = "shaders/shadow_depth.geom",
+  };
   return out;
-}
+}();
 
-Shader shader_create_(
-  const char* vert_path,
-  const char* frag_path,
-  const char* geom_path,
-  Error& out_error
-)
+Shader::Shader(ShaderHandle handle)
 {
-  Error error = SUCCESS;
+  auto& desc = shader_descriptions[handle];
+  auto shader = shader_create_(desc);
+  m_id = shader;
 
-  auto vertex_shader = shader_load_(vert_path, ShaderType::VERTEX, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  auto fragment_shader = shader_load_(frag_path, ShaderType::FRAGMENT, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-
-  if (geom_path)
+  auto index = glGetUniformBlockIndex(m_id, "Camera");
+  if (index != GL_INVALID_INDEX)
   {
-    auto geometry_shader = shader_load_(geom_path, ShaderType::GEOMETRY, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-    auto shader = shader_link_(vertex_shader, fragment_shader, true, geometry_shader, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-    return {shader};
+    glUniformBlockBinding(m_id, index, UBO_INDEX_CAMERA);
   }
-
-  auto shader = shader_link_(vertex_shader, fragment_shader, false, 0, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-  return {shader};
-}
-
-template <>
-void AssetTypeGPU<ShaderHandle, Shader>::create(ShaderHandle handle)
-{
-  Error error = SUCCESS;
-  Shader shader = {};
-  switch (handle)
+  index = glGetUniformBlockIndex(m_id, "Lights");
+  if (index != GL_INVALID_INDEX)
   {
-    case ShaderHandle::DEFAULT:
-    {
-      shader = shader_create_("shaders/shader.vert", "shaders/default.frag", nullptr, error);
-      ASSERT(error == SUCCESS, "Failed to create default shader.");
-      auto index = glGetUniformBlockIndex(shader.id, "Camera");
-      ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
-      glUniformBlockBinding(shader.id, index, UBO_INDEX_CAMERA);
-    }
-    break;
-
-    case ShaderHandle::LIGHTING:
-    {
-      shader = shader_create_("shaders/shader.vert", "shaders/lighting.frag", nullptr, error);
-      ASSERT(error == SUCCESS, "Failed to create lighting shader.");
-      auto index = glGetUniformBlockIndex(shader.id, "Camera");
-      ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
-      glUniformBlockBinding(shader.id, index, UBO_INDEX_CAMERA);
-      index = glGetUniformBlockIndex(shader.id, "Lights");
-      ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
-      glUniformBlockBinding(shader.id, index, UBO_INDEX_LIGHTS);
-    }
-    break;
-
-    case ShaderHandle::SHADOW_DEPTH:
-    {
-      shader = shader_create_(
-        "shaders/shadow_depth.vert",
-        "shaders/shadow_depth.frag",
-        "shaders/shadow_depth.geom",
-        error
-      );
-      ASSERT(error == SUCCESS, "Failed to create shadow depth shader.");
-      auto index = glGetUniformBlockIndex(shader.id, "Camera");
-      ASSERT(index != GL_INVALID_INDEX, "invalid unifrom block index");
-      glUniformBlockBinding(shader.id, index, UBO_INDEX_CAMERA);
-    }
-    break;
-  }
-  ASSERT(error == SUCCESS, "failed to load shader: %s", error);
-  data.set(handle, shader);
-}
-
-template <>
-void AssetTypeGPU<ShaderHandle, Shader>::destroy(ShaderHandle handle)
-{
-  if (contains(handle))
-  {
-    glDeleteProgram(get(handle).id);
-    data.remove(handle);
+    glUniformBlockBinding(m_id, index, UBO_INDEX_LIGHTS);
   }
 }
 
-template <>
-void AssetTypeGPU<ShaderHandle, Shader>::destroy_all()
+Shader::Shader(Shader&& other)
 {
-  destroy(ShaderHandle::DEFAULT);
-  destroy(ShaderHandle::LIGHTING);
-  destroy(ShaderHandle::SHADOW_DEPTH);
+  m_id = other.m_id;
+  other.m_id = 0;
+}
+
+Shader& Shader::operator=(Shader&& other)
+{
+  if (this == &other)
+  {
+    return *this;
+  }
+  if (m_id != 0)
+  {
+    glDeleteProgram(m_id);
+  }
+  m_id = other.m_id;
+  other.m_id = 0;
+  return *this;
+}
+
+Shader::~Shader()
+{
+  glDeleteProgram(m_id);
 }
 
 static GLint gl_wrapping_option_(TextureWrappingOption option)
@@ -231,14 +222,12 @@ static GLint gl_filtering_option_(TextureFilteringOption option)
   }
 }
 
-template <>
-void AssetTypeGPU<TextureHandle, TextureGPU>::create(TextureHandle handle)
+TextureGPU::TextureGPU(TextureHandle handle)
 {
-  auto& texture = assets->textures.get(handle);
-  TextureGPU t = {};
+  auto& texture = AssetManager::instance().textures.get(handle);
 
-  glGenTextures(1, &t.id);
-  glBindTexture(GL_TEXTURE_2D, t.id);
+  glGenTextures(1, &m_id);
+  glBindTexture(GL_TEXTURE_2D, m_id);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_wrapping_option_(texture.wrap_s));
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl_wrapping_option_(texture.wrap_t));
@@ -249,62 +238,65 @@ void AssetTypeGPU<TextureHandle, TextureGPU>::create(TextureHandle handle)
     GL_TEXTURE_2D,
     0,
     GL_RGBA8,
-    (GLsizei) texture.image.width,
-    (GLsizei) texture.image.height,
+    (GLsizei) texture.image.width(),
+    (GLsizei) texture.image.height(),
     0,
     GL_RGBA,
     GL_UNSIGNED_BYTE,
-    texture.image.data
+    texture.image.data()
   );
   glGenerateMipmap(GL_TEXTURE_2D);
-
-  data.set(handle, t);
 }
 
-template <>
-void AssetTypeGPU<TextureHandle, TextureGPU>::destroy(TextureHandle handle)
+TextureGPU::TextureGPU(TextureGPU&& other)
 {
-  if (contains(handle))
+  m_id = other.m_id;
+  other.m_id = 0;
+}
+
+TextureGPU& TextureGPU::operator=(TextureGPU&& other)
+{
+  if (this == &other)
   {
-    glDeleteTextures(1, &get(handle).id);
-    data.remove(handle);
+    return *this;
   }
-}
-
-template <>
-void AssetTypeGPU<TextureHandle, TextureGPU>::destroy_all()
-{
-  for (usize i = 0; i < assets->textures.size; ++i)
+  if (m_id != 0)
   {
-    destroy(i);
+    glDeleteTextures(1, &m_id);
   }
+  m_id = other.m_id;
+  other.m_id = 0;
+  return *this;
 }
 
-template <>
-void AssetTypeGPU<MeshHandle, MeshGPU>::create(MeshHandle handle)
+TextureGPU::~TextureGPU()
 {
-  MeshGPU m = {};
-  auto& mesh_data = assets->meshes.get(handle);
+  glDeleteTextures(1, &m_id);
+}
+
+MeshGPU::MeshGPU(MeshHandle handle)
+{
+  auto& mesh_data = AssetManager::instance().meshes.get(handle);
   auto& vertices = mesh_data.vertices;
   auto& indices = mesh_data.indices;
 
-  glGenVertexArrays(1, &m.vao);
-  glBindVertexArray(m.vao);
+  glGenVertexArrays(1, &m_vao);
+  glBindVertexArray(m_vao);
 
-  glGenBuffers(1, &m.vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, m.vbo);
+  glGenBuffers(1, &m_vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
   glBufferData(
     GL_ARRAY_BUFFER,
-    (GLsizei) (vertices.size * sizeof(Vertex)),
-    vertices.data,
+    (GLsizei) (vertices.size() * sizeof(Vertex)),
+    vertices.data(),
     GL_STATIC_DRAW
   );
-  glGenBuffers(1, &m.ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m.ebo);
+  glGenBuffers(1, &m_ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
   glBufferData(
     GL_ELEMENT_ARRAY_BUFFER,
-    (GLsizei) (indices.size * sizeof(u32)),
-    indices.data,
+    (GLsizei) (indices.size() * sizeof(u32)),
+    indices.data(),
     GL_STATIC_DRAW
   );
 
@@ -382,69 +374,66 @@ void AssetTypeGPU<MeshHandle, MeshGPU>::create(MeshHandle handle)
   }
 
   glBindVertexArray(0);
-
-  data.set(handle, m);
 }
 
-template <>
-void AssetTypeGPU<MeshHandle, MeshGPU>::destroy(MeshHandle handle)
+MeshGPU::MeshGPU(MeshGPU&& other)
 {
-  if (contains(handle) && handle >= StaticModel_COUNT)
+  m_vbo = other.m_vbo;
+  other.m_vbo = 0;
+  m_ebo = other.m_ebo;
+  other.m_ebo = 0;
+  m_vao = other.m_vao;
+  other.m_vao = 0;
+}
+
+MeshGPU& MeshGPU::operator=(MeshGPU&& other)
+{
+  if (this == &other)
   {
-    auto& mesh = get(handle);
-    glDeleteBuffers(1, &mesh.vbo);
-    glDeleteBuffers(1, &mesh.ebo);
-    glDeleteVertexArrays(1, &mesh.vao);
-    data.remove(handle);
+    return *this;
   }
-}
-
-template <>
-void AssetTypeGPU<MeshHandle, MeshGPU>::destroy_all()
-{
-  for (usize i = 0; i < assets->meshes.size; ++i)
+  if (m_vbo)
   {
-    destroy(i);
+    glDeleteBuffers(1, &m_vbo);
   }
+  m_vbo = other.m_vbo;
+  other.m_vbo = 0;
+  if (m_ebo)
+  {
+    glDeleteBuffers(1, &m_ebo);
+  }
+  m_ebo = other.m_ebo;
+  other.m_ebo = 0;
+  if (m_vao)
+  {
+    glDeleteVertexArrays(1, &m_vao);
+  }
+  m_vao = other.m_vao;
+  other.m_vao = 0;
+  return *this;
 }
 
-AssetsGPU AssetsGPU::make(Assets& assets, Allocator& allocator)
+MeshGPU::~MeshGPU()
 {
-  AssetsGPU out = {};
-
-  out.shaders.data = Map<ShaderHandle, Shader>::make(100, allocator);
-  out.shaders.assets = &assets;
-
-  out.textures.data = Map<TextureHandle, TextureGPU>::make(100, allocator);
-  out.textures.assets = &assets;
-
-  out.meshes.data = Map<MeshHandle, MeshGPU>::make(100, allocator);
-  out.meshes.assets = &assets;
-
-  return out;
-}
-
-void AssetsGPU::destroy_all()
-{
-  shaders.destroy_all();
-  textures.destroy_all();
-  meshes.destroy_all();
+  glDeleteBuffers(1, &m_vbo);
+  glDeleteBuffers(1, &m_ebo);
+  glDeleteVertexArrays(1, &m_vao);
 }
 
 mat4 get_transform_(const vec3& pos, const vec3& size, f32 rotation)
 {
-  auto transform = mat4::make();
-  rotate(transform, rotation, {0.0f, 1.0f, 0.0f});
-  translate(transform, pos);
-  scale(transform, size);
+  mat4 transform{1.0f};
+  transform = rotate(transform, rotation, {0.0f, 1.0f, 0.0f});
+  transform = translate(transform, pos);
+  transform = scale(transform, size);
   return transform;
 }
 
 void RenderPass::draw_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
 {
   auto transform = get_transform_(pos, {1.0f, 1.0f, 1.0f}, rotation);
-  auto& mesh = assets->meshes.get(handle);
-  for (usize i = 0; i < mesh.submeshes.size; ++i)
+  auto& mesh = AssetManager::instance().meshes.get(handle);
+  for (usize i = 0; i < mesh.submeshes.size(); ++i)
   {
     RenderItem item = {};
     item.mesh = handle;
@@ -452,7 +441,7 @@ void RenderPass::draw_mesh(MeshHandle handle, const vec3& pos, f32 rotation, con
     item.material = mesh.submeshes[i].material;
     item.instance_data.transform = transform;
     item.instance_data.tint = tint;
-    items.push(item);
+    m_items.push_back(item);
   }
 }
 
@@ -462,10 +451,10 @@ void RenderPass::draw_cube_wires(const vec3& pos, const vec3& size, const vec3& 
   RenderItem item = {};
   item.mesh = StaticModel_CUBE_WIRES;
   item.submesh_idx = 0;
-  item.material = assets->meshes.get(StaticModel_CUBE_WIRES).submeshes[0].material;
+  item.material = AssetManager::instance().meshes.get(StaticModel_CUBE_WIRES).submeshes[0].material;
   item.instance_data.transform = transform;
   item.instance_data.tint = color;
-  items.push(item);
+  m_items.push_back(item);
 }
 
 void RenderPass::draw_ring(const vec3& pos, f32 radius, const vec3& color)
@@ -475,10 +464,10 @@ void RenderPass::draw_ring(const vec3& pos, f32 radius, const vec3& color)
   RenderItem item = {};
   item.mesh = StaticModel_RING;
   item.submesh_idx = 0;
-  item.material = assets->meshes.get(StaticModel_RING).submeshes[0].material;
+  item.material = AssetManager::instance().meshes.get(StaticModel_RING).submeshes[0].material;
   item.instance_data.transform = transform;
   item.instance_data.tint = color;
-  items.push(item);
+  m_items.push_back(item);
 }
 
 void RenderPass::draw_line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
@@ -487,21 +476,21 @@ void RenderPass::draw_line(const vec3& pos, f32 length, f32 rotation, const vec3
   RenderItem item = {};
   item.mesh = StaticModel_LINE;
   item.submesh_idx = 0;
-  item.material = assets->meshes.get(StaticModel_LINE).submeshes[0].material;
+  item.material = AssetManager::instance().meshes.get(StaticModel_LINE).submeshes[0].material;
   item.instance_data.transform = transform;
   item.instance_data.tint = color;
-  items.push(item);
+  m_items.push_back(item);
 }
 
 void RenderPass::set_light(const vec3& pos, const vec3& color)
 {
-  light.pos = pos;
-  light.color = color;
+  m_light.pos = pos;
+  m_light.color = color;
 }
 
 void RenderPass::use_shadow_map(const Camera& camera_)
 {
-  shadow_map_camera = &camera_;
+  m_shadow_map_camera = &camera_;
 }
 
 static GLenum get_primitive_(RenderPrimitive primitive)
@@ -523,18 +512,25 @@ static GLenum get_primitive_(RenderPrimitive primitive)
 
 void RenderPass::finish()
 {
-  items.sort(
-    +[](const RenderItem& a, const RenderItem& b) -> bool
+  auto& assets = AssetManager::instance();
+  auto& assets_gpu = AssetGPUManager::instance();
+  std::ranges::sort(
+    m_items,
+    [](const RenderItem& a, const RenderItem& b) -> bool
     {
       if (a.material != b.material)
       {
         return a.material > b.material;
       }
-      return a.mesh > b.mesh;
+      if (a.mesh != b.mesh)
+      {
+        return a.mesh > b.mesh;
+      }
+      return a.submesh_idx > b.submesh_idx;
     }
   );
 
-  switch (type)
+  switch (m_type)
   {
     case RenderPassType::FORWARD:
     {
@@ -548,23 +544,23 @@ void RenderPass::finish()
     break;
   }
 
-  glViewport(0, 0, (GLsizei) camera->viewport_width, (GLsizei) camera->viewport_height);
+  glViewport(0, 0, (GLsizei) m_camera.viewport().x, (GLsizei) m_camera.viewport().y);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   {
     STD140Camera camera_std140 = {};
-    camera_std140.view_pos = camera->pos;
-    camera_std140.proj_view = camera->projection() * camera->look_at();
-    camera_std140.far_plane = camera->far_plane;
+    camera_std140.view_pos = m_camera.pos();
+    camera_std140.proj_view = m_camera.projection() * m_camera.look_at();
+    camera_std140.far_plane = m_camera.far_plane();
     glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera_std140), &camera_std140);
   }
 
   {
     STD140Light light_std140 = {};
-    light_std140.pos = {light.pos.x, light.pos.y, light.pos.z, 1.0f};
-    light_std140.color = {light.color.x, light.color.y, light.color.z, 1.0f};
+    light_std140.pos = {m_light.pos.x, m_light.pos.y, m_light.pos.z, 1.0f};
+    light_std140.color = {m_light.color.x, m_light.color.y, m_light.color.z, 1.0f};
     light_std140.constant = Light::CONSTANT;
     light_std140.linear = Light::LINEAR;
     light_std140.quadratic = Light::QUADRATIC;
@@ -572,127 +568,144 @@ void RenderPass::finish()
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Light), &light_std140);
   }
 
-  for (usize item_idx = 0; item_idx < items.size;)
+  for (usize item_idx = 0; item_idx < m_items.size();)
   {
-    const auto& item = items[item_idx];
-    const auto& mesh = assets->meshes.get(item.mesh);
+    const auto& item = m_items[item_idx];
+    const auto& mesh = assets.meshes.get(item.mesh);
     const auto& submesh = mesh.submeshes[item.submesh_idx];
-    const auto& material = assets->materials.get(item.material);
+    const auto& material = assets.materials.get(item.material);
 
-    if (!assets_gpu->meshes.contains(item.mesh))
+    if (!assets_gpu.meshes.contains(item.mesh))
     {
-      assets_gpu->meshes.create(item.mesh);
+      assets_gpu.meshes.create(item.mesh);
     }
-    if (!assets_gpu->textures.contains(material.diffuse_map))
+    if (!assets_gpu.textures.contains(material.diffuse_map))
     {
-      assets_gpu->textures.create(material.diffuse_map);
+      assets_gpu.textures.create(material.diffuse_map);
     }
 
     usize batch_idx = item_idx + 1;
-    while ((batch_idx < items.size || batch_idx - item_idx > InstanceData::MAX) &&
-           item.mesh == items[batch_idx].mesh && item.submesh_idx == items[batch_idx].submesh_idx &&
-           item.material == items[batch_idx].material)
+    while ((batch_idx < m_items.size() && batch_idx - item_idx < InstanceData::MAX) &&
+           item.mesh == m_items[batch_idx].mesh &&
+           item.submesh_idx == m_items[batch_idx].submesh_idx &&
+           item.material == m_items[batch_idx].material)
     {
       ++batch_idx;
     }
     const auto batch_size = batch_idx - item_idx;
 
-    auto scratch_arena = ScratchArena::get();
-    defer(scratch_arena.release());
-    auto instance_data =
-      Array<InstanceData>::make(ArrayType::STATIC, batch_size, scratch_arena.allocator);
+    std::vector<InstanceData> instance_data{};
+    instance_data.reserve(batch_size);
     for (usize i = item_idx; i < batch_idx; ++i)
     {
-      instance_data.push(items[i].instance_data);
+      instance_data.push_back(m_items[i].instance_data);
     }
 
     ShaderHandle handle =
-      type == RenderPassType::POINT_SHADOW_MAP ? ShaderHandle::SHADOW_DEPTH : material.shader;
-    if (!assets_gpu->shaders.contains(handle))
+      m_type == RenderPassType::POINT_SHADOW_MAP ? ShaderHandle::SHADOW_DEPTH : material.shader;
+    if (!assets_gpu.shaders.contains(handle))
     {
-      assets_gpu->shaders.create(handle);
+      assets_gpu.shaders.create(handle);
     }
-    const auto shader = assets_gpu->shaders.get(handle);
+    const auto& shader = assets_gpu.shaders.get(handle);
 
-    glUseProgram(shader.id);
+    glUseProgram(shader.handle());
 
     {
       glUniform3f(
-        glGetUniformLocation(shader.id, "material.ambient"),
-        ambient_color.x,
-        ambient_color.y,
-        ambient_color.z
+        glGetUniformLocation(shader.handle(), "material.ambient"),
+        m_ambient_color.x,
+        m_ambient_color.y,
+        m_ambient_color.z
       );
       glUniform3f(
-        glGetUniformLocation(shader.id, "material.diffuse"),
+        glGetUniformLocation(shader.handle(), "material.diffuse"),
         material.diffuse_color.x,
         material.diffuse_color.y,
         material.diffuse_color.z
       );
       glUniform3f(
-        glGetUniformLocation(shader.id, "material.specular"),
+        glGetUniformLocation(shader.handle(), "material.specular"),
         material.specular_color.x,
         material.specular_color.y,
         material.specular_color.z
       );
       glUniform1f(
-        glGetUniformLocation(shader.id, "material.specular_exponent"),
+        glGetUniformLocation(shader.handle(), "material.specular_exponent"),
         material.specular_exponent
       );
-      const auto& diffuse_map = assets_gpu->textures.get(material.diffuse_map);
+      const auto& diffuse_map = assets_gpu.textures.get(material.diffuse_map);
       glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, diffuse_map.id);
-      glUniform1i(glGetUniformLocation(shader.id, "material.diffuse_map"), 0);
+      glBindTexture(GL_TEXTURE_2D, diffuse_map.handle());
+      glUniform1i(glGetUniformLocation(shader.handle(), "material.diffuse_map"), 0);
     }
 
-    if (type == RenderPassType::POINT_SHADOW_MAP)
+    if (m_type == RenderPassType::POINT_SHADOW_MAP)
     {
-      mat4 light_proj_mat = camera->projection();
+      mat4 light_proj_mat = m_camera.projection();
       mat4 transforms[6] = {
-        light_proj_mat *
-          mat4::look_at(camera->pos, camera->pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-        light_proj_mat *
-          mat4::look_at(camera->pos, camera->pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-        light_proj_mat *
-          mat4::look_at(camera->pos, camera->pos + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-        light_proj_mat *
-          mat4::look_at(camera->pos, camera->pos + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
-        light_proj_mat *
-          mat4::look_at(camera->pos, camera->pos + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
-        light_proj_mat *
-          mat4::look_at(camera->pos, camera->pos + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
+        light_proj_mat * mat4::look_at(
+                           m_camera.pos(),
+                           m_camera.pos() + vec3{1.0f, 0.0f, 0.0f},
+                           {0.0f, -1.0f, 0.0f}
+                         ),
+        light_proj_mat * mat4::look_at(
+                           m_camera.pos(),
+                           m_camera.pos() + vec3{-1.0f, 0.0f, 0.0f},
+                           {0.0f, -1.0f, 0.0f}
+                         ),
+        light_proj_mat * mat4::look_at(
+                           m_camera.pos(),
+                           m_camera.pos() + vec3{0.0f, 1.0f, 0.0f},
+                           {0.0f, 0.0f, 1.0f}
+                         ),
+        light_proj_mat * mat4::look_at(
+                           m_camera.pos(),
+                           m_camera.pos() + vec3{0.0f, -1.0f, 0.0f},
+                           {0.0f, 0.0f, -1.0f}
+                         ),
+        light_proj_mat * mat4::look_at(
+                           m_camera.pos(),
+                           m_camera.pos() + vec3{0.0f, 0.0f, 1.0f},
+                           {0.0f, -1.0f, 0.0f}
+                         ),
+        light_proj_mat * mat4::look_at(
+                           m_camera.pos(),
+                           m_camera.pos() + vec3{0.0f, 0.0f, -1.0f},
+                           {0.0f, -1.0f, 0.0f}
+                         ),
       };
 
       glUniformMatrix4fv(
-        glGetUniformLocation(shader.id, "shadow_matrices"),
+        glGetUniformLocation(shader.handle(), "shadow_matrices"),
         (GLsizei) 6,
         false,
-        transforms[0].raw_data
+        transforms[0].data()
       );
     }
 
-    if (shadow_map_camera)
+    if (m_shadow_map_camera)
     {
       glActiveTexture(GL_TEXTURE1);
 
-      glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap.id);
-      glUniform1i(glGetUniformLocation(shader.id, "shadow_map"), 1);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap);
+      glUniform1i(glGetUniformLocation(shader.handle(), "shadow_map"), 1);
 
       glUniform1f(
-        glGetUniformLocation(shader.id, "shadow_map_camera_far_plane"),
-        shadow_map_camera->far_plane
+        glGetUniformLocation(shader.handle(), "shadow_map_camera_far_plane"),
+        m_shadow_map_camera->far_plane()
       );
     }
-
-    glBindVertexArray(assets_gpu->meshes.get(item.mesh).vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     glBufferSubData(
       GL_ARRAY_BUFFER,
       0,
-      (GLsizeiptr) (instance_data.size * sizeof(InstanceData)),
-      instance_data.data
+      (GLsizeiptr) (instance_data.size() * sizeof(InstanceData)),
+      instance_data.data()
     );
+
+    glBindVertexArray(assets_gpu.meshes.get(item.mesh).handle());
 
     glDrawElementsInstanced(
       get_primitive_(mesh.primitive),
@@ -783,32 +796,26 @@ static u32 line_indices[] = {0, 1};
 void static_model_init_(
   StaticModel static_model,
   ShaderHandle shader,
-  const Array<Vertex>& vertices,
-  const Array<u32>& indices,
-  RenderPrimitive primitive,
-  Assets& assets,
-  Allocator& allocator
+  std::vector<Vertex>&& vertices,
+  std::vector<u32>&& indices,
+  RenderPrimitive primitive
 )
 {
   Material material = {};
   material.shader = shader;
   material.diffuse_color = {1.0f, 1.0f, 1.0f};
-  auto material_handle = assets.materials.set(material);
+  auto material_handle = AssetManager::instance().materials.set(std::move(material));
   MeshData mesh = {};
-  mesh.vertices = vertices;
-  mesh.indices = indices;
+  mesh.vertices = std::move(vertices);
+  mesh.indices = std::move(indices);
   mesh.primitive = primitive;
-  mesh.submeshes = Array<Submesh>::make(ArrayType::STATIC, 1, allocator);
-  mesh.submeshes.push({0, indices.size, material_handle});
-  auto mesh_handle = assets.meshes.set(mesh);
+  mesh.submeshes.push_back({0, mesh.indices.size(), material_handle});
+  auto mesh_handle = AssetManager::instance().meshes.set(std::move(mesh));
   ASSERT(mesh_handle == static_model, "failed to initalize a static model");
 }
 
-Renderer Renderer::make(Assets& assets, Allocator& allocator)
+Renderer::Renderer()
 {
-  Renderer out = {};
-  out.assets = &assets;
-
   glEnable(GL_DEPTH_TEST);
 
   glGenBuffers(1, &render_data.camera_ubo);
@@ -821,16 +828,16 @@ Renderer Renderer::make(Assets& assets, Allocator& allocator)
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Light), nullptr, GL_DYNAMIC_DRAW);
   glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_LIGHTS, render_data.lights_ubo);
 
-  glGenTextures(1, &render_data.shadow_cubemap.id);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap.id);
+  glGenTextures(1, &render_data.shadow_cubemap);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap);
   for (i32 i = 0; i < 6; ++i)
   {
     glTexImage2D(
       (GLenum) (GL_TEXTURE_CUBE_MAP_POSITIVE_X + i),
       0,
       GL_DEPTH_COMPONENT,
-      RenderData::SHADOW_CUBEMAP_WIDTH,
-      RenderData::SHADOW_CUBEMAP_HEIGHT,
+      RenderData::SHADOW_CUBEMAP_DIMENSIONS.x,
+      RenderData::SHADOW_CUBEMAP_DIMENSIONS.y,
       0,
       GL_DEPTH_COMPONENT,
       GL_FLOAT,
@@ -845,7 +852,7 @@ Renderer Renderer::make(Assets& assets, Allocator& allocator)
 
   glGenFramebuffers(1, &render_data.shadow_framebuffer_id);
   glBindFramebuffer(GL_FRAMEBUFFER, render_data.shadow_framebuffer_id);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, render_data.shadow_cubemap.id, 0);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, render_data.shadow_cubemap, 0);
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -855,56 +862,31 @@ Renderer Renderer::make(Assets& assets, Allocator& allocator)
   glBufferData(GL_ARRAY_BUFFER, InstanceData::MAX * sizeof(InstanceData), nullptr, GL_STATIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  out.assets_gpu = AssetsGPU::make(*out.assets, allocator);
-
   static_model_init_(
     StaticModel_CUBE_WIRES,
     ShaderHandle::DEFAULT,
-    Array<Vertex>::from(cube_vertices, array_size(cube_vertices)),
-    Array<u32>::from(cube_wires_indices, array_size(cube_wires_indices)),
-    RenderPrimitive::LINE_STRIP,
-    *out.assets,
-    allocator
+    std::vector<Vertex>{cube_vertices, cube_vertices + ARRAY_SIZE(cube_vertices)},
+    std::vector<u32>{cube_wires_indices, cube_wires_indices + ARRAY_SIZE(cube_wires_indices)},
+    RenderPrimitive::LINE_STRIP
   );
   static_model_init_(
     StaticModel_RING,
     ShaderHandle::DEFAULT,
-    Array<Vertex>::from(ring_vertices, array_size(ring_vertices)),
-    Array<u32>::from(ring_indices, array_size(ring_indices)),
-    RenderPrimitive::LINE_STRIP,
-    *out.assets,
-    allocator
+    std::vector<Vertex>{ring_vertices, ring_vertices + ARRAY_SIZE(ring_vertices)},
+    std::vector<u32>{ring_indices, ring_indices + ARRAY_SIZE(ring_indices)},
+    RenderPrimitive::LINE_STRIP
   );
   static_model_init_(
     StaticModel_LINE,
     ShaderHandle::DEFAULT,
-    Array<Vertex>::from(line_vertices, array_size(line_vertices)),
-    Array<u32>::from(line_indices, array_size(line_indices)),
-    RenderPrimitive::LINE_STRIP,
-    *out.assets,
-    allocator
+    std::vector<Vertex>{line_vertices, line_vertices + ARRAY_SIZE(line_vertices)},
+    std::vector<u32>{line_indices, line_indices + ARRAY_SIZE(line_indices)},
+    RenderPrimitive::LINE_STRIP
   );
-
-  return out;
 }
 
-RenderPass Renderer::begin_pass(
-  RenderPassType type,
-  const Camera& camera,
-  Allocator& allocator,
-  const vec3& ambient_color
-)
+RenderPass
+Renderer::begin_pass(RenderPassType type, const Camera& camera, const vec3& ambient_color)
 {
-  RenderPass out = {};
-
-  out.type = type;
-
-  out.assets = assets;
-  out.assets_gpu = &assets_gpu;
-  out.camera = &camera;
-
-  out.items = Array<RenderItem>::make(ArrayType::DYNAMIC, 100, allocator);
-  out.ambient_color = ambient_color;
-
-  return out;
+  return {type, camera, ambient_color};
 }

@@ -1,12 +1,14 @@
-#ifndef ASSETS_H
-#define ASSETS_H
+#pragma once
+
+#include <vector>
+#include <unordered_map>
+#include <string>
+#include <filesystem>
 
 #include "base/base.h"
 #include "base/math.h"
-#include "base/vertex.h"
-#include "base/array.h"
-#include "base/string.h"
 
+#include "vertex.h"
 #include "image.h"
 
 enum class ShaderHandle
@@ -14,6 +16,8 @@ enum class ShaderHandle
   DEFAULT,
   LIGHTING,
   SHADOW_DEPTH,
+
+  COUNT,
 };
 
 enum class TextureWrappingOption
@@ -30,7 +34,7 @@ enum class TextureFilteringOption
   NEAREST,
 };
 
-typedef usize TextureHandle;
+using TextureHandle = usize;
 struct TextureData
 {
   Image image;
@@ -40,7 +44,7 @@ struct TextureData
   TextureFilteringOption mag_filter;
 };
 
-typedef usize MaterialHandle;
+using MaterialHandle = usize;
 struct Material
 {
   vec3 diffuse_color;
@@ -74,57 +78,69 @@ enum StaticModel
   StaticModel_COUNT,
 };
 
-typedef usize MeshHandle;
+using MeshHandle = usize;
 struct MeshData
 {
-  Array<Vertex> vertices;
-  Array<u32> indices;
+  std::vector<Vertex> vertices;
+  std::vector<u32> indices;
 
-  Array<Submesh> submeshes;
+  std::vector<Submesh> submeshes;
   RenderPrimitive primitive;
 };
 
-template <typename Handle, typename T, usize AMOUNT>
-struct AssetType
+template <typename Handle, typename T>
+class AssetType
 {
-  Handle set(const T& t)
+public:
+  Handle set(T&& t)
   {
-    data[size++] = t;
-    return size - 1;
+    m_data.emplace_back(std::move(t));
+    return m_data.size() - 1;
   }
 
   const T& get(Handle handle) const
   {
-    return data[(usize) handle];
+    return m_data[(usize) handle];
   }
 
-  void destroy_all()
+  void clear()
   {
-    size = 0;
-    mem_set(data, 0, MAX * sizeof(T));
+    m_data.clear();
   }
 
-  usize size;
+  [[nodiscard]] inline constexpr usize size() const
+  {
+    return m_data.size();
+  }
 
 private:
-  static constexpr usize MAX = AMOUNT;
-  T data[MAX];
+  std::vector<T> m_data{};
 };
 
-struct Assets
+class AssetManager
 {
-  static Assets make(Allocator& allocator);
+public:
+  MeshHandle load_obj(const std::filesystem::path& path);
+  void clear();
 
-  MeshHandle load_obj(const char* path, Allocator& allocator, Error& out_error);
+  inline constexpr static AssetManager& instance()
+  {
+    static AssetManager a{};
+    return a;
+  }
 
-  void destroy_all();
+private:
+  AssetManager() {}
 
-  AssetType<TextureHandle, TextureData, 100> textures;
-  AssetType<MaterialHandle, Material, 100> materials;
-  AssetType<MeshHandle, MeshData, 100> meshes;
+  TextureHandle obj_get_texture_by_path(const std::filesystem::path& path);
+  void load_mtl_file(const std::filesystem::path& path);
 
-  Map<String, TextureHandle> texture_handles;
-  Map<String, MaterialHandle> material_handles;
+public:
+  AssetType<TextureHandle, TextureData> textures;
+  AssetType<MaterialHandle, Material> materials;
+  AssetType<MeshHandle, MeshData> meshes;
+
+private:
+  std::unordered_map<std::string, TextureHandle> m_texture_handles;
+  std::unordered_map<std::string, MaterialHandle> m_material_handles;
 };
-
-#endif

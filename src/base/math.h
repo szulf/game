@@ -1,118 +1,165 @@
-#ifndef MATH_H
-#define MATH_H
+#pragma once
 
 #include "base.h"
 
-#define F32_EPSILON 1.1920928955078125e-07f
-#define F32_PI 3.141592653589793238462643383279502884197169399375105820974944592307f
+#include <array>
+#include <concepts>
 
-#define F32_G 9.81f
+template <typename T>
+struct constants;
 
-#include <algorithm>
-#include <cmath>
+template <>
+struct constants<f32>
+{
+  static constexpr f32 G = 9.81f;
+};
 
-using std::abs;
-using std::acos;
-using std::asin;
-using std::atan2;
-using std::ceil;
-using std::cos;
-using std::floor;
-using std::max;
-using std::min;
-using std::pow;
-using std::round;
-using std::sin;
-using std::sqrt;
-using std::tan;
-
-f32 clamp(f32 val, f32 a, f32 b);
-
-f32 wrap_to_neg_pi_to_pi(f32 value);
-f32 radians(f32 deg);
-f32 square(f32 value);
+template <>
+struct constants<u64>
+{
+  static constexpr u64 FNV_OFFSET = 14695981039346656037UL;
+  static constexpr u64 FNV_PRIME = 1099511628211UL;
+};
 
 bool f32_equal(f32 a, f32 b);
+f32 wrap_to_neg_pi_to_pi(f32 value);
+f32 radians(f32 deg);
 
 struct vec2
 {
-  f32 x;
-  f32 y;
+  vec2 operator-() const;
+  vec2 operator+(const vec2& other) const;
+  vec2 operator-(const vec2& other) const;
+  vec2 operator*(f32 scalar) const;
+  vec2 operator*(const vec2& other) const;
+  vec2 operator/(f32 scalar) const;
+  vec2& operator+=(const vec2& other);
+  vec2& operator-=(const vec2& other);
+  vec2& operator*=(f32 scalar);
+  vec2& operator*=(const vec2& other);
+  vec2& operator/=(f32 scalar);
+  bool operator==(const vec2& other) const;
+  bool operator!=(const vec2& other) const;
+
+  f32 x{};
+  f32 y{};
 };
-
-vec2 operator-(const vec2& vec);
-vec2 operator+(const vec2& va, const vec2& vb);
-vec2 operator-(const vec2& va, const vec2& vb);
-vec2 operator*(const vec2& vec, f32 scalar);
 vec2 operator*(f32 scalar, const vec2& vec);
-vec2 operator*(const vec2& va, const vec2& vb);
-vec2 operator/(const vec2& vec, f32 scalar);
-vec2& operator+=(vec2& va, const vec2& vb);
-vec2& operator-=(vec2& va, const vec2& vb);
-vec2& operator*=(vec2& va, f32 scalar);
-vec2& operator*=(vec2& va, const vec2& vb);
-vec2& operator/=(vec2& va, f32 scalar);
 
-bool operator==(const vec2& va, const vec2& vb);
+struct uvec2
+{
+  u32 x{};
+  u32 y{};
+};
 
 struct vec3
 {
-  f32 x;
-  f32 y;
-  f32 z;
+  f32 length() const;
+  f32 length2() const;
+  vec3 normalize() const;
+
+  vec3 operator-() const;
+  vec3 operator+(const vec3& other) const;
+  vec3 operator-(const vec3& other) const;
+  vec3 operator*(f32 scalar) const;
+  vec3 operator*(const vec3& other) const;
+  vec3 operator/(f32 scalar) const;
+  vec3& operator+=(const vec3& other);
+  vec3& operator-=(const vec3& other);
+  vec3& operator*=(f32 scalar);
+  vec3& operator*=(const vec3& other);
+  vec3& operator/=(f32 scalar);
+  bool operator==(const vec3& other) const;
+  bool operator!=(const vec3& other) const;
+
+  f32 x{};
+  f32 y{};
+  f32 z{};
 };
-
-vec3 operator-(const vec3& vec);
-vec3 operator+(const vec3& va, const vec3& vb);
-vec3 operator-(const vec3& va, const vec3& vb);
-vec3 operator*(const vec3& vec, f32 scalar);
 vec3 operator*(f32 scalar, const vec3& vec);
-vec3 operator*(const vec3& va, const vec3& vb);
-vec3 operator/(const vec3& vec, f32 scalar);
-vec3& operator+=(vec3& va, const vec3& vb);
-vec3& operator-=(vec3& va, const vec3& vb);
-vec3& operator*=(vec3& va, f32 scalar);
-vec3& operator*=(vec3& va, const vec3& vb);
-vec3& operator/=(vec3& va, f32 scalar);
 
-f32 length(const vec3& vec);
-f32 length2(const vec3& vec);
-vec3 normalize(const vec3& vec);
 vec3 abs(const vec3& vec);
 f32 dot(const vec3& va, const vec3& vb);
 vec3 cross(const vec3& va, const vec3& vb);
 
-bool operator==(const vec3& va, const vec3& vb);
-bool operator!=(const vec3& va, const vec3& vb);
-
 struct vec4
 {
-  f32 x;
-  f32 y;
-  f32 z;
-  f32 w;
+  template <std::integral I>
+  constexpr inline f32& operator[](I idx)
+  {
+    switch (idx)
+    {
+      case 0:
+        return x;
+      case 1:
+        return y;
+      case 2:
+        return z;
+      case 3:
+        return w;
+    }
+    ASSERT(false, "Invalid index in vec4.");
+    return x;
+  }
+
+  template <std::integral I>
+  constexpr inline f32 operator[](I idx) const
+  {
+    switch (idx)
+    {
+      case 0:
+        return x;
+      case 1:
+        return y;
+      case 2:
+        return z;
+      case 3:
+        return w;
+    }
+    ASSERT(false, "Invalid index in vec4.");
+    return 0.0f;
+  }
+
+  f32 x{};
+  f32 y{};
+  f32 z{};
+  f32 w{};
 };
 
 // NOTE: column major
 struct mat4
 {
-  union
+  mat4() {}
+  mat4(f32 v)
+    : m_data{
+        {{v, 0, 0, 0}, {0, v, 0, 0}, {0, 0, v, 0}, {0, 0, 0, v}}
+  }
   {
-    f32 data[4][4];
-    f32 raw_data[16];
-  };
+  }
 
-  static mat4 make();
   static mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
   static mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
   static mat4 look_at(const vec3& pos, const vec3& target, const vec3& up);
+
+  mat4 operator*(const mat4& other) const;
+
+  [[nodiscard]] inline constexpr f32* data()
+  {
+    return &m_data[0].x;
+  }
+
+private:
+  std::array<vec4, 4> m_data{};
+
+  friend mat4 scale(mat4 mat, f32 scale);
+  friend mat4 scale(mat4 mat, const vec3& scale);
+  friend mat4 translate(mat4 mat, const vec3& position);
+  friend mat4 rotate(mat4 mat, f32 rad, const vec3& axis);
 };
 
-mat4 operator*(const mat4& ma, const mat4& mb);
+[[nodiscard]] mat4 scale(mat4 mat, f32 scale);
+[[nodiscard]] mat4 scale(mat4 mat, const vec3& scale);
+[[nodiscard]] mat4 translate(mat4 mat, const vec3& position);
+[[nodiscard]] mat4 rotate(mat4 mat, f32 rad, const vec3& axis);
 
-void scale(mat4& mat, f32 scale);
-void scale(mat4& mat, const vec3& scale);
-void translate(mat4& mat, const vec3& position);
-void rotate(mat4& mat, f32 rad, const vec3& axis);
-
-#endif
+void hash_fnv1(usize& out, const void* data, usize n);

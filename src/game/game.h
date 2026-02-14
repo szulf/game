@@ -2,22 +2,66 @@
 #define GAME_H
 
 #include "base/base.h"
+#include "base/enum_array.h"
+#include "game/renderer.h"
 #include "os/os.h"
 
-namespace game
-{
+#include "camera.h"
+#include "entity.h"
 
-struct Memory
+enum class Action
 {
-  void* memory;
-  usize size;
+  MOVE_FRONT,
+  MOVE_BACK,
+  MOVE_LEFT,
+  MOVE_RIGHT,
+  INTERACT,
+
+  CAMERA_MOVE_UP,
+  CAMERA_MOVE_DOWN,
+  TOGGLE_CAMERA_MODE,
+  TOGGLE_DISPLAY_BOUNDING_BOXES,
+
+  COUNT,
 };
 
-void init(Memory& memory, os::Window& window);
-void update_tick(Memory& memory, os::Window& window, f32 dt);
-void update_frame(Memory& memory, os::Window& input, f32 alpha);
-void render(Memory& memory);
+using Keymap = EnumArray<Action, os::Key>;
 
-}
+class Game
+{
+public:
+  Game(os::Window& window);
+  Game(const Game&) = delete;
+  Game& operator=(const Game&) = delete;
+  Game(Game&&) = delete;
+  Game& operator=(Game&&) = delete;
+
+  void update_tick(f32 dt);
+  void update_frame(f32 alpha);
+  void render();
+
+private:
+  inline constexpr os::KeyState& action_key(Action action)
+  {
+    return m_window.input().key(m_keymap[action]);
+  }
+
+private:
+  os::Window& m_window;
+
+  // NOTE: loading static models depends on the renderer constructor being called
+  // before the scene constructor
+  Renderer m_renderer{};
+
+  Scene m_scene;
+  Keymap m_keymap{};
+
+  Camera m_gameplay_camera;
+  Camera m_debug_camera;
+  Camera* m_main_camera{};
+
+  bool m_camera_mode{};
+  bool m_display_bounding_boxes{};
+};
 
 #endif

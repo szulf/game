@@ -4,4 +4,4 @@ renderable : true
 mesh : assets/cube.obj
 
 collidable : true
-bounding_box : *
+dynamically_calculated_bounding_box : true

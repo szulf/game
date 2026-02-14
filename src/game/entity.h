@@ -1,71 +1,97 @@
-#ifndef ENTITY_H
-#define ENTITY_H
+#pragma once
 
 #include "base/base.h"
 
+#include <string>
+#include <vector>
+
 #include "assets.h"
 
-#define PLAYER_MOVEMENT_SPEED 8.0f
-#define PLAYER_ROTATE_SPEED (3 * F32_PI)
-#define PLAYER_MASS 80.0f
+static constexpr f32 PLAYER_MOVEMENT_SPEED = 8.0f;
+static constexpr f32 PLAYER_ROTATE_SPEED = 3 * std::numbers::pi_v<f32>;
+static constexpr f32 PLAYER_MASS = 80.0f;
 
-#define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
-#define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
+static constexpr vec3 LIGHT_BULB_ON_TINT = {1.0f, 1.0f, 1.0f};
+static constexpr vec3 LIGHT_BULB_OFF_TINT = {0.1f, 0.1f, 0.1f};
 
-struct BoundingBox
-{
-  f32 width;
-  f32 depth;
-
-  static BoundingBox from_mesh(MeshHandle mesh, const Assets& assets);
-};
+vec2 bounding_box_from_mesh(MeshHandle mesh);
 
 struct Entity
 {
+public:
+  using Flags = u64;
+
+  static constexpr Flags CONTROLLED_BY_PLAYER = 1 << 0;
+  static constexpr Flags COLLIDABLE = 1 << 1;
+  static constexpr Flags DYNAMIC_BOUNDING_BOX = 1 << 2;
+  static constexpr Flags RENDERABLE = 1 << 3;
+  static constexpr Flags INTERACTABLE = 1 << 4;
+  static constexpr Flags EMITS_LIGHT = 1 << 5;
+
+public:
+  Entity() {}
+  Entity(const std::filesystem::path& path);
+
+  [[nodiscard]] inline constexpr bool controlled_by_player() const noexcept
+  {
+    return flags & CONTROLLED_BY_PLAYER;
+  }
+  [[nodiscard]] inline constexpr bool collidable() const noexcept
+  {
+    return flags & COLLIDABLE;
+  }
+  [[nodiscard]] inline constexpr bool dynamic_bounding_box() const noexcept
+  {
+    return flags & DYNAMIC_BOUNDING_BOX;
+  }
+  [[nodiscard]] inline constexpr bool renderable() const noexcept
+  {
+    return flags & RENDERABLE;
+  }
+  [[nodiscard]] inline constexpr bool interactable() const noexcept
+  {
+    return flags & INTERACTABLE;
+  }
+  [[nodiscard]] inline constexpr bool emits_light() const noexcept
+  {
+    return flags & EMITS_LIGHT;
+  }
+
+public:
+  Flags flags{};
+
   vec3 pos;
-  vec3 prev_pos;
-  vec3 rendered_pos;
+  vec3 prev_pos{};
+  vec3 rendered_pos{};
 
-  bool controlled_by_player;
-  f32 rotation;
-  f32 prev_rotation;
-  f32 rendered_rotation;
-  f32 target_rotation;
-  vec3 velocity;
+  f32 rotation{};
+  f32 prev_rotation{};
+  f32 rendered_rotation{};
+  f32 target_rotation{};
+  vec3 velocity{};
 
-  bool collidable;
-  BoundingBox bounding_box;
+  vec2 bounding_box{};
 
-  bool renderable;
-  MeshHandle mesh;
+  MeshHandle mesh{};
 
-  bool interactable;
-  f32 interactable_radius;
+  f32 interactable_radius{};
 
-  bool emits_light;
-  f32 light_height_offset;
-  vec3 light_color;
+  f32 light_height_offset{};
+  vec3 light_color{};
 
   vec3 tint = {1.0f, 1.0f, 1.0f};
 
   // NOTE: read/write
-  String name;
-  String mesh_path;
-  bool is_bounding_box_from_model;
+  std::string name{};
+  std::string mesh_path{};
 };
 
 bool entities_collide(const Entity& ea, const Entity& eb);
 
-#define MAX_ENTITIES 1000
 struct Scene
 {
-  vec3 ambient_color;
+  Scene(const std::filesystem::path& path);
 
-  Entity entities[MAX_ENTITIES];
-  usize entities_count;
+  vec3 ambient_color{};
+  std::vector<Entity> entities{};
 };
-
-Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& out_error);
-Scene load_gscn(const char* path, Assets& assets, Allocator& allocator, Error& out_error);
-
-#endif

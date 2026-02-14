@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -12,7 +12,7 @@ project(game
 
 if(CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_CONFIGURATION_TYPES
-      "Debug;Release;ReleaseNoAssert"
+      "Debug;Release"
       CACHE STRING "" FORCE
   )
 elseif(NOT CMAKE_BUILD_TYPE)
@@ -22,7 +22,7 @@ endif()
 # TODO: can this also be used for gcc?
 set(clang_flags_common
   -Weverything -Werror -pedantic
-  -fno-rtti -fno-exceptions
+  -Wno-c++20-compat
   -Wno-c++98-compat -Wno-c++98-compat-pedantic
   -Wno-padded -Wno-switch-default -Wno-unsafe-buffer-usage
   -Wno-unreachable-code-break -Wno-cast-function-type-strict
@@ -54,10 +54,8 @@ set(os_definitions
 
 set(mode_debug "$<CONFIG:Debug>")
 set(mode_release "$<CONFIG:Release>")
-set(mode_release_no_assert "$<CONFIG:ReleaseNoAssert>")
 set(mode_definitions
-  "$<${mode_debug}:MODE_DEBUG>" "$<${mode_debug}:ASSERTIONS>"
-  "$<${mode_release}:ASSERTIONS>"
+  "$<${mode_debug}:MODE_DEBUG>"
 )
 
 set(definitions
@@ -69,7 +67,7 @@ set(definitions
 set(flags
   "$<${compiler_clang}:${clang_flags_common}>"
   "$<$<AND:${compiler_clang},${mode_debug}>:${clang_flags_debug}>"
-  "$<$<AND:${compiler_clang},$<OR:${mode_release},${mode_release_no_assert}>>:${clang_flags_release}>"
+  "$<$<AND:${compiler_clang},${mode_release}>:${clang_flags_release}>"
 )
 
 set(include_dirs src vendor)
@@ -77,14 +75,12 @@ set(include_dirs src vendor)
 find_package(OpenGL REQUIRED)
 include(vendor/vendor.cmake)
 
+# add_compile_options(-fsanitize=address,undefined)
+# add_link_options(-fsanitize=address,undefined)
+
 add_library(base STATIC
-  src/base/array.h
   src/base/base.h
-  src/base/map.h
   src/base/math.h src/base/math.cpp
-  src/base/memory.h src/base/memory.cpp
-  src/base/string.h src/base/string.cpp
-  src/base/vertex.h src/base/vertex.cpp
 )
 target_compile_options(base PRIVATE ${flags})
 target_compile_definitions(base PRIVATE ${definitions})
@@ -98,36 +94,25 @@ target_compile_options(platform PRIVATE ${flags})
 target_compile_definitions(platform PRIVATE ${definitions})
 target_link_libraries(platform PRIVATE base SDL3::SDL3 OpenGL)
 
-# TODO: should game be a library?
-# it would be easy to get hot-reloading back tbf
 add_executable(game
   src/main.cpp
   src/game/game.h src/game/game.cpp
-
+  src/game/vertex.h src/game/vertex.cpp
   src/game/assets.h src/game/assets.cpp
   src/game/camera.h src/game/camera.cpp
   src/game/entity.h src/game/entity.cpp
   src/game/image.h src/game/image.cpp
   src/game/renderer.h src/game/renderer.cpp
+  src/game/parser.h src/game/parser.cpp
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})
 target_compile_definitions(game PRIVATE ${definitions})
-target_link_libraries(game PRIVATE base platform SDL3::SDL3 OpenGL)
+target_link_libraries(game PRIVATE base platform stb OpenGL)
 
-# NOTE: run a python script to check for missing error handling
+# NOTE: run a python script to collect todos from source files
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   find_package(Python3 REQUIRED)
-
-  set(FIND_ERROR_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_error.py")
-  add_custom_target(
-        run_find_error ALL
-        COMMAND ${Python3_EXECUTABLE} "${FIND_ERROR_SCRIPT}"
-        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-        COMMENT "Error handling check (find_error.py)"
-        VERBATIM
-    )
-  add_dependencies(run_find_error game)
 
   set(FIND_TODOS_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/find_todos.py")
   add_custom_target(
@@ -139,9 +124,3 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   )
   add_dependencies(run_find_todos game)
 endif()
-
-add_executable(tests src/tests/tests.cpp)
-target_include_directories(tests PRIVATE ${include_dirs})
-target_compile_options(tests PRIVATE ${flags})
-target_compile_definitions(tests PRIVATE ${definitions})
-target_link_libraries(tests base)

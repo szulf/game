@@ -1,28 +1,30 @@
 #include "base/base.h"
-#include "os/os.h"
 
+#include <chrono>
+
+#include "os/os.h"
 #include "game/game.h"
 
-#define DT 0.05f
+static constexpr std::chrono::milliseconds DT{50};
+static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
+
+// TODO: better logging than std::println?
 
 i32 main()
 {
   os::init();
-  auto window = os::Window::open("game", {1280, 720});
-  window.init_rendering_api();
+  os::Window window{
+    "game",
+    {1280, 720}
+  };
+  Game game{window};
 
-  game::Memory memory = {};
-  memory.size = GB(2);
-  memory.memory = os::alloc(memory.size);
-
-  game::init(memory, window);
-
-  f32 current_time = os::time_now();
-  f32 accumulator = 0.0f;
-  while (window.running)
+  auto current_time = std::chrono::high_resolution_clock::now();
+  std::chrono::nanoseconds accumulator{};
+  while (window.running())
   {
-    f32 new_time = os::time_now();
-    f32 frame_time = new_time - current_time;
+    auto new_time = std::chrono::high_resolution_clock::now();
+    auto frame_time = new_time - current_time;
     current_time = new_time;
     accumulator += frame_time;
 
@@ -30,17 +32,24 @@ i32 main()
 
     while (accumulator >= DT)
     {
-      game::update_tick(memory, window, DT);
+      game.update_tick(DT_F32);
+      window.input().clear();
       accumulator -= DT;
-
-      window.clear_input();
     }
 
-    game::update_frame(memory, window, accumulator / DT);
+    game.update_frame(((f32) accumulator.count() / (f32) std::nano::den) / DT_F32);
 
-    game::render(memory);
+    game.render();
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::println(
+      "Frame time: {}",
+      ((f32) (end_time - current_time).count() / (f32) std::nano::den) * (f32) std::milli::den
+    );
+
     window.swap_buffers();
   }
 
+  os::shutdown();
   return 0;
 }

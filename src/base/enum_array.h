@@ -1,23 +1,58 @@
-#ifndef BASE_ENUM_ARRAY_H
-#define BASE_ENUM_ARRAY_H
+#pragma once
 
-#include "base.h"
+#include <array>
+#include <concepts>
+#include <type_traits>
+
+#include "base/base.h"
 
 template <typename E, typename T>
-struct enum_array
+struct EnumArray
 {
-  static constexpr usize size = (usize) E::COUNT;
-  T data[(usize) size];
+  static_assert(std::is_enum_v<E>, "E template argument has to be an enum");
 
-  T& operator[](E e)
+  inline constexpr T* begin()
   {
-    return data[(usize) e];
+    return m_data.begin();
   }
 
-  const T& operator[](E e) const
+  inline constexpr T* end()
   {
-    return data[(usize) e];
+    return m_data.end();
   }
+
+  [[nodiscard]] inline constexpr T& operator[](E e)
+  {
+    return m_data[(std::size_t) e];
+  }
+
+  [[nodiscard]] inline constexpr const T& operator[](E e) const
+  {
+    return m_data[(std::size_t) e];
+  }
+
+  template <std::integral I>
+  [[nodiscard]] inline constexpr T& operator[](I idx)
+  {
+    return m_data[idx];
+  }
+
+  template <std::integral I>
+  [[nodiscard]] inline constexpr const T& operator[](I idx) const
+  {
+    return m_data[idx];
+  }
+
+  [[nodiscard]] inline constexpr static usize size()
+  {
+    return static_cast<usize>(E::COUNT);
+  }
+
+  [[nodiscard]] inline constexpr T* data()
+  {
+    return m_data.data();
+  }
+
+private:
+  std::array<T, size()> m_data{};
 };
-
-#endif

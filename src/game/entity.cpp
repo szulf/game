@@ -1,20 +1,23 @@
 #include "entity.h"
 
-#include "os/os.h"
+#include <filesystem>
+#include <fstream>
 
-BoundingBox BoundingBox::from_mesh(MeshHandle handle, const Assets& assets)
+#include "parser.h"
+
+vec2 bounding_box_from_mesh(MeshHandle handle)
 {
-  vec3 max_corner = {F32_MIN, 0, F32_MIN};
-  vec3 min_corner = {F32_MAX, 0, F32_MAX};
-  const auto& mesh = assets.meshes.get(handle);
+  vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
+  vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
+  const auto& mesh = AssetManager::instance().meshes.get(handle);
 
-  for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size; ++vertex_idx)
+  for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size(); ++vertex_idx)
   {
     auto& vertex = mesh.vertices[vertex_idx];
-    max_corner.x = max(max_corner.x, vertex.pos.x);
-    min_corner.x = min(min_corner.x, vertex.pos.x);
-    max_corner.z = max(max_corner.z, vertex.pos.z);
-    min_corner.z = min(min_corner.z, vertex.pos.z);
+    max_corner.x = std::max(max_corner.x, vertex.pos.x);
+    min_corner.x = std::min(min_corner.x, vertex.pos.x);
+    max_corner.z = std::max(max_corner.z, vertex.pos.z);
+    min_corner.z = std::min(min_corner.z, vertex.pos.z);
   }
   return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
 }
@@ -26,182 +29,196 @@ bool entities_collide(const Entity& ea, const Entity& eb)
   auto& bx = eb.pos.x;
   auto& bz = eb.pos.z;
 
-  return ax - (ea.bounding_box.width / 2.0f) < bx + (eb.bounding_box.width / 2.0f) &&
-         ax + (ea.bounding_box.width / 2.0f) > bx - (eb.bounding_box.width / 2.0f) &&
-         az - (ea.bounding_box.depth / 2.0f) < bz + (eb.bounding_box.depth / 2.0f) &&
-         az + (ea.bounding_box.depth / 2.0f) > bz - (eb.bounding_box.depth / 2.0f);
+  return ax - (ea.bounding_box.x / 2.0f) < bx + (eb.bounding_box.x / 2.0f) &&
+         ax + (ea.bounding_box.x / 2.0f) > bx - (eb.bounding_box.x / 2.0f) &&
+         az - (ea.bounding_box.y / 2.0f) < bz + (eb.bounding_box.y / 2.0f) &&
+         az + (ea.bounding_box.y / 2.0f) > bz - (eb.bounding_box.y / 2.0f);
 }
 
-Entity load_gent(const char* path, Assets& assets, Allocator& allocator, Error& out_error)
+static vec3 gfmt_parse_vec3(parser::Pos& pos)
 {
-  Error error = SUCCESS;
-  Entity out = {};
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
-
-  auto source = os::read_to_string(path, scratch_arena.allocator, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, out);
-
-  bool calculate_bounding_box = false;
-
-  auto lines = source.split('\n', scratch_arena.allocator);
-  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
-  {
-    auto& line = lines[line_idx];
-    if (line[0] == '#')
-    {
-      continue;
-    }
-
-    auto parts = line.split(':', scratch_arena.allocator);
-    ERROR_ASSERT(parts.size == 2, out_error, "gent decoding error. Invalid line.", out);
-    auto key = parts[0].trim_whitespace();
-    auto value = parts[1].trim_whitespace();
-
-    // find-error off
-    if (key == "pos")
-    {
-      out.pos = parse_vec3(value, error);
-      out.rendered_pos = out.prev_pos = out.pos;
-    }
-    else if (key == "controlled_by_player")
-    {
-      out.controlled_by_player = parse_bool(value, error);
-    }
-    else if (key == "rotation")
-    {
-      out.rotation = parse_f32(value, error);
-      out.rendered_rotation = out.prev_rotation = out.rotation;
-    }
-    else if (key == "target_rotation")
-    {
-      out.target_rotation = parse_f32(value, error);
-    }
-    else if (key == "velocity")
-    {
-      out.velocity = parse_vec3(value, error);
-    }
-    else if (key == "collidable")
-    {
-      out.collidable = parse_bool(value, error);
-    }
-    else if (key == "bounding_box")
-    {
-      if (value == "*")
-      {
-        calculate_bounding_box = true;
-      }
-      else
-      {
-        auto bb = parse_vec2(value, error);
-        out.bounding_box.width = bb.x;
-        out.bounding_box.depth = bb.y;
-      }
-    }
-    else if (key == "renderable")
-    {
-      out.renderable = parse_bool(value, error);
-    }
-    else if (key == "mesh")
-    {
-      out.mesh_path = value.copy(allocator);
-      out.mesh = assets.load_obj(out.mesh_path.data, allocator, error);
-    }
-    else if (key == "interactable")
-    {
-      out.interactable = parse_bool(value, error);
-    }
-    else if (key == "interactable_radius")
-    {
-      out.interactable_radius = parse_f32(value, error);
-    }
-    else if (key == "emits_light")
-    {
-      out.emits_light = parse_bool(value, error);
-    }
-    else if (key == "light_height_offset")
-    {
-      out.light_height_offset = parse_f32(value, error);
-    }
-    else if (key == "light_color")
-    {
-      out.light_color = parse_vec3(value, error);
-    }
-    else if (key == "tint")
-    {
-      out.tint = parse_vec3(value, error);
-    }
-    else if (key == "name")
-    {
-      out.name = value.copy(allocator);
-    }
-    ERROR_ASSERT(error == SUCCESS, out_error, error, out);
-    // find-error on
-  }
-
-  if (calculate_bounding_box)
-  {
-    ASSERT(out.renderable, "gent decoding error. Cannot calculate on non renderable entity.");
-    out.bounding_box = BoundingBox::from_mesh(out.mesh, assets);
-    out.is_bounding_box_from_model = true;
-  }
-
+  vec3 out{};
+  parser::expect_and_skip(pos, '(');
+  out.x = parser::number_f32(pos);
+  parser::expect_and_skip(pos, ',');
+  out.y = parser::number_f32(pos);
+  parser::expect_and_skip(pos, ',');
+  out.z = parser::number_f32(pos);
+  parser::expect_and_skip(pos, ')');
   return out;
 }
 
-Scene load_gscn(const char* path, Assets& assets, Allocator& allocator, Error& out_error)
+static vec2 gfmt_parse_vec2(parser::Pos& pos)
 {
-  Error error = SUCCESS;
-  auto scratch_arena = ScratchArena::get();
-  defer(scratch_arena.release());
+  vec2 out{};
+  parser::expect_and_skip(pos, '(');
+  out.x = parser::number_f32(pos);
+  parser::expect_and_skip(pos, ',');
+  out.y = parser::number_f32(pos);
+  parser::expect_and_skip(pos, ')');
+  return out;
+}
 
-  auto source = os::read_to_string(path, scratch_arena.allocator, error);
-  ERROR_ASSERT(error == SUCCESS, out_error, error, {});
-
-  auto lines = source.split('\n', scratch_arena.allocator);
-  Scene scene = {};
-  auto entity_cache = Map<String, Entity>::make(lines.size * 2, scratch_arena.allocator);
-  for (usize line_idx = 0; line_idx < lines.size; ++line_idx)
+Entity::Entity(const std::filesystem::path& path)
+{
+  ASSERT(
+    path.extension() == ".gent",
+    "[GENT] Invalid filepath provided. (path: {}).",
+    path.string()
+  );
+  std::ifstream file{path};
+  ASSERT(!file.fail(), "[GENT] File reading error. (path: {}).", path.string());
+  std::string line{};
+  bool calculate_bounding_box = false;
+  while (std::getline(file, line))
   {
-    Entity entity = {};
-    auto& line = lines[line_idx];
-    if (line[0] == '#')
+    if (line.empty() || line[0] == '#')
     {
       continue;
     }
+    parser::Pos ppos{.line = line};
 
-    auto parts = line.split(':', scratch_arena.allocator);
-    ERROR_ASSERT(parts.size == 2, out_error, "gscn decoding error. Invalid line.", scene);
-    auto key = parts[0].trim_whitespace();
-    auto value = parts[1].trim_whitespace();
+    auto key = parser::word(ppos);
+    parser::expect_and_skip(ppos, ':');
+    if (key == "pos")
+    {
+      pos = gfmt_parse_vec3(ppos);
+      rendered_pos = prev_pos = pos;
+    }
+    else if (key == "controlled_by_player")
+    {
+      if (parser::boolean(ppos))
+      {
+        flags |= CONTROLLED_BY_PLAYER;
+      }
+    }
+    else if (key == "rotation")
+    {
+      rotation = parser::number_f32(ppos);
+      rendered_rotation = prev_rotation = rotation;
+    }
+    else if (key == "target_rotation")
+    {
+      target_rotation = parser::number_f32(ppos);
+    }
+    else if (key == "velocity")
+    {
+      velocity = gfmt_parse_vec3(ppos);
+    }
+    else if (key == "collidable")
+    {
+      if (parser::boolean(ppos))
+      {
+        flags |= COLLIDABLE;
+      }
+    }
+    else if (key == "dynamically_calculated_bounding_box")
+    {
+      if (parser::boolean(ppos))
+      {
+        flags |= DYNAMIC_BOUNDING_BOX;
+        calculate_bounding_box = true;
+      }
+    }
+    else if (key == "bounding_box")
+    {
+      bounding_box = gfmt_parse_vec2(ppos);
+    }
+    else if (key == "renderable")
+    {
+      if (parser::boolean(ppos))
+      {
+        flags |= RENDERABLE;
+      }
+    }
+    else if (key == "mesh")
+    {
+      mesh_path = parser::word(ppos);
+      mesh = AssetManager::instance().load_obj(mesh_path);
+    }
+    else if (key == "interactable")
+    {
+      if (parser::boolean(ppos))
+      {
+        flags |= INTERACTABLE;
+      }
+    }
+    else if (key == "interactable_radius")
+    {
+      interactable_radius = parser::number_f32(ppos);
+    }
+    else if (key == "emits_light")
+    {
+      if (parser::boolean(ppos))
+      {
+        flags |= EMITS_LIGHT;
+      }
+    }
+    else if (key == "light_height_offset")
+    {
+      light_height_offset = parser::number_f32(ppos);
+    }
+    else if (key == "light_color")
+    {
+      light_color = gfmt_parse_vec3(ppos);
+    }
+    else if (key == "tint")
+    {
+      tint = gfmt_parse_vec3(ppos);
+    }
+    else if (key == "name")
+    {
+      name = parser::word(ppos);
+    }
+    else
+    {
+      ASSERT(false, "Invalid key. ({}).", key);
+    }
+  }
+  if (calculate_bounding_box)
+  {
+    bounding_box = bounding_box_from_mesh(mesh);
+  }
+}
 
+Scene::Scene(const std::filesystem::path& path)
+{
+  ASSERT(
+    path.extension() == ".gscn",
+    "[GSCN] Invalid filepath provided. (path: {}).",
+    path.string()
+  );
+  std::ifstream file{path};
+  ASSERT(!file.fail(), "[GSCN] File reading error. (path: {}).", path.string());
+  std::string line{};
+  std::unordered_map<std::string, Entity> entity_cache{};
+  while (std::getline(file, line))
+  {
+    if (line.empty() || line[0] == '#')
+    {
+      continue;
+    }
+    parser::Pos pos{.line = line};
+
+    auto key = std::string{parser::word(pos)};
+    parser::expect_and_skip(pos, ':');
     if (key == "ambient_color")
     {
-      scene.ambient_color = parse_vec3(value, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
+      ambient_color = gfmt_parse_vec3(pos);
       continue;
     }
 
     if (entity_cache.contains(key))
     {
-      entity = *entity_cache[key];
+      entities.push_back(entity_cache[key]);
     }
     else
     {
-      auto entity_path =
-        key.prepend("data/", scratch_arena.allocator).append(".gent", scratch_arena.allocator);
-      entity = load_gent(entity_path.to_cstr(scratch_arena.allocator), assets, allocator, error);
-      ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
-      entity_cache.set(key, entity);
+      Entity entity{(path.parent_path() / key).concat(".gent")};
+      entity_cache.insert_or_assign(key, entity);
+      entities.push_back(entity);
     }
-
-    auto pos = parse_vec3(value, error);
-    ERROR_ASSERT(error == SUCCESS, out_error, error, scene);
-
-    entity.pos = pos;
-
-    scene.entities[scene.entities_count++] = entity;
+    auto& ent = entities[entities.size() - 1];
+    ent.prev_pos = ent.rendered_pos = ent.pos = gfmt_parse_vec3(pos);
   }
-
-  return scene;
 }

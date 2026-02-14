@@ -4,7 +4,7 @@ renderable : true
 mesh : assets/light_bulb.obj
 
 collidable : true
-bounding_box : *
+dynamically_calculated_bounding_box : true
 
 emits_light : false
 light_color : (1.0, 1.0, 0.7)

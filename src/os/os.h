@@ -1,20 +1,24 @@
 #ifndef OS_H
 #define OS_H
 
-#include "base/base.h"
-#include "base/string.h"
-#include "base/enum_array.h"
+#include <expected>
+#include <memory>
+#include <string>
+#include <string_view>
 
-#include <atomic>
+#include "base/base.h"
+#include "base/math.h"
+#include "base/enum_array.h"
 
 namespace os
 {
 
 void init();
+void shutdown();
 
 enum class Key
 {
-  A = 1,
+  A,
   B,
   C,
   D,
@@ -58,80 +62,88 @@ enum class Key
   COUNT
 };
 
-const char* key_to_cstr(Key key);
-Key string_to_key(const String& str, Error& out_error);
+std::expected<std::string_view, std::string_view> key_to_string(Key key);
+std::expected<Key, std::string_view> string_to_key(std::string_view str);
 
 struct KeyState
 {
+  inline constexpr bool just_pressed() const
+  {
+    return ended_down && transition_count != 0;
+  }
+
   u32 transition_count;
   bool ended_down;
 };
 
 struct Input
 {
-  inline KeyState& operator[](Key key)
+  void clear();
+
+  inline constexpr KeyState& key(Key key)
   {
-    return states[key];
+    return keys[key];
   }
 
-  enum_array<Key, KeyState> states;
+  EnumArray<Key, KeyState> keys;
 
-  // TODO: should these really be floats?
   vec2 mouse_pos;
   vec2 mouse_delta;
-  vec2 mouse_pos_last;
 };
 
-struct Window
+class Window
 {
-  struct Dimensions
+public:
+  struct WindowData
   {
-    u32 width;
-    u32 height;
+    virtual ~WindowData() {}
   };
 
-  static Window open(const char* name, Dimensions dimensions);
-  void init_rendering_api();
+public:
+  Window(std::string_view name, uvec2 dimensions);
+  Window(const Window&) = delete;
+  Window& operator=(const Window&) = delete;
+  Window(Window&& other);
+  Window& operator=(Window&& other);
+  ~Window();
+
   void update();
-  void clear_input();
   void swap_buffers();
+  void hide_mouse_pointer();
+  void show_mouse_pointer();
 
-  // NOTE: needs to be called every frame to properly consume the pointer
-  void consume_mouse_pointer();
-  void release_mouse_pointer();
+  [[nodiscard]] inline constexpr bool running() const noexcept
+  {
+    return m_running;
+  }
+  [[nodiscard]] inline constexpr Input& input() noexcept
+  {
+    return m_input;
+  }
+  [[nodiscard]] inline constexpr u32 width() const noexcept
+  {
+    return m_dimensions.x;
+  }
+  [[nodiscard]] inline constexpr u32 height() const noexcept
+  {
+    return m_dimensions.y;
+  }
+  [[nodiscard]] inline constexpr uvec2 dimensions() const noexcept
+  {
+    return m_dimensions;
+  }
+  [[nodiscard]] inline constexpr WindowData* window_data() const noexcept
+  {
+    return m_window_data.get();
+  }
 
-  const char* name;
-  Dimensions dimensions;
-
-  bool running;
-  Input input;
-
-  void* handle;
+private:
+  std::string m_name{};
+  bool m_running{};
+  uvec2 m_dimensions{};
+  Input m_input{};
+  std::unique_ptr<WindowData> m_window_data{};
 };
-
-void* read(const char* path, Allocator& allocator, usize& out_size, Error& out_error);
-String read_to_string(const char* path, Allocator& allocator, Error& out_error);
-
-f32 time_now();
-
-void* alloc(usize bytes);
-void free(void* ptr);
-
-struct Thread
-{
-  typedef i32 (*ThreadFN)(void* data);
-
-  static Thread make(ThreadFN fn, const char* name, void* data);
-  void detach();
-  i32 wait();
-
-  void* handle;
-};
-
-// NOTE: i dont like using stl, but i cant be bothered to setup atomics
-// TODO: maybe implement atomic myself in the future
-template <typename T>
-using Atomic = std::atomic<T>;
 
 }
 

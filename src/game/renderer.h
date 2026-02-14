@@ -1,8 +1,10 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
+#include <unordered_map>
+#include <vector>
+
 #include "base/base.h"
-#include "base/map.h"
 
 #include "assets.h"
 #include "camera.h"
@@ -14,63 +16,110 @@ enum class ShaderType
   GEOMETRY,
 };
 
-struct Shader
+// TODO: gpu assets should handle themselves with RAII
+// the manager will just store collections of them
+class Shader
 {
-  u32 id;
+public:
+  Shader(ShaderHandle handle);
+  Shader(const Shader&) = delete;
+  Shader& operator=(const Shader&) = delete;
+  Shader(Shader&& other);
+  Shader& operator=(Shader&& other);
+  ~Shader();
+
+  [[nodiscard]] inline constexpr u32 handle() const noexcept
+  {
+    return m_id;
+  }
+
+private:
+  u32 m_id{};
 };
 
-struct TextureGPU
+class TextureGPU
 {
-  u32 id;
+public:
+  TextureGPU(TextureHandle handle);
+  TextureGPU(const TextureGPU&) = delete;
+  TextureGPU& operator=(const TextureGPU&) = delete;
+  TextureGPU(TextureGPU&& other);
+  TextureGPU& operator=(TextureGPU&& other);
+  ~TextureGPU();
+
+  [[nodiscard]] inline constexpr u32 handle() const noexcept
+  {
+    return m_id;
+  }
+
+private:
+  u32 m_id{};
 };
 
-struct MeshGPU
+class MeshGPU
 {
-  u32 vao;
-  u32 vbo;
-  u32 ebo;
+public:
+  MeshGPU(MeshHandle handle);
+  MeshGPU(const MeshGPU&) = delete;
+  MeshGPU& operator=(const MeshGPU&) = delete;
+  MeshGPU(MeshGPU&& other);
+  MeshGPU& operator=(MeshGPU&& other);
+  ~MeshGPU();
+
+  [[nodiscard]] inline constexpr u32 handle() const noexcept
+  {
+    return m_vao;
+  }
+
+private:
+  u32 m_vao{};
+  u32 m_vbo{};
+  u32 m_ebo{};
 };
 
+// TODO: i dont like this
 struct RenderData
 {
-  u32 camera_ubo;
-  u32 lights_ubo;
+  u32 camera_ubo{};
+  u32 lights_ubo{};
 
-  static constexpr usize SHADOW_CUBEMAP_WIDTH = 1024;
-  static constexpr usize SHADOW_CUBEMAP_HEIGHT = 1024;
-  TextureGPU shadow_cubemap;
-  u32 shadow_framebuffer_id;
+  static constexpr uvec2 SHADOW_CUBEMAP_DIMENSIONS = {1024, 1024};
+  // TODO: this should go through the TextureGPU class, but it doesnt handle cubemaps yet
+  u32 shadow_cubemap{};
+  u32 shadow_framebuffer_id{};
 
-  u32 instance_data_buffer;
+  u32 instance_data_buffer{};
 };
 
 template <typename Handle, typename T>
 struct AssetTypeGPU
 {
-  // NOTE: creates the gpu resource, specified for each asset type (shaders are an exception)
-  void create(Handle handle);
+  void create(Handle handle)
+  {
+    m_data.insert_or_assign(handle, T{handle});
+  }
 
   const T& get(Handle handle) const
   {
-    return *data[handle];
+    return m_data.at(handle);
   }
 
   bool contains(Handle handle) const
   {
-    return data.contains(handle);
+    return m_data.contains(handle);
   }
 
-  void destroy(Handle handle);
-  void destroy_all();
-
-  Map<Handle, T> data;
-  Assets* assets;
+private:
+  std::unordered_map<Handle, T> m_data;
 };
 
-struct AssetsGPU
+struct AssetGPUManager
 {
-  static AssetsGPU make(Assets& assets, Allocator& allocator);
-  void destroy_all();
+  static AssetGPUManager& instance()
+  {
+    static AssetGPUManager a{};
+    return a;
+  }
 
   AssetTypeGPU<ShaderHandle, Shader> shaders;
   AssetTypeGPU<TextureHandle, TextureGPU> textures;
@@ -108,8 +157,9 @@ enum class RenderPassType
   POINT_SHADOW_MAP,
 };
 
-struct RenderPass
+class RenderPass
 {
+public:
   void draw_mesh(
     MeshHandle handle,
     const vec3& pos,
@@ -129,32 +179,31 @@ struct RenderPass
 
   void finish();
 
-  RenderPassType type;
+private:
+  inline constexpr RenderPass(RenderPassType type, const Camera& camera, const vec3& ambient_color)
+    : m_type{type}, m_camera{camera}, m_ambient_color{ambient_color}
+  {
+  }
 
-  Assets* assets;
-  AssetsGPU* assets_gpu;
-  const Camera* camera;
+private:
+  // TODO: i dont like have a pass 'type'
+  RenderPassType m_type{};
+  const Camera& m_camera;
+  std::vector<RenderItem> m_items{};
+  Light m_light{};
+  vec3 m_ambient_color{};
+  const Camera* m_shadow_map_camera{};
 
-  Array<RenderItem> items;
-  Light light;
-  vec3 ambient_color;
-
-  const Camera* shadow_map_camera;
+  friend class Renderer;
 };
 
-struct Renderer
+class Renderer
 {
-  static Renderer make(Assets& assets, Allocator& allocator);
+public:
+  Renderer();
 
-  RenderPass begin_pass(
-    RenderPassType type,
-    const Camera& camera,
-    Allocator& allocator,
-    const vec3& ambient_color = {1.0f, 1.0f, 1.0f}
-  );
-
-  Assets* assets;
-  AssetsGPU assets_gpu;
+  RenderPass
+  begin_pass(RenderPassType type, const Camera& camera, const vec3& ambient_color = {1, 1, 1});
 };
 
 enum UBO_Index

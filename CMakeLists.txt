@@ -81,6 +81,8 @@ include(vendor/vendor.cmake)
 add_library(base STATIC
   src/base/base.h
   src/base/math.h src/base/math.cpp
+  src/base/enum_array.h
+  src/base/spsc_queue.h
 )
 target_compile_options(base PRIVATE ${flags})
 target_compile_definitions(base PRIVATE ${definitions})

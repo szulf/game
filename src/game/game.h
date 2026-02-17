@@ -3,10 +3,12 @@
 
 #include "base/base.h"
 #include "base/enum_array.h"
-#include "game/renderer.h"
+
 #include "os/os.h"
 
+#include "sound.h"
 #include "camera.h"
+#include "renderer.h"
 #include "entity.h"
 
 enum class Action
@@ -30,7 +32,7 @@ using Keymap = EnumArray<Action, os::Key>;
 class Game
 {
 public:
-  Game(os::Window& window);
+  Game(os::Window& window, os::Audio& audio);
   Game(const Game&) = delete;
   Game& operator=(const Game&) = delete;
   Game(Game&&) = delete;
@@ -48,10 +50,13 @@ private:
 
 private:
   os::Window& m_window;
+  os::Audio& m_audio;
 
   // NOTE: loading static models depends on the renderer constructor being called
   // before the scene constructor
   Renderer m_renderer{};
+
+  SoundSystem m_sound_system;
 
   Scene m_scene;
   Keymap m_keymap{};

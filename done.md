@@ -49,3 +49,7 @@
 
 1. rewrite the whole main file to be platform agnostic
 2. introduce threading capabilities(threads, mutexes, atomics)
+
+## 4. BIG TODO: audio
+
+1. write a spsc queue

@@ -1,8 +1,10 @@
 #include "game.h"
 
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <string>
+#include <thread>
 
 #include "camera.h"
 #include "os/os.h"
@@ -70,8 +72,8 @@ Keymap load_gkey(const std::filesystem::path& path)
   return keymap;
 }
 
-Game::Game(os::Window& window)
-  : m_window{window}, m_scene{"data/main.gscn"}, m_keymap{load_gkey("data/keymap.gkey")},
+Game::Game(os::Window& window, os::Audio& audio)
+  : m_window{window}, m_audio{audio}, m_sound_system{audio}, m_scene{"data/main.gscn"}, m_keymap{load_gkey("data/keymap.gkey")},
   m_gameplay_camera{CameraDescription{
     .type = CameraType::PERSPECTIVE,
     .pos = {0, 12, 8},
@@ -278,6 +280,7 @@ void Game::update_tick(f32 dt)
               interactable.flags ^= Entity::EMITS_LIGHT;
               interactable.tint =
                 interactable.emits_light() ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
+              m_sound_system.play({.sound = SoundHandle::SHOTGUN, .volume = 0.1f});
             }
           }
         }

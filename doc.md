@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-1. write a spsc queue
 2. do the audio(multithreaded)
 
 ---

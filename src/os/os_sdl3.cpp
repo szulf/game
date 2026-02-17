@@ -4,6 +4,7 @@
 #include "sdl3/include/SDL3/SDL.h"
 
 #include "gl_functions.h"
+#include <thread>
 
 namespace os
 {
@@ -617,6 +618,45 @@ void Window::hide_mouse_pointer()
 void Window::show_mouse_pointer()
 {
   SDL_ShowCursor();
+}
+
+struct SDL3AudioData : public Audio::AudioData
+{
+  SDL_AudioStream* stream{};
+};
+
+Audio::Audio() : m_audio_data{std::make_unique<SDL3AudioData>()}
+{
+  // TODO: get the spec from arguments?
+  SDL_AudioSpec spec{
+    .format = SDL_AUDIO_S16,
+    .channels = 2,
+    .freq = 48'000,
+  };
+  auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
+  data.stream =
+    SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
+  SDL_ResumeAudioStreamDevice(data.stream);
+}
+
+Audio::~Audio()
+{
+  auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
+  SDL_DestroyAudioStream(data.stream);
+}
+
+// TODO: i feel like this is really delayed
+void Audio::push(std::span<i16> buffer)
+{
+  auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
+
+  static constexpr i32 MAX_QUEUE_BYTES = 512 * 2 * sizeof(i16);
+  while (SDL_GetAudioStreamQueued(data.stream) > MAX_QUEUE_BYTES)
+  {
+    std::this_thread::sleep_for(std::chrono::microseconds(50));
+  }
+
+  SDL_PutAudioStreamData(data.stream, buffer.data(), (i32) (buffer.size() * sizeof(i16)));
 }
 
 }

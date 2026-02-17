@@ -106,6 +106,7 @@ add_executable(game
   src/game/image.h src/game/image.cpp
   src/game/renderer.h src/game/renderer.cpp
   src/game/parser.h src/game/parser.cpp
+  src/game/sound.h src/game/sound.cpp
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})

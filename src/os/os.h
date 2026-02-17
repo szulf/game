@@ -145,6 +145,24 @@ private:
   std::unique_ptr<WindowData> m_window_data{};
 };
 
+class Audio
+{
+public:
+  struct AudioData
+  {
+  };
+
+public:
+  Audio();
+  // TODO: copy/move constructor/operators
+  ~Audio();
+
+  void push(std::span<i16> buffer);
+
+private:
+  std::unique_ptr<AudioData> m_audio_data{};
+};
+
 }
 
 #endif

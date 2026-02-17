@@ -1,10 +1,12 @@
 #include "base/base.h"
 
+#include <thread>
 #include <chrono>
 
 #include "os/os.h"
 #include "game/game.h"
 
+// TODO: calculate this from TPS/MSPT
 static constexpr std::chrono::milliseconds DT{50};
 static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
 
@@ -17,7 +19,8 @@ i32 main()
     "game",
     {1280, 720}
   };
-  Game game{window};
+  os::Audio audio{};
+  Game game{window, audio};
 
   auto current_time = std::chrono::high_resolution_clock::now();
   std::chrono::nanoseconds accumulator{};
@@ -41,15 +44,14 @@ i32 main()
 
     game.render();
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::println(
-      "Frame time: {}",
-      ((f32) (end_time - current_time).count() / (f32) std::nano::den) * (f32) std::milli::den
-    );
+    // auto end_time = std::chrono::high_resolution_clock::now();
+    // std::println(
+    //   "Frame time: {}",
+    //   ((f32) (end_time - current_time).count() / (f32) std::nano::den) * (f32) std::milli::den
+    // );
 
     window.swap_buffers();
   }
 
-  os::shutdown();
   return 0;
 }

@@ -639,23 +639,41 @@ Audio::Audio() : m_audio_data{std::make_unique<SDL3AudioData>()}
   SDL_ResumeAudioStreamDevice(data.stream);
 }
 
+Audio::Audio(Audio&& other)
+{
+  m_audio_data = std::move(other.m_audio_data);
+}
+
+Audio& Audio::operator=(Audio&& other)
+{
+  if (this == &other)
+  {
+    return *this;
+  }
+  if (m_audio_data)
+  {
+    auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
+    SDL_DestroyAudioStream(data.stream);
+  }
+  m_audio_data = std::move(other.m_audio_data);
+  return *this;
+}
+
 Audio::~Audio()
 {
   auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
   SDL_DestroyAudioStream(data.stream);
 }
 
-// TODO: i feel like this is really delayed
+u32 Audio::get_queued() const
+{
+  auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
+  return (u32) SDL_GetAudioStreamQueued(data.stream);
+}
+
 void Audio::push(std::span<i16> buffer)
 {
   auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
-
-  static constexpr i32 MAX_QUEUE_BYTES = 512 * 2 * sizeof(i16);
-  while (SDL_GetAudioStreamQueued(data.stream) > MAX_QUEUE_BYTES)
-  {
-    std::this_thread::sleep_for(std::chrono::microseconds(50));
-  }
-
   SDL_PutAudioStreamData(data.stream, buffer.data(), (i32) (buffer.size() * sizeof(i16)));
 }
 

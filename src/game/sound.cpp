@@ -1,26 +1,19 @@
 #include "sound.h"
+#include "base/base.h"
 
 #include <fstream>
 #include <cmath>
-
-EnumArray<SoundHandle, SoundData> sound_data{};
 
 struct SoundDescription
 {
   const char* file;
 };
 
-constexpr static EnumArray<SoundHandle, SoundDescription> sound_descriptions = []()
-{
-  EnumArray<SoundHandle, SoundDescription> out{};
-  out[SoundHandle::SHOTGUN] = {.file = "assets/shotgun.wav"};
-  return out;
-}();
-
 struct WAVContext
 {
   usize curr_pos{};
   std::vector<u8> buffer{};
+  SoundData out{};
 };
 
 inline static u8 wav_read_u8(WAVContext& ctx)
@@ -59,20 +52,19 @@ enum WaveFormat
   WAVE_FORMAT_EXTENSIBLE = 0xFFFE,
 };
 
-void load_wav(SoundHandle sound)
+SoundData load_wav(const std::filesystem::path& path)
 {
   WAVContext ctx{};
   // NOTE: i absolutely hate this, but there is no easy way to read a binary file in the stl
   {
-    std::ifstream file{sound_descriptions[sound].file, std::ios::ate | std::ios::binary};
+    std::ifstream file{path, std::ios::binary};
     if (file.fail())
     {
       throw std::runtime_error{
-        std::format("[WAV] Failed to open file. (path: {}).", sound_descriptions[sound].file)
+        std::format("[WAV] Failed to open file. (path: {}).", path.string())
       };
     }
-    ctx.buffer.resize(static_cast<usize>(file.tellg()));
-    file.seekg(0);
+    ctx.buffer.resize(std::filesystem::file_size(path));
     file.read((char*) ctx.buffer.data(), (i64) ctx.buffer.size());
   }
 
@@ -113,19 +105,18 @@ void load_wav(SoundHandle sound)
     throw std::runtime_error{"[WAV] Invalid 'data' header."};
   }
   u32 data_size = wav_read_u32(ctx);
-  sound_data[sound].samples.reserve(data_size);
+  ctx.out.samples.reserve(data_size);
   const usize end = data_size + ctx.curr_pos;
   while (ctx.curr_pos < end)
   {
     i16 sample = (i16) wav_read_u16(ctx);
-    sound_data[sound].samples.push_back(sample);
+    ctx.out.samples.push_back(sample);
   }
-  sound_data[sound].frames = data_size / (sizeof(i16) * channels);
+  ctx.out.frames = data_size / (sizeof(i16) * channels);
+  return ctx.out;
 }
-
 SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
 {
-  // Sound::SINE
   {
     SoundData sound{};
     sound.frames = (u32) (48'000 * 0.3f);
@@ -144,18 +135,15 @@ SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
       sound.samples[frame * 2 + 0] = sample;
       sound.samples[frame * 2 + 1] = sample;
     }
-    sound_data[SoundHandle::SINE] = std::move(sound);
+    m_sound_data[SoundHandle::SINE] = std::move(sound);
   }
 
-  load_wav(SoundHandle::SHOTGUN);
+  m_sound_data[SoundHandle::SHOTGUN] = load_wav("assets/shotgun.wav");
 
   m_thread = std::jthread(
     [&](std::stop_token st)
     {
-      while (!st.stop_requested())
-      {
-        sound_loop();
-      }
+      sound_loop(st);
     }
   );
 }
@@ -165,45 +153,59 @@ void SoundSystem::play(const SoundCmd& cmd)
   m_cmds.push(cmd);
 }
 
-void SoundSystem::sound_loop()
+void SoundSystem::sound_loop(std::stop_token st)
 {
-  SoundCmd cmd{};
-  while (m_cmds.consume_one(cmd))
-  {
-    // TODO: is this pointer even necessary?
-    m_active_voices.push_back({
-      .data = &sound_data[cmd.sound],
-      .volume = cmd.volume,
-    });
-  }
+  // TODO: prefill buffer here?
 
-  std::ranges::fill(mix_buffer, 0);
-  for (auto it = m_active_voices.begin(); it != m_active_voices.end();)
+  while (!st.stop_requested())
   {
-    Voice& v = *it;
-    for (u32 f = 0; f < FRAMES; ++f)
+    auto queued = m_audio.get_queued();
+
+    if (queued <= BYTES_PER_BUFFER)
     {
-      if (v.frame_idx >= v.data->frames)
+      SoundCmd cmd{};
+      while (m_cmds.consume_one(cmd))
       {
-        break;
+        m_active_sources.push_back({
+          .handle = cmd.sound,
+          .volume = cmd.volume,
+        });
       }
 
-      // TODO: this is a horrible prototype, does not handle overflows and probably much more
-      u32 sample_index = v.frame_idx * 2;
-      mix_buffer[f * 2 + 0] += (i16) (v.data->samples[sample_index + 0] * v.volume);
-      mix_buffer[f * 2 + 1] += (i16) (v.data->samples[sample_index + 1] * v.volume);
+      std::ranges::fill(mix_buffer, 0);
+      for (auto it = m_active_sources.begin(); it != m_active_sources.end();)
+      {
+        SoundSource& v = *it;
+        auto& data = m_sound_data[v.handle];
+        for (u32 f = 0; f < FRAMES; ++f)
+        {
+          if (v.frame_idx >= data.frames)
+          {
+            break;
+          }
 
-      ++v.frame_idx;
-    }
-    if (v.frame_idx >= v.data->frames)
-    {
-      it = m_active_voices.erase(it);
+          // TODO: this is a horrible prototype, does not handle overflows and probably much more
+          u32 sample_index = v.frame_idx * 2;
+          mix_buffer[f * 2 + 0] += (i16) (data.samples[sample_index + 0] * v.volume);
+          mix_buffer[f * 2 + 1] += (i16) (data.samples[sample_index + 1] * v.volume);
+
+          ++v.frame_idx;
+        }
+        if (v.frame_idx >= data.frames)
+        {
+          it = m_active_sources.erase(it);
+        }
+        else
+        {
+          ++it;
+        }
+      }
+
+      m_audio.push(mix_buffer);
     }
     else
     {
-      ++it;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
-
-  m_audio.push(mix_buffer);
 }

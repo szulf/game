@@ -2,6 +2,7 @@
 
 #include <thread>
 #include <vector>
+#include <filesystem>
 
 #include "base/base.h"
 #include "base/enum_array.h"
@@ -11,29 +12,33 @@
 
 enum class SoundHandle
 {
+  // TODO: remove test sounds
   SINE,
-  // TODO: remove, test sound
   SHOTGUN,
 
   COUNT,
 };
 
+// NOTE: assumes 48'000 sample rate, 2 channels and i16 encoding
 struct SoundData
 {
   std::vector<i16> samples{};
   u32 frames{};
 };
 
-// TODO: move this to the SoundSystem class?
-extern EnumArray<SoundHandle, SoundData> sound_data;
-
-// TODO: move this to the SoundSystem class?
-void load_wav(SoundHandle sound);
+SoundData load_wav(const std::filesystem::path& path);
 
 struct SoundCmd
 {
   SoundHandle sound{};
   f32 volume{1.0f};
+};
+
+struct SoundSource
+{
+  SoundHandle handle;
+  u32 frame_idx{};
+  f32 volume{};
 };
 
 class SoundSystem
@@ -48,7 +53,7 @@ public:
 
   void play(const SoundCmd& cmd);
 
-  void sound_loop();
+  void sound_loop(std::stop_token st);
 
 private:
   std::jthread m_thread{};
@@ -56,18 +61,12 @@ private:
   os::Audio& m_audio;
 
   SPSCQueue<SoundCmd> m_cmds{1024};
+  EnumArray<SoundHandle, SoundData> m_sound_data{};
+  std::vector<SoundSource> m_active_sources{};
 
-  // TODO: is this a standard name? i dont like it
-  struct Voice
-  {
-    const SoundData* data;
-    u32 frame_idx{};
-    f32 volume{};
-  };
-
-  std::vector<Voice> m_active_voices{};
-
+  // TODO: what is this frames count chosen based off of?
   static constexpr u32 FRAMES = 512;
   static constexpr u32 CHANNELS = 2;
+  static constexpr usize BYTES_PER_BUFFER = FRAMES * CHANNELS * sizeof(i16);
   std::array<i16, FRAMES * CHANNELS> mix_buffer{};
 };

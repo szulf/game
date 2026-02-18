@@ -154,9 +154,13 @@ public:
 
 public:
   Audio();
-  // TODO: copy/move constructor/operators
+  Audio(const Audio&) = delete;
+  Audio& operator=(const Audio&) = delete;
+  Audio(Audio&& other);
+  Audio& operator=(Audio&& other);
   ~Audio();
 
+  u32 get_queued() const;
   void push(std::span<i16> buffer);
 
 private:

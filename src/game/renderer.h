@@ -16,8 +16,6 @@ enum class ShaderType
   GEOMETRY,
 };
 
-// TODO: gpu assets should handle themselves with RAII
-// the manager will just store collections of them
 class Shader
 {
 public:

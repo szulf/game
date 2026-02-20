@@ -15,6 +15,7 @@ enum class SoundHandle
   // TODO: remove test sounds
   SINE,
   SHOTGUN,
+  TEST_MUSIC,
 
   COUNT,
 };
@@ -28,8 +29,16 @@ struct SoundData
 
 SoundData load_wav(const std::filesystem::path& path);
 
+enum class SoundCmdType
+{
+  PLAY_ONCE,
+  START_LOOP,
+  END_LOOP,
+};
+
 struct SoundCmd
 {
+  SoundCmdType type{};
   SoundHandle sound{};
   f32 volume{1.0f};
 };
@@ -39,8 +48,10 @@ struct SoundSource
   SoundHandle handle;
   u32 frame_idx{};
   f32 volume{};
+  bool loop{};
 };
 
+// TODO: master volume
 class SoundSystem
 {
 public:
@@ -51,8 +62,12 @@ public:
     m_thread.join();
   }
 
-  void play(const SoundCmd& cmd);
+  void play_once(SoundHandle sound, f32 volume = 1.0f);
+  // NOTE: assumes only 1 looped sound source per sound handle
+  void play_looped(SoundHandle sound, f32 volume = 1.0f);
+  void stop_looped(SoundHandle sound);
 
+private:
   void sound_loop(std::stop_token st);
 
 private:
@@ -64,7 +79,6 @@ private:
   EnumArray<SoundHandle, SoundData> m_sound_data{};
   std::vector<SoundSource> m_active_sources{};
 
-  // TODO: what is this frames count chosen based off of?
   static constexpr u32 FRAMES = 512;
   static constexpr u32 CHANNELS = 2;
   static constexpr usize BYTES_PER_BUFFER = FRAMES * CHANNELS * sizeof(i16);

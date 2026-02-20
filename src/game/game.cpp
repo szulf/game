@@ -86,6 +86,7 @@ Game::Game(os::Window& window, os::Audio& audio)
     .viewport = m_window.dimensions(),
   }}, m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
+  m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
 }
 
 void Game::update_tick(f32 dt)
@@ -254,6 +255,7 @@ void Game::update_tick(f32 dt)
           if (collided)
           {
             entity.velocity -= dot(entity.velocity, collision_normal) * collision_normal;
+            m_sound_system.play_once(SoundHandle::SINE, 0.1f);
           }
         }
 
@@ -280,7 +282,8 @@ void Game::update_tick(f32 dt)
               interactable.flags ^= Entity::EMITS_LIGHT;
               interactable.tint =
                 interactable.emits_light() ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
-              m_sound_system.play({.sound = SoundHandle::SHOTGUN, .volume = 0.1f});
+              m_sound_system.play_once(SoundHandle::SHOTGUN, 0.1f);
+              m_sound_system.stop_looped(SoundHandle::TEST_MUSIC);
             }
           }
         }

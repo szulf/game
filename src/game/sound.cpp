@@ -140,6 +140,8 @@ SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
 
   m_sound_data[SoundHandle::SHOTGUN] = load_wav("assets/shotgun.wav");
 
+  m_sound_data[SoundHandle::TEST_MUSIC] = load_wav("assets/music.wav");
+
   m_thread = std::jthread(
     [&](std::stop_token st)
     {
@@ -148,28 +150,69 @@ SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
   );
 }
 
-void SoundSystem::play(const SoundCmd& cmd)
+void SoundSystem::play_once(SoundHandle sound, f32 volume)
 {
-  m_cmds.push(cmd);
+  m_cmds.push({.type = SoundCmdType::PLAY_ONCE, .sound = sound, .volume = volume});
+}
+
+void SoundSystem::play_looped(SoundHandle sound, f32 volume)
+{
+  m_cmds.push({.type = SoundCmdType::START_LOOP, .sound = sound, .volume = volume});
+}
+
+void SoundSystem::stop_looped(SoundHandle sound)
+{
+  m_cmds.push({.type = SoundCmdType::END_LOOP, .sound = sound});
 }
 
 void SoundSystem::sound_loop(std::stop_token st)
 {
-  // TODO: prefill buffer here?
-
   while (!st.stop_requested())
   {
     auto queued = m_audio.get_queued();
 
+    // TODO: definitely has one buffer of delay(around 10ms), keeping for now like mixing
     if (queued <= BYTES_PER_BUFFER)
     {
       SoundCmd cmd{};
       while (m_cmds.consume_one(cmd))
       {
-        m_active_sources.push_back({
-          .handle = cmd.sound,
-          .volume = cmd.volume,
-        });
+        switch (cmd.type)
+        {
+          case SoundCmdType::PLAY_ONCE:
+          {
+            m_active_sources.push_back({
+              .handle = cmd.sound,
+              .volume = cmd.volume,
+              .loop = false,
+            });
+          }
+          break;
+          case SoundCmdType::START_LOOP:
+          {
+            m_active_sources.push_back({
+              .handle = cmd.sound,
+              .volume = cmd.volume,
+              .loop = true,
+            });
+          }
+          break;
+          case SoundCmdType::END_LOOP:
+          {
+            auto it = std::ranges::find_if(
+              m_active_sources,
+              [&cmd](const auto& v)
+              {
+                return v.handle == cmd.sound;
+              }
+            );
+            if (it != m_active_sources.end())
+            {
+              m_active_sources.erase(it);
+            }
+          }
+          break;
+        }
       }
 
       std::ranges::fill(mix_buffer, 0);
@@ -184,16 +227,36 @@ void SoundSystem::sound_loop(std::stop_token st)
             break;
           }
 
-          // TODO: this is a horrible prototype, does not handle overflows and probably much more
+          // TODO: this is slighly better than last time, but still pretty bad
+          // im gonna keep this for now(need to get some things done in the engine),
+          // but i need to later probably watch how to do proper sound mixing
+          // probably will watch the "handmade hero" series,
+          // it seems like an overall good source of information
           u32 sample_index = v.frame_idx * 2;
-          mix_buffer[f * 2 + 0] += (i16) (data.samples[sample_index + 0] * v.volume);
-          mix_buffer[f * 2 + 1] += (i16) (data.samples[sample_index + 1] * v.volume);
+          mix_buffer[f * 2 + 0] = (i16) std::clamp(
+            (mix_buffer[f * 2 + 0] + (data.samples[sample_index + 0] * v.volume)),
+            (f32) std::numeric_limits<i16>::min(),
+            (f32) std::numeric_limits<i16>::max()
+          );
+          mix_buffer[f * 2 + 1] = (i16) std::clamp(
+            (mix_buffer[f * 2 + 1] + (data.samples[sample_index + 1] * v.volume)),
+            (f32) std::numeric_limits<i16>::min(),
+            (f32) std::numeric_limits<i16>::max()
+          );
 
           ++v.frame_idx;
         }
         if (v.frame_idx >= data.frames)
         {
-          it = m_active_sources.erase(it);
+          if (v.loop)
+          {
+            v.frame_idx = 0;
+            ++it;
+          }
+          else
+          {
+            it = m_active_sources.erase(it);
+          }
         }
         else
         {

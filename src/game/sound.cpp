@@ -215,6 +215,7 @@ void SoundSystem::sound_loop(std::stop_token st)
         }
       }
 
+      auto master = master_volume.load();
       std::ranges::fill(mix_buffer, 0);
       for (auto it = m_active_sources.begin(); it != m_active_sources.end();)
       {
@@ -234,12 +235,12 @@ void SoundSystem::sound_loop(std::stop_token st)
           // it seems like an overall good source of information
           u32 sample_index = v.frame_idx * 2;
           mix_buffer[f * 2 + 0] = (i16) std::clamp(
-            (mix_buffer[f * 2 + 0] + (data.samples[sample_index + 0] * v.volume)),
+            (mix_buffer[f * 2 + 0] + (data.samples[sample_index + 0] * v.volume * master)),
             (f32) std::numeric_limits<i16>::min(),
             (f32) std::numeric_limits<i16>::max()
           );
           mix_buffer[f * 2 + 1] = (i16) std::clamp(
-            (mix_buffer[f * 2 + 1] + (data.samples[sample_index + 1] * v.volume)),
+            (mix_buffer[f * 2 + 1] + (data.samples[sample_index + 1] * v.volume * master)),
             (f32) std::numeric_limits<i16>::min(),
             (f32) std::numeric_limits<i16>::max()
           );

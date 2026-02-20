@@ -50,7 +50,6 @@ private:
 
 private:
   os::Window& m_window;
-  os::Audio& m_audio;
 
   // NOTE: loading static models depends on the renderer constructor being called
   // before the scene constructor

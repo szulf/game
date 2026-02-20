@@ -51,7 +51,6 @@ struct SoundSource
   bool loop{};
 };
 
-// TODO: master volume
 class SoundSystem
 {
 public:
@@ -69,6 +68,9 @@ public:
 
 private:
   void sound_loop(std::stop_token st);
+
+public:
+  std::atomic<f32> master_volume{1.0f};
 
 private:
   std::jthread m_thread{};

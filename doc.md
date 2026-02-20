@@ -2,8 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-2. do the audio(multithreaded)
-
 ---
 
 ## NEXT BIG TODOS: (unordered)

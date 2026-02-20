@@ -53,3 +53,4 @@
 ## 4. BIG TODO: audio
 
 1. write a spsc queue
+2. do the audio(multithreaded)

@@ -145,15 +145,23 @@ private:
   std::unique_ptr<WindowData> m_window_data{};
 };
 
+struct AudioDescription
+{
+  u32 sample_rate{48'000};
+  u32 channels{2};
+  u32 bit_count{16};
+};
+
 class Audio
 {
 public:
   struct AudioData
   {
+    virtual ~AudioData() {}
   };
 
 public:
-  Audio();
+  Audio(AudioDescription desc = {});
   Audio(const Audio&) = delete;
   Audio& operator=(const Audio&) = delete;
   Audio(Audio&& other);

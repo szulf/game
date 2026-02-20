@@ -12,7 +12,6 @@
 
 enum class SoundHandle
 {
-  // TODO: remove test sounds
   SINE,
   SHOTGUN,
   TEST_MUSIC,

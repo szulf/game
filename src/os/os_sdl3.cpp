@@ -374,7 +374,7 @@ Window::~Window()
   }
 }
 
-static std::expected<SDL_Keycode, const char*> sdlk_from_key(Key key)
+static std::expected<SDL_Keycode, std::string_view> sdlk_from_key(Key key)
 {
   switch (key)
   {
@@ -464,7 +464,7 @@ static std::expected<SDL_Keycode, const char*> sdlk_from_key(Key key)
   }
 }
 
-static std::expected<Key, const char*> key_from_sdlk(SDL_Keycode sdlk)
+static std::expected<Key, std::string_view> key_from_sdlk(SDL_Keycode sdlk)
 {
   switch (sdlk)
   {
@@ -625,13 +625,28 @@ struct SDL3AudioData : public Audio::AudioData
   SDL_AudioStream* stream{};
 };
 
-Audio::Audio() : m_audio_data{std::make_unique<SDL3AudioData>()}
+static std::expected<SDL_AudioFormat, std::string_view> bit_count_to_sdl_audio_format(u32 bit_count)
 {
-  // TODO: get the spec from arguments?
+  switch (bit_count)
+  {
+    case 16:
+      return SDL_AUDIO_S16;
+    default:
+      return std::unexpected{"Invalid bit count provided."};
+  }
+}
+
+Audio::Audio(AudioDescription desc) : m_audio_data{std::make_unique<SDL3AudioData>()}
+{
+  auto audio_format = bit_count_to_sdl_audio_format(desc.bit_count);
+  if (!audio_format)
+  {
+    throw std::runtime_error{"Invalid audio description bit count provided."};
+  }
   SDL_AudioSpec spec{
-    .format = SDL_AUDIO_S16,
-    .channels = 2,
-    .freq = 48'000,
+    .format = *audio_format,
+    .channels = static_cast<i32>(desc.channels),
+    .freq = static_cast<i32>(desc.sample_rate),
   };
   auto& data = static_cast<SDL3AudioData&>(*m_audio_data);
   data.stream =

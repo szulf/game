@@ -35,13 +35,20 @@ enum class TextureFilteringOption
   NEAREST,
 };
 
+enum class TextureType
+{
+  TWO_DIMENSIONAL,
+  CUBEMAP,
+};
+
 struct TextureData
 {
+  TextureType type{TextureType::TWO_DIMENSIONAL};
   Image image;
-  TextureWrappingOption wrap_s;
-  TextureWrappingOption wrap_t;
-  TextureFilteringOption min_filter;
-  TextureFilteringOption mag_filter;
+  TextureWrappingOption wrap_s{};
+  TextureWrappingOption wrap_t{};
+  TextureFilteringOption min_filter{};
+  TextureFilteringOption mag_filter{};
 };
 struct TextureHandle : public UUID
 {

@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <GL/glcorearb.h>
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -218,9 +219,12 @@ static GLint gl_filtering_option_(TextureFilteringOption option)
   }
 }
 
+// TODO: actually set the format
 TextureGPU::TextureGPU(TextureHandle handle, AssetManager& asset_manager)
+  : m_format{static_cast<TextureFormat>(100)}
 {
   auto& texture = asset_manager.get(handle);
+  m_type = texture.type;
 
   glGenTextures(1, &m_id);
   glBindTexture(GL_TEXTURE_2D, m_id);
@@ -242,6 +246,91 @@ TextureGPU::TextureGPU(TextureHandle handle, AssetManager& asset_manager)
     texture.image.data()
   );
   glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+static GLenum gl_texture_type_(TextureType type)
+{
+  switch (type)
+  {
+    case TextureType::TWO_DIMENSIONAL:
+      return GL_TEXTURE_2D;
+    case TextureType::CUBEMAP:
+      return GL_TEXTURE_CUBE_MAP;
+    // TODO: maybe error on default?
+    default:
+      return GL_TEXTURE_2D;
+  }
+}
+
+static GLint gl_internal_format_(TextureFormat format)
+{
+  switch (format)
+  {
+    case TextureFormat::DEPTH_8:
+      return GL_DEPTH_COMPONENT;
+    // TODO: maybe error on default?
+    default:
+      return GL_RGBA32F;
+  }
+}
+
+static GLenum gl_format_(TextureFormat format)
+{
+  switch (format)
+  {
+    case TextureFormat::DEPTH_8:
+      return GL_DEPTH_COMPONENT;
+    // TODO: maybe error on default?
+    default:
+      return GL_UNSIGNED_BYTE;
+  }
+}
+
+TextureGPU::TextureGPU(
+  TextureType type,
+  uvec2 dimensions,
+  TextureFormat format,
+  TextureFilteringOption min_filter,
+  TextureFilteringOption mag_filter,
+  TextureWrappingOption wrap_s,
+  TextureWrappingOption wrap_t
+)
+  : m_type{type}, m_format{format}
+{
+  glGenTextures(1, &m_id);
+  glBindTexture(gl_texture_type_(type), m_id);
+  switch (type)
+  {
+    case TextureType::TWO_DIMENSIONAL:
+    {
+      ASSERT(false, "TODO");
+    }
+    break;
+    case TextureType::CUBEMAP:
+    {
+      for (i32 i = 0; i < 6; ++i)
+      {
+        glTexImage2D(
+          (GLenum) (GL_TEXTURE_CUBE_MAP_POSITIVE_X + i),
+          0,
+          gl_internal_format_(format),
+          static_cast<GLsizei>(dimensions.x),
+          static_cast<GLsizei>(dimensions.y),
+          0,
+          gl_format_(format),
+          GL_FLOAT,
+          nullptr
+        );
+      }
+    }
+    break;
+  }
+
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, gl_filtering_option_(min_filter));
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, gl_filtering_option_(mag_filter));
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, gl_wrapping_option_(wrap_s));
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, gl_wrapping_option_(wrap_t));
+  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 }
 
 TextureGPU::TextureGPU(TextureGPU&& other)
@@ -268,6 +357,30 @@ TextureGPU& TextureGPU::operator=(TextureGPU&& other)
 TextureGPU::~TextureGPU()
 {
   glDeleteTextures(1, &m_id);
+}
+
+static GLenum gl_attachment_(TextureFormat format)
+{
+  switch (format)
+  {
+    case TextureFormat::DEPTH_8:
+      return GL_DEPTH_ATTACHMENT;
+    // NOTE: this is bad i think
+    default:
+      return GL_COLOR_ATTACHMENT0;
+  }
+}
+
+RenderSurface::RenderSurface(TextureGPU& texture) : m_texture{texture}
+{
+  glGenFramebuffers(1, &m_id);
+  glBindFramebuffer(GL_FRAMEBUFFER, m_id);
+  // TODO: cant you have more than a single framebuffer texture? or maybe more than one attachment?
+  glFramebufferTexture(GL_FRAMEBUFFER, gl_attachment_(m_texture.format()), m_texture.handle(), 0);
+  // TODO: handle the draw and read buffer, if i find the need to
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 MeshGPU::MeshGPU(MeshHandle handle, RenderData& render_data, AssetManager& asset_manager)
@@ -528,7 +641,7 @@ void RenderPass::finish()
     break;
     case RenderPassType::POINT_SHADOW_MAP:
     {
-      glBindFramebuffer(GL_FRAMEBUFFER, m_render_data.shadow_framebuffer_id);
+      glBindFramebuffer(GL_FRAMEBUFFER, m_render_data.shadow_surface.handle());
     }
     break;
   }
@@ -679,7 +792,7 @@ void RenderPass::finish()
     {
       glActiveTexture(GL_TEXTURE1);
 
-      glBindTexture(GL_TEXTURE_CUBE_MAP, m_render_data.shadow_cubemap);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, m_render_data.shadow_cubemap.handle());
       glUniform1i(glGetUniformLocation(shader.handle(), "shadow_map"), 1);
 
       glUniform1f(
@@ -804,7 +917,10 @@ MeshHandle static_model_init_(
   return asset_manager.set(std::move(mesh));
 }
 
-Renderer::Renderer(AssetManager& asset_manager) : m_asset_manager{asset_manager}
+Renderer::Renderer(AssetManager& asset_manager) : m_asset_manager{asset_manager},
+  m_render_data{
+    .shadow_cubemap = {TextureType::CUBEMAP, RenderData::SHADOW_CUBEMAP_DIMENSIONS, TextureFormat::DEPTH_8}
+  }
 {
   glEnable(GL_DEPTH_TEST);
 
@@ -817,35 +933,6 @@ Renderer::Renderer(AssetManager& asset_manager) : m_asset_manager{asset_manager}
   glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.lights_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Light), nullptr, GL_DYNAMIC_DRAW);
   glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_LIGHTS, m_render_data.lights_ubo);
-
-  glGenTextures(1, &m_render_data.shadow_cubemap);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, m_render_data.shadow_cubemap);
-  for (i32 i = 0; i < 6; ++i)
-  {
-    glTexImage2D(
-      (GLenum) (GL_TEXTURE_CUBE_MAP_POSITIVE_X + i),
-      0,
-      GL_DEPTH_COMPONENT,
-      RenderData::SHADOW_CUBEMAP_DIMENSIONS.x,
-      RenderData::SHADOW_CUBEMAP_DIMENSIONS.y,
-      0,
-      GL_DEPTH_COMPONENT,
-      GL_FLOAT,
-      nullptr
-    );
-  }
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-  glGenFramebuffers(1, &m_render_data.shadow_framebuffer_id);
-  glBindFramebuffer(GL_FRAMEBUFFER, m_render_data.shadow_framebuffer_id);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_render_data.shadow_cubemap, 0);
-  glDrawBuffer(GL_NONE);
-  glReadBuffer(GL_NONE);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   glGenBuffers(1, &m_render_data.instance_data_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);

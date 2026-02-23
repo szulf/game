@@ -35,10 +35,24 @@ private:
   u32 m_id{};
 };
 
+enum class TextureFormat
+{
+  DEPTH_8,
+};
+
 class TextureGPU
 {
 public:
   TextureGPU(TextureHandle handle, AssetManager& asset_manager);
+  TextureGPU(
+    TextureType type,
+    uvec2 dimensions,
+    TextureFormat format,
+    TextureFilteringOption min_filter = TextureFilteringOption::NEAREST,
+    TextureFilteringOption mag_filter = TextureFilteringOption::NEAREST,
+    TextureWrappingOption wrap_s = TextureWrappingOption::CLAMP_TO_EDGE,
+    TextureWrappingOption wrap_t = TextureWrappingOption::CLAMP_TO_EDGE
+  );
   TextureGPU(const TextureGPU&) = delete;
   TextureGPU& operator=(const TextureGPU&) = delete;
   TextureGPU(TextureGPU&& other);
@@ -50,20 +64,43 @@ public:
     return m_id;
   }
 
+  [[nodiscard]] inline constexpr TextureFormat format() const noexcept
+  {
+    return m_format;
+  }
+
 private:
+  // NOTE: textures that i render to dont have a cpu equivalent, so i need to store this here too
+  TextureType m_type{};
+  TextureFormat m_format{};
   u32 m_id{};
 };
 
-// TODO: i dont like this
+// NOTE: an opengl framebuffer
+class RenderSurface
+{
+public:
+  RenderSurface(TextureGPU& texture);
+
+  [[nodiscard]] inline constexpr u32 handle() const noexcept
+  {
+    return m_id;
+  }
+
+private:
+  TextureGPU& m_texture;
+  u32 m_id{};
+};
+
 struct RenderData
 {
   u32 camera_ubo{};
   u32 lights_ubo{};
 
   static constexpr uvec2 SHADOW_CUBEMAP_DIMENSIONS = {1024, 1024};
-  // TODO: this should go through the TextureGPU class, but it doesnt handle cubemaps yet
-  u32 shadow_cubemap{};
-  u32 shadow_framebuffer_id{};
+  // NOTE: optional to delay the initialization a bit, dont know if that is needed tho
+  TextureGPU shadow_cubemap;
+  RenderSurface shadow_surface{shadow_cubemap};
 
   u32 instance_data_buffer{};
 };
@@ -239,7 +276,7 @@ public:
 
 private:
   AssetManager& m_asset_manager;
-  RenderData m_render_data{};
+  RenderData m_render_data;
   AssetGPUManager m_asset_gpu_manager{m_render_data, m_asset_manager};
 };
 

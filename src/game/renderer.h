@@ -38,7 +38,7 @@ private:
 class TextureGPU
 {
 public:
-  TextureGPU(TextureHandle handle);
+  TextureGPU(TextureHandle handle, AssetManager& asset_manager);
   TextureGPU(const TextureGPU&) = delete;
   TextureGPU& operator=(const TextureGPU&) = delete;
   TextureGPU(TextureGPU&& other);
@@ -54,10 +54,24 @@ private:
   u32 m_id{};
 };
 
+// TODO: i dont like this
+struct RenderData
+{
+  u32 camera_ubo{};
+  u32 lights_ubo{};
+
+  static constexpr uvec2 SHADOW_CUBEMAP_DIMENSIONS = {1024, 1024};
+  // TODO: this should go through the TextureGPU class, but it doesnt handle cubemaps yet
+  u32 shadow_cubemap{};
+  u32 shadow_framebuffer_id{};
+
+  u32 instance_data_buffer{};
+};
+
 class MeshGPU
 {
 public:
-  MeshGPU(MeshHandle handle);
+  MeshGPU(MeshHandle handle, RenderData& render_data, AssetManager& asset_manager);
   MeshGPU(const MeshGPU&) = delete;
   MeshGPU& operator=(const MeshGPU&) = delete;
   MeshGPU(MeshGPU&& other);
@@ -75,53 +89,60 @@ private:
   u32 m_ebo{};
 };
 
-// TODO: i dont like this
-struct RenderData
+class AssetGPUManager
 {
-  u32 camera_ubo{};
-  u32 lights_ubo{};
-
-  static constexpr uvec2 SHADOW_CUBEMAP_DIMENSIONS = {1024, 1024};
-  // TODO: this should go through the TextureGPU class, but it doesnt handle cubemaps yet
-  u32 shadow_cubemap{};
-  u32 shadow_framebuffer_id{};
-
-  u32 instance_data_buffer{};
-};
-
-template <typename Handle, typename T>
-struct AssetTypeGPU
-{
-  void create(Handle handle)
+public:
+  AssetGPUManager(RenderData& render_data, AssetManager& asset_manager)
+    : m_asset_manager{asset_manager}, m_render_data{render_data}
   {
-    m_data.insert_or_assign(handle, T{handle});
   }
 
-  const T& get(Handle handle) const
+  [[nodiscard]] inline constexpr const Shader& get(ShaderHandle handle) const
   {
-    return m_data.at(handle);
+    return m_shaders.at(handle);
+  }
+  [[nodiscard]] inline constexpr const TextureGPU& get(TextureHandle handle) const
+  {
+    return m_textures.at(handle);
+  }
+  [[nodiscard]] inline constexpr const MeshGPU& get(MeshHandle handle) const
+  {
+    return m_meshes.at(handle);
   }
 
-  bool contains(Handle handle) const
+  inline constexpr void create(ShaderHandle handle)
   {
-    return m_data.contains(handle);
+    m_shaders.insert_or_assign(handle, Shader{handle});
+  }
+  inline constexpr void create(TextureHandle handle)
+  {
+    m_textures.insert_or_assign(handle, TextureGPU{handle, m_asset_manager});
+  }
+  inline constexpr void create(MeshHandle handle)
+  {
+    m_meshes.insert_or_assign(handle, MeshGPU{handle, m_render_data, m_asset_manager});
+  }
+
+  [[nodiscard]] inline constexpr bool contains(ShaderHandle handle) const
+  {
+    return m_shaders.contains(handle);
+  }
+  [[nodiscard]] inline constexpr bool contains(TextureHandle handle) const
+  {
+    return m_textures.contains(handle);
+  }
+  [[nodiscard]] inline constexpr bool contains(MeshHandle handle) const
+  {
+    return m_meshes.contains(handle);
   }
 
 private:
-  std::unordered_map<Handle, T> m_data;
-};
+  AssetManager& m_asset_manager;
+  RenderData& m_render_data;
 
-struct AssetGPUManager
-{
-  static AssetGPUManager& instance()
-  {
-    static AssetGPUManager a{};
-    return a;
-  }
-
-  AssetTypeGPU<ShaderHandle, Shader> shaders;
-  AssetTypeGPU<TextureHandle, TextureGPU> textures;
-  AssetTypeGPU<MeshHandle, MeshGPU> meshes;
+  std::unordered_map<ShaderHandle, Shader> m_shaders;
+  std::unordered_map<TextureHandle, TextureGPU> m_textures;
+  std::unordered_map<MeshHandle, MeshGPU> m_meshes;
 };
 
 struct InstanceData
@@ -131,7 +152,7 @@ struct InstanceData
   vec3 tint;
 };
 
-struct RenderItem
+struct RenderCmd
 {
   MaterialHandle material;
   MeshHandle mesh;
@@ -158,6 +179,7 @@ enum class RenderPassType
 class RenderPass
 {
 public:
+  // NOTE: 3d
   void draw_mesh(
     MeshHandle handle,
     const vec3& pos,
@@ -178,16 +200,28 @@ public:
   void finish();
 
 private:
-  inline constexpr RenderPass(RenderPassType type, const Camera& camera, const vec3& ambient_color)
-    : m_type{type}, m_camera{camera}, m_ambient_color{ambient_color}
+  inline constexpr RenderPass(
+    RenderPassType type,
+    const Camera& camera,
+    const vec3& ambient_color,
+    RenderData& render_data,
+    AssetManager& asset_manager,
+    AssetGPUManager& asset_gpu_manager
+  )
+    : m_asset_manager{asset_manager}, m_asset_gpu_manager{asset_gpu_manager},
+      m_render_data{render_data}, m_type{type}, m_camera{camera}, m_ambient_color{ambient_color}
   {
   }
 
 private:
-  // TODO: i dont like have a pass 'type'
+  AssetManager& m_asset_manager;
+  AssetGPUManager& m_asset_gpu_manager;
+  RenderData& m_render_data;
+
+  // TODO: i dont like having a pass 'type'
   RenderPassType m_type{};
   const Camera& m_camera;
-  std::vector<RenderItem> m_items{};
+  std::vector<RenderCmd> m_cmds{};
   Light m_light{};
   vec3 m_ambient_color{};
   const Camera* m_shadow_map_camera{};
@@ -198,10 +232,15 @@ private:
 class Renderer
 {
 public:
-  Renderer();
+  Renderer(AssetManager& asset_manager);
 
   RenderPass
   begin_pass(RenderPassType type, const Camera& camera, const vec3& ambient_color = {1, 1, 1});
+
+private:
+  AssetManager& m_asset_manager;
+  RenderData m_render_data{};
+  AssetGPUManager m_asset_gpu_manager{m_render_data, m_asset_manager};
 };
 
 enum UBO_Index

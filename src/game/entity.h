@@ -1,9 +1,10 @@
 #pragma once
 
-#include "base/base.h"
-
 #include <string>
 #include <vector>
+
+#include "base/base.h"
+#include "base/math.h"
 
 #include "assets.h"
 
@@ -14,7 +15,7 @@ static constexpr f32 PLAYER_MASS = 80.0f;
 static constexpr vec3 LIGHT_BULB_ON_TINT = {1.0f, 1.0f, 1.0f};
 static constexpr vec3 LIGHT_BULB_OFF_TINT = {0.1f, 0.1f, 0.1f};
 
-vec2 bounding_box_from_mesh(MeshHandle mesh);
+vec2 bounding_box_from_mesh(MeshHandle mesh, AssetManager& asset_manager);
 
 struct Entity
 {
@@ -30,7 +31,7 @@ public:
 
 public:
   Entity() {}
-  Entity(const std::filesystem::path& path);
+  Entity(const std::filesystem::path& path, AssetManager& asset_manager);
 
   [[nodiscard]] inline constexpr bool controlled_by_player() const noexcept
   {
@@ -90,7 +91,7 @@ bool entities_collide(const Entity& ea, const Entity& eb);
 
 struct Scene
 {
-  Scene(const std::filesystem::path& path);
+  Scene(const std::filesystem::path& path, AssetManager& asset_manager);
 
   vec3 ambient_color{};
   std::vector<Entity> entities{};

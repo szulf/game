@@ -6,17 +6,15 @@
 #include "base/base.h"
 #include "base/math.h"
 
+// TODO: error placeholder
 struct Image
 {
-  Image() {}
+  Image(const std::filesystem::path& path);
   Image(const Image& other) = delete;
   Image& operator=(const Image& other) = delete;
   Image(Image&& other);
   Image& operator=(Image&& other);
   ~Image();
-
-  static Image from_file(const std::filesystem::path& path);
-  static Image error_placeholder();
 
   [[nodiscard]] constexpr inline u32 width() const
   {

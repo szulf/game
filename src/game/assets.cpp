@@ -6,11 +6,9 @@
 
 #include "parser.h"
 
-template <>
-void AssetType<MeshHandle, MeshData>::clear()
-{
-  m_data.erase(m_data.begin() + StaticModel_COUNT, m_data.end());
-}
+MeshHandle static_model_cube_wires{};
+MeshHandle static_model_ring{};
+MeshHandle static_model_line{};
 
 struct OBJContext
 {
@@ -37,11 +35,7 @@ TextureHandle AssetManager::obj_get_texture_by_path(const std::filesystem::path&
     return m_texture_handles[path];
   }
 
-  TextureData texture{};
-  // TODO: create an error placeholder texture
-  auto img = Image::from_file(path.c_str());
-  texture.image = std::move(img);
-  auto texture_handle = textures.set(std::move(texture));
+  auto texture_handle = set({.image = Image{path}});
   m_texture_handles.insert_or_assign(path.string(), texture_handle);
   return texture_handle;
 }
@@ -75,7 +69,7 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
         {
           mat.shader = ShaderHandle::LIGHTING;
         }
-        auto material_handle = materials.set(std::move(mat));
+        auto material_handle = set(std::move(mat));
         m_material_handles.insert_or_assign(mat_name, material_handle);
       }
       mat_name = parser::word(pos);
@@ -157,7 +151,7 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
     {
       mat.shader = ShaderHandle::LIGHTING;
     }
-    auto material_handle = materials.set(std::move(mat));
+    auto material_handle = set(std::move(mat));
     m_material_handles.insert_or_assign(mat_name, material_handle);
   }
 }
@@ -258,14 +252,21 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
       ASSERT(false, "Invalid key found. ({}).", key);
     }
   }
-  return meshes.set(std::move(ctx.out));
+  return set(std::move(ctx.out));
 }
 
 void AssetManager::clear()
 {
-  textures.clear();
-  materials.clear();
-  meshes.clear();
+  m_textures.clear();
+  m_materials.clear();
+  for (const auto& [handle, _] : m_meshes)
+  {
+    if (handle != static_model_cube_wires && handle != static_model_line &&
+        handle != static_model_ring)
+    {
+      m_meshes.erase(handle);
+    }
+  }
 
   m_texture_handles.clear();
   m_material_handles.clear();

@@ -8,10 +8,6 @@
 #include "game/assets.h"
 #include "os/gl_functions.h"
 
-// TODO: should be owned by the Renderer class,
-// but cant be bothered to work more on the renderer for now
-static RenderData render_data = {};
-
 static std::string_view shader_type_to_string(ShaderType type)
 {
   switch (type)
@@ -222,9 +218,9 @@ static GLint gl_filtering_option_(TextureFilteringOption option)
   }
 }
 
-TextureGPU::TextureGPU(TextureHandle handle)
+TextureGPU::TextureGPU(TextureHandle handle, AssetManager& asset_manager)
 {
-  auto& texture = AssetManager::instance().textures.get(handle);
+  auto& texture = asset_manager.get(handle);
 
   glGenTextures(1, &m_id);
   glBindTexture(GL_TEXTURE_2D, m_id);
@@ -274,9 +270,9 @@ TextureGPU::~TextureGPU()
   glDeleteTextures(1, &m_id);
 }
 
-MeshGPU::MeshGPU(MeshHandle handle)
+MeshGPU::MeshGPU(MeshHandle handle, RenderData& render_data, AssetManager& asset_manager)
 {
-  auto& mesh_data = AssetManager::instance().meshes.get(handle);
+  auto& mesh_data = asset_manager.get(handle);
   auto& vertices = mesh_data.vertices;
   auto& indices = mesh_data.indices;
 
@@ -432,54 +428,49 @@ mat4 get_transform_(const vec3& pos, const vec3& size, f32 rotation)
 void RenderPass::draw_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
 {
   auto transform = get_transform_(pos, {1.0f, 1.0f, 1.0f}, rotation);
-  auto& mesh = AssetManager::instance().meshes.get(handle);
+  auto& mesh = m_asset_manager.get(handle);
   for (usize i = 0; i < mesh.submeshes.size(); ++i)
   {
-    RenderItem item = {};
-    item.mesh = handle;
-    item.submesh_idx = i;
-    item.material = mesh.submeshes[i].material;
-    item.instance_data.transform = transform;
-    item.instance_data.tint = tint;
-    m_items.push_back(item);
+    m_cmds.push_back({
+      .material = mesh.submeshes[i].material,
+      .mesh = handle,
+      .submesh_idx = i,
+      .instance_data = {.transform = transform, .tint = tint},
+    });
   }
 }
 
 void RenderPass::draw_cube_wires(const vec3& pos, const vec3& size, const vec3& color)
 {
-  auto transform = get_transform_(pos, size, 0.0f);
-  RenderItem item = {};
-  item.mesh = StaticModel_CUBE_WIRES;
-  item.submesh_idx = 0;
-  item.material = AssetManager::instance().meshes.get(StaticModel_CUBE_WIRES).submeshes[0].material;
-  item.instance_data.transform = transform;
-  item.instance_data.tint = color;
-  m_items.push_back(item);
+  m_cmds.push_back({
+    .material = m_asset_manager.get(static_model_cube_wires).submeshes[0].material,
+    .mesh = static_model_cube_wires,
+    .submesh_idx = 0,
+    .instance_data = {.transform = get_transform_(pos, size, 0.0f), .tint = color},
+  });
 }
 
 void RenderPass::draw_ring(const vec3& pos, f32 radius, const vec3& color)
 {
   auto diameter = 2.0f * radius;
   auto transform = get_transform_(pos, {diameter, 1.0f, diameter}, 0.0f);
-  RenderItem item = {};
-  item.mesh = StaticModel_RING;
-  item.submesh_idx = 0;
-  item.material = AssetManager::instance().meshes.get(StaticModel_RING).submeshes[0].material;
-  item.instance_data.transform = transform;
-  item.instance_data.tint = color;
-  m_items.push_back(item);
+  m_cmds.push_back({
+    .material = m_asset_manager.get(static_model_ring).submeshes[0].material,
+    .mesh = static_model_ring,
+    .submesh_idx = 0,
+    .instance_data = {.transform = transform, .tint = color}
+  });
 }
 
 void RenderPass::draw_line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
 {
   auto transform = get_transform_(pos, {length, 1.0f, length}, rotation);
-  RenderItem item = {};
-  item.mesh = StaticModel_LINE;
-  item.submesh_idx = 0;
-  item.material = AssetManager::instance().meshes.get(StaticModel_LINE).submeshes[0].material;
-  item.instance_data.transform = transform;
-  item.instance_data.tint = color;
-  m_items.push_back(item);
+  m_cmds.push_back({
+    .material = m_asset_manager.get(static_model_line).submeshes[0].material,
+    .mesh = static_model_line,
+    .submesh_idx = 0,
+    .instance_data = {.transform = transform, .tint = color}
+  });
 }
 
 void RenderPass::set_light(const vec3& pos, const vec3& color)
@@ -512,11 +503,9 @@ static GLenum get_primitive_(RenderPrimitive primitive)
 
 void RenderPass::finish()
 {
-  auto& assets = AssetManager::instance();
-  auto& assets_gpu = AssetGPUManager::instance();
   std::ranges::sort(
-    m_items,
-    [](const RenderItem& a, const RenderItem& b) -> bool
+    m_cmds,
+    [](const RenderCmd& a, const RenderCmd& b) -> bool
     {
       if (a.material != b.material)
       {
@@ -539,7 +528,7 @@ void RenderPass::finish()
     break;
     case RenderPassType::POINT_SHADOW_MAP:
     {
-      glBindFramebuffer(GL_FRAMEBUFFER, render_data.shadow_framebuffer_id);
+      glBindFramebuffer(GL_FRAMEBUFFER, m_render_data.shadow_framebuffer_id);
     }
     break;
   }
@@ -553,7 +542,7 @@ void RenderPass::finish()
     camera_std140.view_pos = m_camera.pos();
     camera_std140.proj_view = m_camera.projection() * m_camera.look_at();
     camera_std140.far_plane = m_camera.far_plane();
-    glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.camera_ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera_std140), &camera_std140);
   }
 
@@ -564,50 +553,49 @@ void RenderPass::finish()
     light_std140.constant = Light::CONSTANT;
     light_std140.linear = Light::LINEAR;
     light_std140.quadratic = Light::QUADRATIC;
-    glBindBuffer(GL_UNIFORM_BUFFER, render_data.lights_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.lights_ubo);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Light), &light_std140);
   }
 
-  for (usize item_idx = 0; item_idx < m_items.size();)
+  for (usize cmd_idx = 0; cmd_idx < m_cmds.size();)
   {
-    const auto& item = m_items[item_idx];
-    const auto& mesh = assets.meshes.get(item.mesh);
-    const auto& submesh = mesh.submeshes[item.submesh_idx];
-    const auto& material = assets.materials.get(item.material);
+    const auto& cmd = m_cmds[cmd_idx];
+    const auto& mesh = m_asset_manager.get(cmd.mesh);
+    const auto& submesh = mesh.submeshes[cmd.submesh_idx];
+    const auto& material = m_asset_manager.get(cmd.material);
 
-    if (!assets_gpu.meshes.contains(item.mesh))
+    if (!m_asset_gpu_manager.contains(cmd.mesh))
     {
-      assets_gpu.meshes.create(item.mesh);
+      m_asset_gpu_manager.create(cmd.mesh);
     }
-    if (!assets_gpu.textures.contains(material.diffuse_map))
+    if (material.diffuse_map && !m_asset_gpu_manager.contains(*material.diffuse_map))
     {
-      assets_gpu.textures.create(material.diffuse_map);
+      m_asset_gpu_manager.create(*material.diffuse_map);
     }
 
-    usize batch_idx = item_idx + 1;
-    while ((batch_idx < m_items.size() && batch_idx - item_idx < InstanceData::MAX) &&
-           item.mesh == m_items[batch_idx].mesh &&
-           item.submesh_idx == m_items[batch_idx].submesh_idx &&
-           item.material == m_items[batch_idx].material)
+    usize batch_idx = cmd_idx + 1;
+    while ((batch_idx < m_cmds.size() && batch_idx - cmd_idx < InstanceData::MAX) &&
+           cmd.mesh == m_cmds[batch_idx].mesh && cmd.submesh_idx == m_cmds[batch_idx].submesh_idx &&
+           cmd.material == m_cmds[batch_idx].material)
     {
       ++batch_idx;
     }
-    const auto batch_size = batch_idx - item_idx;
+    const auto batch_size = batch_idx - cmd_idx;
 
     std::vector<InstanceData> instance_data{};
     instance_data.reserve(batch_size);
-    for (usize i = item_idx; i < batch_idx; ++i)
+    for (usize i = cmd_idx; i < batch_idx; ++i)
     {
-      instance_data.push_back(m_items[i].instance_data);
+      instance_data.push_back(m_cmds[i].instance_data);
     }
 
     ShaderHandle handle =
       m_type == RenderPassType::POINT_SHADOW_MAP ? ShaderHandle::SHADOW_DEPTH : material.shader;
-    if (!assets_gpu.shaders.contains(handle))
+    if (!m_asset_gpu_manager.contains(handle))
     {
-      assets_gpu.shaders.create(handle);
+      m_asset_gpu_manager.create(handle);
     }
-    const auto& shader = assets_gpu.shaders.get(handle);
+    const auto& shader = m_asset_gpu_manager.get(handle);
 
     glUseProgram(shader.handle());
 
@@ -634,10 +622,13 @@ void RenderPass::finish()
         glGetUniformLocation(shader.handle(), "material.specular_exponent"),
         material.specular_exponent
       );
-      const auto& diffuse_map = assets_gpu.textures.get(material.diffuse_map);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, diffuse_map.handle());
-      glUniform1i(glGetUniformLocation(shader.handle(), "material.diffuse_map"), 0);
+      if (material.diffuse_map)
+      {
+        const auto& diffuse_map = m_asset_gpu_manager.get(*material.diffuse_map);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuse_map.handle());
+        glUniform1i(glGetUniformLocation(shader.handle(), "material.diffuse_map"), 0);
+      }
     }
 
     if (m_type == RenderPassType::POINT_SHADOW_MAP)
@@ -678,7 +669,7 @@ void RenderPass::finish()
 
       glUniformMatrix4fv(
         glGetUniformLocation(shader.handle(), "shadow_matrices"),
-        (GLsizei) 6,
+        6,
         false,
         transforms[0].data()
       );
@@ -688,7 +679,7 @@ void RenderPass::finish()
     {
       glActiveTexture(GL_TEXTURE1);
 
-      glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap);
+      glBindTexture(GL_TEXTURE_CUBE_MAP, m_render_data.shadow_cubemap);
       glUniform1i(glGetUniformLocation(shader.handle(), "shadow_map"), 1);
 
       glUniform1f(
@@ -697,7 +688,7 @@ void RenderPass::finish()
       );
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);
     glBufferSubData(
       GL_ARRAY_BUFFER,
       0,
@@ -705,7 +696,7 @@ void RenderPass::finish()
       instance_data.data()
     );
 
-    glBindVertexArray(assets_gpu.meshes.get(item.mesh).handle());
+    glBindVertexArray(m_asset_gpu_manager.get(cmd.mesh).handle());
 
     glDrawElementsInstanced(
       get_primitive_(mesh.primitive),
@@ -715,7 +706,7 @@ void RenderPass::finish()
       (GLsizei) batch_size
     );
 
-    item_idx += batch_size;
+    cmd_idx += batch_size;
   }
 }
 
@@ -793,43 +784,42 @@ static Vertex line_vertices[] = {
 
 static u32 line_indices[] = {0, 1};
 
-void static_model_init_(
-  StaticModel static_model,
+MeshHandle static_model_init_(
   ShaderHandle shader,
   std::vector<Vertex>&& vertices,
   std::vector<u32>&& indices,
-  RenderPrimitive primitive
+  RenderPrimitive primitive,
+  AssetManager& asset_manager
 )
 {
   Material material = {};
   material.shader = shader;
   material.diffuse_color = {1.0f, 1.0f, 1.0f};
-  auto material_handle = AssetManager::instance().materials.set(std::move(material));
+  auto material_handle = asset_manager.set(std::move(material));
   MeshData mesh = {};
   mesh.vertices = std::move(vertices);
   mesh.indices = std::move(indices);
   mesh.primitive = primitive;
   mesh.submeshes.push_back({0, mesh.indices.size(), material_handle});
-  auto mesh_handle = AssetManager::instance().meshes.set(std::move(mesh));
-  ASSERT(mesh_handle == static_model, "failed to initalize a static model");
+  return asset_manager.set(std::move(mesh));
 }
 
-Renderer::Renderer()
+Renderer::Renderer(AssetManager& asset_manager) : m_asset_manager{asset_manager}
 {
   glEnable(GL_DEPTH_TEST);
 
-  glGenBuffers(1, &render_data.camera_ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
+  glGenBuffers(1, &m_render_data.camera_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.camera_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Camera), nullptr, GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_CAMERA, render_data.camera_ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_CAMERA, m_render_data.camera_ubo);
 
-  glGenBuffers(1, &render_data.lights_ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, render_data.lights_ubo);
+  glGenBuffers(1, &m_render_data.lights_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.lights_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Light), nullptr, GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_LIGHTS, render_data.lights_ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, UBO_INDEX_LIGHTS, m_render_data.lights_ubo);
 
-  glGenTextures(1, &render_data.shadow_cubemap);
-  glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap);
+  glGenTextures(1, &m_render_data.shadow_cubemap);
+  glBindTexture(GL_TEXTURE_CUBE_MAP, m_render_data.shadow_cubemap);
   for (i32 i = 0; i < 6; ++i)
   {
     glTexImage2D(
@@ -850,43 +840,43 @@ Renderer::Renderer()
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-  glGenFramebuffers(1, &render_data.shadow_framebuffer_id);
-  glBindFramebuffer(GL_FRAMEBUFFER, render_data.shadow_framebuffer_id);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, render_data.shadow_cubemap, 0);
+  glGenFramebuffers(1, &m_render_data.shadow_framebuffer_id);
+  glBindFramebuffer(GL_FRAMEBUFFER, m_render_data.shadow_framebuffer_id);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_render_data.shadow_cubemap, 0);
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  glGenBuffers(1, &render_data.instance_data_buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
+  glGenBuffers(1, &m_render_data.instance_data_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);
   glBufferData(GL_ARRAY_BUFFER, InstanceData::MAX * sizeof(InstanceData), nullptr, GL_STATIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  static_model_init_(
-    StaticModel_CUBE_WIRES,
+  static_model_cube_wires = static_model_init_(
     ShaderHandle::DEFAULT,
     std::vector<Vertex>{cube_vertices, cube_vertices + ARRAY_SIZE(cube_vertices)},
     std::vector<u32>{cube_wires_indices, cube_wires_indices + ARRAY_SIZE(cube_wires_indices)},
-    RenderPrimitive::LINE_STRIP
+    RenderPrimitive::LINE_STRIP,
+    m_asset_manager
   );
-  static_model_init_(
-    StaticModel_RING,
+  static_model_ring = static_model_init_(
     ShaderHandle::DEFAULT,
     std::vector<Vertex>{ring_vertices, ring_vertices + ARRAY_SIZE(ring_vertices)},
     std::vector<u32>{ring_indices, ring_indices + ARRAY_SIZE(ring_indices)},
-    RenderPrimitive::LINE_STRIP
+    RenderPrimitive::LINE_STRIP,
+    m_asset_manager
   );
-  static_model_init_(
-    StaticModel_LINE,
+  static_model_line = static_model_init_(
     ShaderHandle::DEFAULT,
     std::vector<Vertex>{line_vertices, line_vertices + ARRAY_SIZE(line_vertices)},
     std::vector<u32>{line_indices, line_indices + ARRAY_SIZE(line_indices)},
-    RenderPrimitive::LINE_STRIP
+    RenderPrimitive::LINE_STRIP,
+    m_asset_manager
   );
 }
 
 RenderPass
 Renderer::begin_pass(RenderPassType type, const Camera& camera, const vec3& ambient_color)
 {
-  return {type, camera, ambient_color};
+  return {type, camera, ambient_color, m_render_data, m_asset_manager, m_asset_gpu_manager};
 }

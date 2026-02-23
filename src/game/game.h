@@ -8,8 +8,8 @@
 
 #include "sound.h"
 #include "camera.h"
-#include "renderer.h"
 #include "entity.h"
+#include "renderer.h"
 
 enum class Action
 {
@@ -51,9 +51,8 @@ private:
 private:
   os::Window& m_window;
 
-  // NOTE: loading static models depends on the renderer constructor being called
-  // before the scene constructor
-  Renderer m_renderer{};
+  AssetManager m_asset_manager{};
+  Renderer m_renderer;
 
   SoundSystem m_sound_system;
 

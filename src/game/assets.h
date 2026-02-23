@@ -7,6 +7,7 @@
 
 #include "base/base.h"
 #include "base/math.h"
+#include "base/uuid.h"
 
 #include "vertex.h"
 #include "image.h"
@@ -34,7 +35,6 @@ enum class TextureFilteringOption
   NEAREST,
 };
 
-using TextureHandle = usize;
 struct TextureData
 {
   Image image;
@@ -43,17 +43,22 @@ struct TextureData
   TextureFilteringOption min_filter;
   TextureFilteringOption mag_filter;
 };
+struct TextureHandle : public UUID
+{
+};
 
-using MaterialHandle = usize;
 struct Material
 {
-  vec3 diffuse_color;
-  vec3 specular_color;
-  f32 specular_exponent;
+  vec3 diffuse_color{};
+  vec3 specular_color{};
+  f32 specular_exponent{};
 
-  TextureHandle diffuse_map;
+  std::optional<TextureHandle> diffuse_map{};
 
-  ShaderHandle shader;
+  ShaderHandle shader{};
+};
+struct MaterialHandle : public UUID
+{
 };
 
 struct Submesh
@@ -69,16 +74,6 @@ enum class RenderPrimitive
   LINE_STRIP,
 };
 
-enum StaticModel
-{
-  StaticModel_CUBE_WIRES,
-  StaticModel_RING,
-  StaticModel_LINE,
-
-  StaticModel_COUNT,
-};
-
-using MeshHandle = usize;
 struct MeshData
 {
   std::vector<Vertex> vertices;
@@ -87,35 +82,14 @@ struct MeshData
   std::vector<Submesh> submeshes;
   RenderPrimitive primitive;
 };
-
-template <typename Handle, typename T>
-class AssetType
+struct MeshHandle : public UUID
 {
-public:
-  Handle set(T&& t)
-  {
-    m_data.emplace_back(std::move(t));
-    return m_data.size() - 1;
-  }
-
-  const T& get(Handle handle) const
-  {
-    return m_data[(usize) handle];
-  }
-
-  void clear()
-  {
-    m_data.clear();
-  }
-
-  [[nodiscard]] inline constexpr usize size() const
-  {
-    return m_data.size();
-  }
-
-private:
-  std::vector<T> m_data{};
 };
+
+extern MeshHandle static_model_cube_wires;
+extern MeshHandle static_model_ring;
+extern MeshHandle static_model_line;
+static constexpr usize STATIC_MODEL_COUNT = 3;
 
 class AssetManager
 {
@@ -123,24 +97,60 @@ public:
   MeshHandle load_obj(const std::filesystem::path& path);
   void clear();
 
-  inline constexpr static AssetManager& instance()
+  [[nodiscard]] inline constexpr const TextureData& get(TextureHandle handle) const
   {
-    static AssetManager a{};
-    return a;
+    return m_textures.at(handle);
+  }
+  [[nodiscard]] inline constexpr const Material& get(MaterialHandle handle) const
+  {
+    return m_materials.at(handle);
+  }
+  [[nodiscard]] inline constexpr const MeshData& get(MeshHandle handle) const
+  {
+    return m_meshes.at(handle);
+  }
+
+  inline constexpr TextureHandle set(TextureData&& texture)
+  {
+    TextureHandle handle{};
+    m_textures.insert_or_assign(handle, std::move(texture));
+    return handle;
+  }
+  inline constexpr MaterialHandle set(Material&& material)
+  {
+    MaterialHandle handle{};
+    m_materials.insert_or_assign(handle, std::move(material));
+    return handle;
+  }
+  inline constexpr MeshHandle set(MeshData&& mesh)
+  {
+    MeshHandle handle{};
+    m_meshes.insert_or_assign(handle, std::move(mesh));
+    return handle;
+  }
+
+  [[nodiscard]] inline constexpr bool contains(TextureHandle handle) const
+  {
+    return m_textures.contains(handle);
+  }
+  [[nodiscard]] inline constexpr bool contains(MaterialHandle handle) const
+  {
+    return m_materials.contains(handle);
+  }
+  [[nodiscard]] inline constexpr bool contains(MeshHandle handle) const
+  {
+    return m_meshes.contains(handle);
   }
 
 private:
-  AssetManager() {}
-
   TextureHandle obj_get_texture_by_path(const std::filesystem::path& path);
   void load_mtl_file(const std::filesystem::path& path);
 
-public:
-  AssetType<TextureHandle, TextureData> textures;
-  AssetType<MaterialHandle, Material> materials;
-  AssetType<MeshHandle, MeshData> meshes;
-
 private:
+  std::unordered_map<TextureHandle, TextureData> m_textures;
+  std::unordered_map<MaterialHandle, Material> m_materials;
+  std::unordered_map<MeshHandle, MeshData> m_meshes;
+
   std::unordered_map<std::string, TextureHandle> m_texture_handles;
   std::unordered_map<std::string, MaterialHandle> m_material_handles;
 };

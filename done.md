@@ -54,3 +54,5 @@
 
 1. write a spsc queue
 2. do the audio(multithreaded)
+
+## 5. BIG TODO: basic ui

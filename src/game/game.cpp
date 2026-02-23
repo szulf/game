@@ -4,9 +4,9 @@
 #include <fstream>
 #include <string>
 
+#include "base/uuid.h"
 #include "camera.h"
 #include "os/os.h"
-#include "renderer.h"
 #include "entity.h"
 #include "parser.h"
 
@@ -71,7 +71,8 @@ Keymap load_gkey(const std::filesystem::path& path)
 }
 
 Game::Game(os::Window& window, os::Audio& audio)
-  : m_window{window}, m_sound_system{audio}, m_scene{"data/main.gscn"}, m_keymap{load_gkey("data/keymap.gkey")},
+  : m_window{window}, m_renderer{m_asset_manager}, m_sound_system{audio},
+  m_scene{"data/main.gscn", m_asset_manager}, m_keymap{load_gkey("data/keymap.gkey")},
   m_gameplay_camera{CameraDescription{
     .type = CameraType::PERSPECTIVE,
     .pos = {0, 12, 8},
@@ -84,7 +85,6 @@ Game::Game(os::Window& window, os::Audio& audio)
     .viewport = m_window.dimensions(),
   }}, m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
-  m_sound_system.master_volume = 0.1f;
   m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
 }
 

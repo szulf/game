@@ -5,11 +5,11 @@
 
 #include "parser.h"
 
-vec2 bounding_box_from_mesh(MeshHandle handle)
+vec2 bounding_box_from_mesh(MeshHandle handle, AssetManager& asset_manager)
 {
   vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
   vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
-  const auto& mesh = AssetManager::instance().meshes.get(handle);
+  const auto& mesh = asset_manager.get(handle);
 
   for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size(); ++vertex_idx)
   {
@@ -59,7 +59,7 @@ static vec2 gfmt_parse_vec2(parser::Pos& pos)
   return out;
 }
 
-Entity::Entity(const std::filesystem::path& path)
+Entity::Entity(const std::filesystem::path& path, AssetManager& asset_manager)
 {
   ASSERT(
     path.extension() == ".gent",
@@ -134,7 +134,7 @@ Entity::Entity(const std::filesystem::path& path)
     else if (key == "mesh")
     {
       mesh_path = parser::word(ppos);
-      mesh = AssetManager::instance().load_obj(mesh_path);
+      mesh = asset_manager.load_obj(mesh_path);
     }
     else if (key == "interactable")
     {
@@ -177,11 +177,11 @@ Entity::Entity(const std::filesystem::path& path)
   }
   if (calculate_bounding_box)
   {
-    bounding_box = bounding_box_from_mesh(mesh);
+    bounding_box = bounding_box_from_mesh(mesh, asset_manager);
   }
 }
 
-Scene::Scene(const std::filesystem::path& path)
+Scene::Scene(const std::filesystem::path& path, AssetManager& asset_manager)
 {
   ASSERT(
     path.extension() == ".gscn",
@@ -214,7 +214,7 @@ Scene::Scene(const std::filesystem::path& path)
     }
     else
     {
-      Entity entity{(path.parent_path() / key).concat(".gent")};
+      Entity entity{(path.parent_path() / key).concat(".gent"), asset_manager};
       entity_cache.insert_or_assign(key, entity);
       entities.push_back(entity);
     }

@@ -4,6 +4,14 @@
 
 #include "stb/image.h"
 
+Image::Image(const std::filesystem::path& path)
+{
+  int width, height, channels;
+  m_data = stbi_load(path.c_str(), &width, &height, &channels, 4);
+  ASSERT(channels == 4, "Invalid image file.");
+  m_dimensions = {static_cast<u32>(width), static_cast<u32>(height)};
+}
+
 Image::Image(Image&& other)
 {
   m_data = other.m_data;
@@ -35,16 +43,7 @@ Image::~Image()
   }
 }
 
-Image Image::from_file(const std::filesystem::path& path)
-{
-  Image out{};
-  int width, height, channels;
-  out.m_data = stbi_load(path.c_str(), &width, &height, &channels, 4);
-  ASSERT(channels == 4, "Invalid image file.");
-  out.m_dimensions = {static_cast<u32>(width), static_cast<u32>(height)};
-  return out;
-}
-
+#if 0
 static u8 error_placeholder_data[] = {
   // clang-format off
   0x00, 0x00, 0x00, 0xFF,
@@ -53,11 +52,4 @@ static u8 error_placeholder_data[] = {
   0x00, 0x00, 0x00, 0xFF,
   // clang-format on
 };
-
-Image Image::error_placeholder()
-{
-  Image out = {};
-  out.m_dimensions = {2, 2};
-  out.m_data = error_placeholder_data;
-  return out;
-}
+#endif

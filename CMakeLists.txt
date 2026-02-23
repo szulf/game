@@ -83,6 +83,7 @@ add_library(base STATIC
   src/base/math.h src/base/math.cpp
   src/base/enum_array.h
   src/base/spsc_queue.h
+  src/base/uuid.h src/base/uuid.cpp
 )
 target_compile_options(base PRIVATE ${flags})
 target_compile_definitions(base PRIVATE ${definitions})
@@ -100,10 +101,10 @@ add_executable(game
   src/main.cpp
   src/game/game.h src/game/game.cpp
   src/game/vertex.h src/game/vertex.cpp
-  src/game/assets.h src/game/assets.cpp
   src/game/camera.h src/game/camera.cpp
   src/game/entity.h src/game/entity.cpp
   src/game/image.h src/game/image.cpp
+  src/game/assets.h src/game/assets.cpp
   src/game/renderer.h src/game/renderer.cpp
   src/game/parser.h src/game/parser.cpp
   src/game/sound.h src/game/sound.cpp

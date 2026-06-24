@@ -1,5 +1,3 @@
-#include "ui.h"
-
 namespace ui {
 
 void render(const std::vector<Command>& commands) {

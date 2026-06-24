@@ -7,6 +7,7 @@
 #include <functional>
 #include <print>
 #include <bitset>
+#include <limits>
 
 #include "raylib.h"
 #include "raymath.h"
@@ -21,6 +22,10 @@ using u64 = uint64_t;
 using f32 = float;
 using f64 = double;
 
+static constexpr u16 U16_MAX = std::numeric_limits<u16>::max();
+
+// TODO: add a way to add messages to asserts
+// and change all NOTE's near the asserts to the messages
 #define ASSERT(expr)                                                                               \
   do {                                                                                             \
     if (!(expr)) {                                                                                 \
@@ -91,8 +96,14 @@ Vector2 vector2_from_ivec2(const ivec2& vec) {
   return {f32(vec.x), f32(vec.y)};
 }
 
+#include "ui.h"
+#include "items.h"
+#include "entity.h"
+#include "game.h"
+
 #include "ui.cpp"
-#include "ecs.cpp"
+#include "entity.cpp"
+#include "systems.cpp"
 #include "game.cpp"
 
 static constexpr i32 TPS = 60;

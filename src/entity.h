@@ -48,6 +48,39 @@ enum class Direction {
   Left,
   Count,
 };
+
+Direction opposite_direction(Direction direction) {
+  switch (direction) {
+    case Direction::Up:
+      return Direction::Down;
+    case Direction::Down:
+      return Direction::Up;
+    case Direction::Right:
+      return Direction::Left;
+    case Direction::Left:
+      return Direction::Right;
+    case Direction::Count:
+      break;
+  }
+  ASSERT(false);
+}
+
+ivec2 direction_to_ivec2(Direction direction) {
+  switch (direction) {
+    case Direction::Up:
+      return {0, -1};
+    case Direction::Down:
+      return {0, 1};
+    case Direction::Right:
+      return {1, 0};
+    case Direction::Left:
+      return {-1, 0};
+    case Direction::Count:
+      break;
+  }
+  ASSERT(false);
+}
+
 using Rotation = Direction;
 
 // TODO: not sure if right and left degrees are correct
@@ -67,6 +100,12 @@ f32 rotation_degrees(Rotation rotation) {
   ASSERT(false);
 }
 
+struct ConveyorItem {
+  ItemSlot slot{};
+  // NOTE: value in range [0; 1] that indicates how far along an item is
+  f32 t{};
+};
+
 struct Entity {
   // NOTE: common
   EntityId id{};
@@ -79,6 +118,15 @@ struct Entity {
   i32 interaction_radius{};
   EntityId open_inventory{};
   ItemSlot hand{};
+
+  // NOTE: conveyor type
+  Direction from{};
+  Direction to{};
+  // NOTE: items per second
+  // NOTE: constant for now, might change in the future
+  // (for example have multiple types of conveyors that have different speeds)
+  static constexpr u32 throughput = 10;
+  std::vector<ConveyorItem> conveyor_items{};
 
   // NOTE: item type
   // TODO: combine with the players hand?
@@ -121,6 +169,8 @@ struct EntityStore {
 EntityId add_entity(EntityStore& store, const Entity& entity);
 void remove_entity(EntityStore& store, EntityId id);
 bool contains_entity(EntityStore& store, EntityId id);
+// NOTE: DO NOT save the pointer for longer than a single system!
+// It will break things when the entities vector reallocates
 Entity* get_entity(EntityStore& store, EntityId id);
 
 template <typename Pred>

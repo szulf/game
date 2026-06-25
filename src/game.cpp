@@ -96,6 +96,7 @@ void update_tick(State& state, [[maybe_unused]] f32 dt) {
   system_place_entity(state.store, state.player_id, state.input, state.current_place_rotation);
   system_remove_entity(state.store, state.player_id, state.input);
   system_pickup_item(state.store, state.player_id);
+  system_move_items(state.store, dt);
 
   flush(state.store);
   clear_event_bus(state.store);

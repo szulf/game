@@ -2,7 +2,7 @@
 
 ## Gameplay: 
 
-- [ ] conveyors move items
+- [x] conveyors move items
 
 - [ ] dropping items on the floor
 

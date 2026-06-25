@@ -224,11 +224,42 @@ void system_remove_entity(EntityStore& store, EntityId player_entity, const Inpu
             add_entity(store, {.type = EntityType::ITEM, .pos = hovered->pos, .slot = slot});
           }
         }
+      } else if (hovered->type == EntityType::CONVEYOR) {
+        for (auto& conveyor_item : hovered->conveyor_items) {
+          if (conveyor_item.slot) {
+            add_entity(
+              store,
+              {.type = EntityType::ITEM, .pos = hovered->pos, .slot = conveyor_item.slot}
+            );
+          }
+        }
       }
 
       remove_entity(store, hovered->id);
     }
   }
+}
+
+// NOTE: returns whether it succeeded in transfering all items from the slot into the inventory
+// also modified the slot to contain the left amount of items after the transfer
+// so if it succeeded slot.count == 0
+static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
+  for (u32 i = 0; i < inventory.size(); ++i) {
+    if (inventory[i].type == slot.type) {
+      if (inventory[i].count + slot.count > ITEM_MAX_COUNT) {
+        slot.count         = (inventory[i].count + slot.count) - ITEM_MAX_COUNT;
+        inventory[i].count = ITEM_MAX_COUNT;
+      } else {
+        inventory[i].count += slot.count;
+        slot.count = 0;
+        return true;
+      }
+    } else if (!inventory[i]) {
+      std::swap(inventory[i], slot);
+      return true;
+    }
+  }
+  return false;
 }
 
 void system_pickup_item(EntityStore& store, EntityId player_entity) {
@@ -237,20 +268,98 @@ void system_pickup_item(EntityStore& store, EntityId player_entity) {
   for (auto& event : listen(store, EventType::PLAYER_COLLIDED)) {
     auto* entity = get_entity(store, event.entity);
     if (entity && entity->type == EntityType::ITEM) {
-      for (u32 i = 0; i < player->inventory.size(); ++i) {
-        auto& inv_slot = player->inventory[i];
-        if (!inv_slot) {
-          inv_slot = entity->slot;
-          remove_entity(store, entity->id);
+      if (transfer_items(player->inventory, entity->slot)) {
+        remove_entity(store, entity->id);
+      }
+    }
+  }
+}
+
+static ItemSlot* find_first_used_slot(std::vector<ItemSlot>& inventory) {
+  for (u32 i = 0; i < inventory.size(); ++i) {
+    if (inventory[i]) {
+      return &inventory[i];
+    }
+  }
+  return nullptr;
+}
+
+// TODO: currently moving items, fuckin sucks actually
+// its too dependent on the ordering of conveyors in EntityStore
+// so it gets choppy if conveyors are not stored in the right order
+// possible solutions (i should implement this shit before finishing):
+// - double buffering (reminds me of my game-of-life)
+//   update everything based on this frames step into a second buffer then swap them
+// - build graphs of conveyor chains, sort them, then update in order
+//   (this fucking sucks actually)
+void system_move_items(EntityStore& store, f32 dt) {
+  for (auto& entity : store) {
+    if (entity.type == EntityType::CONVEYOR) {
+      f32 item_gap = 1.0f / entity.throughput;
+      // NOTE: move items that are already on the conveyor
+      for (u32 i = 0; i < entity.throughput; ++i) {
+        auto& conveyor_item = entity.conveyor_items[i];
+        if (conveyor_item.slot) {
+          if (conveyor_item.t < 1 - (i * item_gap)) {
+            conveyor_item.t += dt;
+          }
+        } else {
+          conveyor_item.t = 0;
+        }
+      }
+
+      // NOTE: pull in more items
+      for (u32 i = 0; i < entity.throughput; ++i) {
+        auto& conveyor_item = entity.conveyor_items[i];
+        bool can_pull       = !conveyor_item.slot;
+        if (i > 0) {
+          auto& previous_item = entity.conveyor_items[i - 1];
+          can_pull            = can_pull && previous_item.t >= item_gap;
+        }
+        if (can_pull) {
+          ivec2 from_pos    = entity.pos + direction_to_ivec2(entity.from);
+          auto* from_entity = find(store, [&](Entity& from_entity) {
+            return has_inventory(from_entity.type) && from_entity.type != EntityType::PLAYER &&
+                   from_entity.type != EntityType::CONVEYOR && from_entity.pos == from_pos;
+          });
+          if (from_entity) {
+            auto* first_used = find_first_used_slot(from_entity->inventory);
+            if (first_used) {
+              conveyor_item.slot.type  = first_used->type;
+              conveyor_item.slot.count = 1;
+              --first_used->count;
+            }
+          }
           break;
-        } else if (inv_slot.type == entity->slot.type) {
-          if (inv_slot.count + entity->slot.count > ITEM_MAX_COUNT) {
-            entity->slot.count -= ITEM_MAX_COUNT - inv_slot.count;
-            inv_slot.count = ITEM_MAX_COUNT;
-          } else {
-            inv_slot.count += entity->slot.count;
-            remove_entity(store, entity->id);
-            break;
+        }
+      }
+
+      // NOTE: push items off
+      {
+        auto& conveyor_item = entity.conveyor_items[0];
+        if (conveyor_item.t >= 1) {
+          ivec2 to_pos    = entity.pos + direction_to_ivec2(entity.to);
+          auto* to_entity = find(store, [&](Entity& to_entity) {
+            return to_entity.type != EntityType::PLAYER && to_entity.pos == to_pos;
+          });
+          if (to_entity) {
+            bool success = false;
+            if (to_entity->type == EntityType::CONVEYOR) {
+              for (u32 i = 0; i < to_entity->throughput; ++i) {
+                auto& to_conveyor_item = to_entity->conveyor_items[i];
+                if (!to_conveyor_item.slot) {
+                  std::swap(conveyor_item.slot, to_conveyor_item.slot);
+                  to_conveyor_item.t = 0;
+                  success            = true;
+                  break;
+                }
+              }
+            } else if (has_inventory(to_entity->type)) {
+              success = transfer_items(to_entity->inventory, conveyor_item.slot);
+            }
+            if (success) {
+              std::ranges::rotate(entity.conveyor_items, entity.conveyor_items.begin() + 1);
+            }
           }
         }
       }
@@ -259,7 +368,8 @@ void system_pickup_item(EntityStore& store, EntityId player_entity) {
 }
 
 void system_render(EntityStore& store) {
-  static constexpr f32 ITEM_SCALE = 0.625f;
+  static constexpr f32 ITEM_SCALE        = 0.625f;
+  static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
 
   for (auto& entity : store) {
     RenderRect render{};
@@ -291,5 +401,38 @@ void system_render(EntityStore& store) {
     }
 
     DrawRectanglePro(rect, origin, rotation, render.color);
+
+    if (entity.type == EntityType::CONVEYOR) {
+      for (u32 i = 0; i < entity.throughput; ++i) {
+        auto& conveyor_item = entity.conveyor_items[i];
+        if (conveyor_item.slot) {
+          RenderRect on_render = render_rect(item_to_entity(conveyor_item.slot.type));
+          Vector2 on_origin    = vector2_from_ivec2(on_render.dims) * 0.5f * ON_CONVEYOR_SCALE;
+          Rectangle on_rect    = {
+               .x = f32((entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - on_render.dims.x) / 2)) +
+                 (f32(on_render.dims.x) * 0.5f),
+               .y = f32((entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - on_render.dims.y) / 2)) +
+                 (f32(on_render.dims.y) * 0.5f),
+               .width  = f32(on_render.dims.x) * ON_CONVEYOR_SCALE,
+               .height = f32(on_render.dims.y) * ON_CONVEYOR_SCALE,
+          };
+
+          on_rect.x += (f32(direction_to_ivec2(entity.from).x) * 0.5f) * GRID_DIMS.x;
+          on_rect.y += (f32(direction_to_ivec2(entity.from).y) * 0.5f) * GRID_DIMS.y;
+
+          on_rect.x -=
+            ((f32(direction_to_ivec2(entity.from).x) * 0.5f) * conveyor_item.t) * GRID_DIMS.x;
+          on_rect.y -=
+            ((f32(direction_to_ivec2(entity.from).y) * 0.5f) * conveyor_item.t) * GRID_DIMS.y;
+
+          on_rect.x +=
+            ((f32(direction_to_ivec2(entity.to).x) * 0.5f) * conveyor_item.t) * GRID_DIMS.x;
+          on_rect.y +=
+            ((f32(direction_to_ivec2(entity.to).y) * 0.5f) * conveyor_item.t) * GRID_DIMS.y;
+
+          DrawRectanglePro(on_rect, on_origin, 0, on_render.color);
+        }
+      }
+    }
   }
 }

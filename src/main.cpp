@@ -8,6 +8,7 @@
 #include <print>
 #include <bitset>
 #include <limits>
+#include <algorithm>
 
 #include "raylib.h"
 #include "raymath.h"

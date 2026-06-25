@@ -23,7 +23,7 @@ bool solid(EntityType type) {
     case EntityType::STORAGE:
       return true;
     case EntityType::CONVEYOR:
-      return true;
+      return false;
     case EntityType::ITEM:
       return false;
   }
@@ -125,6 +125,10 @@ Entity init_entity(EntityType type, const ivec2& pos, Rotation rotation = Rotati
 
   if (type == EntityType::PLAYER) {
     entity.interaction_radius = 4;
+  } else if (type == EntityType::CONVEYOR) {
+    entity.conveyor_items.resize(entity.throughput);
+    entity.from = opposite_direction(rotation);
+    entity.to   = rotation;
   }
 
   return entity;

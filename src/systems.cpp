@@ -18,15 +18,13 @@ item_slot_icon_ui(const ItemSlot& item_slot, const ivec2& pos, std::vector<ui::C
     ivec2 icon_dims = render.dims * ICON_SCALE;
     ivec2 icon_pos  = pos + ((CELL_DIMS - icon_dims) / 2);
 
-    ui_cmds.push_back(ui::Command{
-      .type  = ui::CommandType::Rect,
+    ui_cmds.push_back(ui::RectCommand{
       .pos   = icon_pos,
       .color = render.color,
       .dims  = icon_dims,
     });
 
-    ui_cmds.push_back(ui::Command{
-      .type  = ui::CommandType::Text,
+    ui_cmds.push_back(ui::TextCommand{
       .pos   = pos,
       .color = BLACK,
       .text  = std::format("{}", item_slot.count),
@@ -51,8 +49,7 @@ static ItemSlotIdx inventory_ui(
     ivec2 cell     = {i32(i % ROW_SIZE), i32(i / ROW_SIZE)};
     ivec2 cell_pos = pos + (cell * CELL_DIMS) + (cell * 2);
 
-    ui_cmds.push_back(ui::Command{
-      .type  = ui::CommandType::Rect,
+    ui_cmds.push_back(ui::RectCommand{
       .pos   = cell_pos,
       .color = LIGHTGRAY,
       .dims  = CELL_DIMS,
@@ -76,7 +73,7 @@ void system_move_player(EntityStore& store, EntityId player_entity, Input& input
   }
 
   auto* player = get_entity(store, player_entity);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
   auto collided = find_all(store, [&](Entity& entity) {
     return entity.pos == player->pos + input.move;
   });
@@ -100,9 +97,9 @@ void system_player_inventory_interactions(
   Input& input
 ) {
   auto* player_entity = get_entity(store, player_id);
-  ASSERT(player_entity);
+  ASSERT_NO_MSG(player_entity);
   auto* player = get_data<Player>(*player_entity);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
 
   // NOTE: opening
   if (input.interact &&
@@ -171,7 +168,7 @@ ItemSlotIdx system_generate_inventory_uis(
   std::vector<ui::Command>& ui_cmds
 ) {
   auto* player = get_data<Player>(store, player_id);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
   auto hovered_slot = inventory_ui(player_id, player->inventory, {10, 580}, mouse_pos, ui_cmds);
 
   if (player->open_inventory) {
@@ -200,9 +197,9 @@ void system_place_entity(
   Rotation place_rotation
 ) {
   auto* player_entity = get_entity(store, player_id);
-  ASSERT(player_entity);
+  ASSERT_NO_MSG(player_entity);
   auto* player = get_data<Player>(*player_entity);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
 
   // TODO: should check if im not hovering over an item slot
   if (input.rmb_pressed && player->hand &&
@@ -222,9 +219,9 @@ void system_place_entity(
 
 void system_remove_entity(EntityStore& store, EntityId player_id, const Input& input) {
   auto* player_entity = get_entity(store, player_id);
-  ASSERT(player_entity);
+  ASSERT_NO_MSG(player_entity);
   auto* player = get_data<Player>(*player_entity);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
 
   if (input.lmb_pressed &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
@@ -233,8 +230,7 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
     });
     if (hovered) {
       auto item_type = entity_to_item(*hovered);
-      // NOTE: if an entity is breakable it should have an item_type (at least for now)
-      ASSERT(item_type);
+      ASSERT(item_type, "broken breakable item doesnt have an item_type");
 
       Entity entity = {
         .pos  = hovered->pos,
@@ -279,7 +275,7 @@ static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
 
 void system_pickup_item(EntityStore& store, EntityId player_id) {
   auto* player = get_data<Player>(store, player_id);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
 
   for (auto& event : listen(store, EventType::PLAYER_COLLIDED)) {
     auto* item = get_data<Item>(store, event.entity);
@@ -320,6 +316,7 @@ static ItemSlot* find_first_used_slot(std::vector<ItemSlot>& inventory) {
 //    and also a single conveyor pushing items into that inventory
 //    they will not round robin
 //    just one of the pulling conveyors will take all items as they are coming
+// 4. i think i duped an item somehow, no clue how tho (potentially fixable by fixing 1.)
 void system_move_items(EntityStore& store, f32 dt) {
   for (auto& entity : store) {
     auto* conveyor = get_data<Conveyor>(entity);
@@ -356,7 +353,10 @@ void system_move_items(EntityStore& store, f32 dt) {
         });
         if (from_entity) {
           auto* from_inv = get_inventory(*from_entity);
-          ASSERT(from_inv);
+          ASSERT(
+            from_inv,
+            "entity that satisifies HasInventory doesnt return an inventory from get_inventory()"
+          );
           auto* first_used = find_first_used_slot(*from_inv);
           if (first_used) {
             item.slot.type  = first_used->type;

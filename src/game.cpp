@@ -1,13 +1,56 @@
+#include "core.cpp"
+#include "ui.cpp"
+#include "items.cpp"
+#include "entity.cpp"
+
+struct Input {
+  ivec2 mouse_pos{};
+  bool lmb_pressed{};
+  bool rmb_pressed{};
+
+  ivec2 move{};
+  bool interact{};
+  bool close_inv{};
+  bool rotate{};
+
+  bool toggle_debug{};
+};
 void clear(Input& input) {
   auto mouse_pos  = input.mouse_pos;
   input           = {};
   input.mouse_pos = mouse_pos;
 }
 
+struct ItemSlotIdx {
+  EntityId entity{};
+  u32 slot_idx{};
+};
+
+struct FrameData {
+  ItemSlotIdx hovered_slot{};
+  std::vector<ui::Command> ui_cmds{};
+};
+
 void clear(FrameData& frame) {
   frame.hovered_slot = {};
   frame.ui_cmds.clear();
 }
+
+struct State {
+  Input input{};
+  FrameData frame{};
+
+  // TODO: should reset when changing the player hand item
+  Rotation current_place_rotation{};
+
+  // NOTE: there is only one player
+  EntityId player_id{};
+  EntityStore store{};
+
+  bool debug{};
+};
+
+#include "systems.cpp"
 
 void init(State& state) {
   InitWindow(WINDOW_DIMS.x, WINDOW_DIMS.y, "test");
@@ -19,7 +62,7 @@ void init(State& state) {
     .data = Player{},
   };
   auto* player = get_data<Player>(player_entity);
-  ASSERT(player);
+  ASSERT_NO_MSG(player);
   player->inventory[0]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 85};
   player->inventory[14] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
   player->inventory[13] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
@@ -35,11 +78,11 @@ void init(State& state) {
   add_entity(state.store, Entity{.pos = {9, 10}, .data = Storage{}});
   add_entity(state.store, Entity{.pos = {6, 10}, .data = Storage{}});
 
-  add_entity(state.store, Entity{.pos = {9, 7}, .data = Conveyor{.rotation = Rotation::Down}});
-  add_entity(state.store, Entity{.pos = {9, 8}, .data = Conveyor{.rotation = Rotation::Down}});
-  add_entity(state.store, Entity{.pos = {9, 9}, .data = Conveyor{.rotation = Rotation::Down}});
-  add_entity(state.store, Entity{.pos = {8, 10}, .data = Conveyor{.rotation = Rotation::Left}});
-  add_entity(state.store, Entity{.pos = {7, 10}, .data = Conveyor{.rotation = Rotation::Left}});
+  add_entity(state.store, Entity{.pos = {9, 7}, .data = Conveyor{.rotation = Rotation::DOWN}});
+  add_entity(state.store, Entity{.pos = {9, 8}, .data = Conveyor{.rotation = Rotation::DOWN}});
+  add_entity(state.store, Entity{.pos = {9, 9}, .data = Conveyor{.rotation = Rotation::DOWN}});
+  add_entity(state.store, Entity{.pos = {8, 10}, .data = Conveyor{.rotation = Rotation::LEFT}});
+  add_entity(state.store, Entity{.pos = {7, 10}, .data = Conveyor{.rotation = Rotation::LEFT}});
 
   flush(state.store);
 }
@@ -84,11 +127,11 @@ void gather_input(State& state) {
   }
 }
 
-void update_tick(State& state, [[maybe_unused]] f32 dt) {
+void update_tick(State& state, f32 dt) {
   // TODO: i dont think this belongs in a system, but maybe?
   if (state.input.rotate) {
     state.current_place_rotation =
-      Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::Count));
+      Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
   }
 
   system_move_player(state.store, state.player_id, state.input);
@@ -142,7 +185,7 @@ void render(State& state) {
   // TODO: should not draw when mouse is hovering over some entity
   {
     auto* player = get_data<Player>(state.store, state.player_id);
-    ASSERT(player);
+    ASSERT_NO_MSG(player);
     if (player->hand && rotatable(player->hand.type)) {
       static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
 
@@ -150,24 +193,24 @@ void render(State& state) {
       ivec2 main_end_pos   = main_start_pos;
 
       switch (state.current_place_rotation) {
-        case Rotation::Up:
+        case Rotation::UP:
           main_start_pos.y -= GRID_DIMS.y / 3;
           main_end_pos.y += GRID_DIMS.y / 3;
           break;
-        case Rotation::Down:
+        case Rotation::DOWN:
           main_start_pos.y += GRID_DIMS.y / 3;
           main_end_pos.y -= GRID_DIMS.y / 3;
           break;
-        case Rotation::Right:
+        case Rotation::RIGHT:
           main_start_pos.x += GRID_DIMS.x / 3;
           main_end_pos.x -= GRID_DIMS.x / 3;
           break;
-        case Rotation::Left:
+        case Rotation::LEFT:
           main_start_pos.x -= GRID_DIMS.x / 3;
           main_end_pos.x += GRID_DIMS.x / 3;
           break;
-        case Rotation::Count:
-          ASSERT(false);
+        case Rotation::COUNT:
+          ASSERT(false, "invalid rotation: Rotation::COUNT");
           break;
       }
 
@@ -176,24 +219,24 @@ void render(State& state) {
       ivec2 right_end_pos   = hands_start_pos;
 
       switch (state.current_place_rotation) {
-        case Rotation::Up:
+        case Rotation::UP:
           right_end_pos += ivec2{-(GRID_DIMS.x / 4), GRID_DIMS.y / 4};
           left_end_pos += ivec2{GRID_DIMS.x / 4, GRID_DIMS.y / 4};
           break;
-        case Rotation::Down:
+        case Rotation::DOWN:
           right_end_pos += ivec2{GRID_DIMS.x / 4, -(GRID_DIMS.y / 4)};
           left_end_pos += ivec2{-(GRID_DIMS.x / 4), -(GRID_DIMS.y / 4)};
           break;
-        case Rotation::Right:
+        case Rotation::RIGHT:
           right_end_pos += ivec2{-(GRID_DIMS.y / 4), GRID_DIMS.x / 4};
           left_end_pos += ivec2{-(GRID_DIMS.y / 4), -(GRID_DIMS.x / 4)};
           break;
-        case Rotation::Left:
+        case Rotation::LEFT:
           right_end_pos += ivec2{GRID_DIMS.y / 4, -(GRID_DIMS.x / 4)};
           left_end_pos += ivec2{GRID_DIMS.y / 4, GRID_DIMS.x / 4};
           break;
-        case Rotation::Count:
-          ASSERT(false);
+        case Rotation::COUNT:
+          ASSERT(false, "invalid rotation: Rotation::COUNT");
           break;
       }
 
@@ -228,9 +271,9 @@ void render(State& state) {
   if (state.debug) {
     // NOTE: this should be a system, but because it is a debug thing i will let it slide
     auto* player_entity = get_entity(state.store, state.player_id);
-    ASSERT(player_entity);
+    ASSERT_NO_MSG(player_entity);
     auto* player = get_data<Player>(*player_entity);
-    ASSERT(player);
+    ASSERT_NO_MSG(player);
     auto render = get_render_rect(*player_entity);
     DrawCircleLines(
       (player_entity->pos.x * GRID_DIMS.x) + (render.dims.x * 0.5f),
@@ -243,6 +286,6 @@ void render(State& state) {
   EndDrawing();
 }
 
-void shutdown([[maybe_unused]] State& state) {
+void shutdown(State&) {
   CloseWindow();
 }

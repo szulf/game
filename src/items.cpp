@@ -1,6 +1,3 @@
-#ifndef ITEMS_H
-#define ITEMS_H
-
 enum class ItemType {
   BLOCK,
   STORAGE,
@@ -17,5 +14,3 @@ struct ItemSlot {
     return count > 0;
   }
 };
-
-#endif

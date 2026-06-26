@@ -6,11 +6,22 @@
   
 - [x] dropping items on the floor
 
+- [ ] flashlight and basic lighting system
+  - with a toggle for it
+  - and a toggle for global lighting
+
+- [ ] mini puzzle worlds
+  - with item input/output
+  
+- [ ] circuit board line
+
+- [ ] better movement system
+
 ## rendering/art:
 
 - [ ] use the UI library
 
-- [ ] 3D rendering (distant future)
+- [ ] 3D rendering or better textures (distant future)
 
 ## other:
 
@@ -46,6 +57,8 @@ so i would need to run a conveyor into the puzzle entrance to get the inputs
 
 like in "Order of the Sinking Star" have multiple puzzles you can do in any order to not lock you into a single order of operations
 on the other hand that implies a large amount of puzzles, and that is feature creep, remember SMALLL!!!
+
+what do i do about getting resources?
 
 some puzzle level ideas:
 1. fix the lights

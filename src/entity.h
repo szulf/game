@@ -17,88 +17,20 @@ struct EntityId {
 
 static constexpr EntityId NULL_ENTITY = {0, 0};
 
-enum class EntityType {
-  PLAYER,
-  BLOCK,
-  STORAGE,
-  CONVEYOR,
-  ITEM,
+static constexpr u32 PLAYER_INVENTORY_SIZE = 32;
+struct Player {
+  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
+  i32 interaction_radius          = 4;
+  EntityId open_inventory{};
+  ItemSlot hand{};
 };
 
-// NOTE: all of these could be arrays and would be "faster" that way, but functions look better
-bool rotatable(EntityType type);
-bool solid(EntityType type);
-bool breakable(EntityType type);
-bool has_inventory(EntityType type);
-u32 inventory_size(EntityType type);
-std::optional<ItemType> entity_to_item(EntityType entity);
-EntityType item_to_entity(ItemType item);
+struct Block {};
 
-struct RenderRect {
-  Color color{};
-  ivec2 dims{};
+static constexpr u32 STORAGE_INVENTORY_SIZE = 32;
+struct Storage {
+  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(STORAGE_INVENTORY_SIZE);
 };
-
-RenderRect render_rect(EntityType type);
-
-enum class Direction {
-  Up,
-  Right,
-  Down,
-  Left,
-  Count,
-};
-
-Direction opposite_direction(Direction direction) {
-  switch (direction) {
-    case Direction::Up:
-      return Direction::Down;
-    case Direction::Down:
-      return Direction::Up;
-    case Direction::Right:
-      return Direction::Left;
-    case Direction::Left:
-      return Direction::Right;
-    case Direction::Count:
-      break;
-  }
-  ASSERT(false);
-}
-
-ivec2 direction_to_ivec2(Direction direction) {
-  switch (direction) {
-    case Direction::Up:
-      return {0, -1};
-    case Direction::Down:
-      return {0, 1};
-    case Direction::Right:
-      return {1, 0};
-    case Direction::Left:
-      return {-1, 0};
-    case Direction::Count:
-      break;
-  }
-  ASSERT(false);
-}
-
-using Rotation = Direction;
-
-// TODO: not sure if right and left degrees are correct
-f32 rotation_degrees(Rotation rotation) {
-  switch (rotation) {
-    case Rotation::Up:
-      return 0;
-    case Rotation::Down:
-      return 180;
-    case Rotation::Right:
-      return 90;
-    case Rotation::Left:
-      return 270;
-    case Rotation::Count:
-      break;
-  }
-  ASSERT(false);
-}
 
 struct ConveyorItem {
   ItemSlot slot{};
@@ -106,50 +38,61 @@ struct ConveyorItem {
   f32 t{};
 };
 
-struct Entity {
-  // NOTE: common
-  EntityId id{};
-  EntityType type{};
-  ivec2 pos{};
+// NOTE: items per second
+// NOTE: constant for now, might change in the future
+// (for example have multiple types of conveyors that have different speeds
+//  (they might be different entity types tho))
+static constexpr u32 CONVEYOR_THROUGHPUT = 10;
+struct Conveyor {
   Rotation rotation{};
-  std::vector<ItemSlot> inventory{};
+  std::vector<ConveyorItem> items = std::vector<ConveyorItem>(CONVEYOR_THROUGHPUT);
+};
 
-  // NOTE: player type
-  i32 interaction_radius{};
-  EntityId open_inventory{};
-  ItemSlot hand{};
+Direction conveyor_from(const Conveyor& conveyor) {
+  return opposite_direction(conveyor.rotation);
+}
 
-  // NOTE: conveyor type
-  Direction from{};
-  Direction to{};
-  // NOTE: items per second
-  // NOTE: constant for now, might change in the future
-  // (for example have multiple types of conveyors that have different speeds)
-  static constexpr u32 throughput = 10;
-  std::vector<ConveyorItem> conveyor_items{};
+Direction conveyor_to(const Conveyor& conveyor) {
+  return conveyor.rotation;
+}
 
-  // NOTE: item type
-  // TODO: combine with the players hand?
+struct Item {
   ItemSlot slot{};
 };
 
-Entity init_entity(EntityType type, const ivec2& pos, Rotation rotation);
+// NOTE: keep a type with no heap allocations as the first one,
+// because std::variant by default initializes to the first type
+// so i dont want "entity = {}" to do any heap allocations
+using EntityData = std::variant<Block, Player, Storage, Conveyor, Item>;
 
-enum class CommandType {
-  Add,
-  Remove,
+struct Entity {
+  EntityId id{};
+  ivec2 pos{};
+  EntityData data{};
 };
 
-struct Command {
-  CommandType type{};
-  Entity add_entity{};
-  EntityId remove_id{};
+template <typename T>
+concept HasInventory = requires(T& t) { t.inventory; };
+
+template <typename T>
+concept Rotatable = requires(T& t) { t.rotation; };
+
+struct AddCommand {
+  Entity entity{};
 };
+
+struct RemoveCommand {
+  EntityId id{};
+};
+
+using Command = std::variant<AddCommand, RemoveCommand>;
 
 enum class EventType {
   PLAYER_COLLIDED,
 };
 
+// TODO: can i somehow use Events as a std::variant?
+// i would still need to keep EventType for listen()
 struct Event {
   EventType type{};
   // NOTE: PLAYER_COLLIDED
@@ -185,6 +128,44 @@ EventView listen(EntityStore& store, EventType type);
 
 void flush(EntityStore& store);
 void clear_event_bus(EntityStore& store);
+
+// NOTE: std visit helpers
+
+bool rotatable(const Entity& entity);
+bool rotatable(ItemType type);
+bool solid(const Entity& entity);
+bool breakable(const Entity& entity);
+bool has_inventory(const Entity& entity);
+std::optional<ItemType> entity_to_item(const Entity& entity);
+Entity entity_from_item(ItemType item);
+
+struct RenderRect {
+  Color color{};
+  ivec2 dims{};
+};
+
+RenderRect get_render_rect(const Entity& entity);
+RenderRect get_render_rect(ItemType item_type);
+
+// TODO: better name?
+template <typename T>
+T* get_data(Entity& entity);
+template <typename T>
+T* get_data(EntityStore& store, EntityId id);
+
+template <typename T>
+bool is(Entity& entity);
+template <typename T>
+bool is(EntityStore& store, EntityId id);
+
+Rotation* get_rotation(Entity& entity);
+Rotation* get_rotation(EntityStore& store, EntityId id);
+
+std::vector<ItemSlot>* get_inventory(Entity& entity);
+std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id);
+
+template <typename Func>
+void for_each_active_slot(Entity& entity, Func&& func);
 
 struct EventView {
   EventType type{};

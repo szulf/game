@@ -40,6 +40,14 @@ bool operator==(const Color& a, const Color& b) {
   return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 }
 
+// NOTE: for std::visit
+template <typename... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <typename... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
 struct ivec2 {
   i32 x{};
   i32 y{};
@@ -95,6 +103,65 @@ ivec2 ivec2_from_vector2(const Vector2& vec) {
 
 Vector2 vector2_from_ivec2(const ivec2& vec) {
   return {f32(vec.x), f32(vec.y)};
+}
+
+enum class Direction {
+  Up,
+  Right,
+  Down,
+  Left,
+  Count,
+};
+
+Direction opposite_direction(Direction direction) {
+  switch (direction) {
+    case Direction::Up:
+      return Direction::Down;
+    case Direction::Down:
+      return Direction::Up;
+    case Direction::Right:
+      return Direction::Left;
+    case Direction::Left:
+      return Direction::Right;
+    case Direction::Count:
+      break;
+  }
+  ASSERT(false);
+}
+
+ivec2 direction_to_ivec2(Direction direction) {
+  switch (direction) {
+    case Direction::Up:
+      return {0, -1};
+    case Direction::Down:
+      return {0, 1};
+    case Direction::Right:
+      return {1, 0};
+    case Direction::Left:
+      return {-1, 0};
+    case Direction::Count:
+      break;
+  }
+  ASSERT(false);
+}
+
+using Rotation = Direction;
+
+// TODO: not sure if right and left degrees are correct
+f32 rotation_degrees(Rotation rotation) {
+  switch (rotation) {
+    case Rotation::Up:
+      return 0;
+    case Rotation::Down:
+      return 180;
+    case Rotation::Right:
+      return 90;
+    case Rotation::Left:
+      return 270;
+    case Rotation::Count:
+      break;
+  }
+  ASSERT(false);
 }
 
 #include "ui.h"

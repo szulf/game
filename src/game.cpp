@@ -14,27 +14,32 @@ void init(State& state) {
   SetTargetFPS(165);
   SetExitKey(KEY_NULL);
 
-  auto player          = init_entity(EntityType::PLAYER, {8, 4});
-  player.inventory[0]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 85};
-  player.inventory[14] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
-  player.inventory[13] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
-  player.inventory[8]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 20};
-  player.inventory[9]  = ItemSlot{.type = ItemType::BLOCK, .count = 30};
-  player.inventory[3]  = ItemSlot{.type = ItemType::STORAGE, .count = 6};
-  player.inventory[11] = ItemSlot{.type = ItemType::STORAGE, .count = 11};
-  state.player_id      = add_entity(state.store, player);
+  auto player_entity = Entity{
+    .pos  = {8, 4},
+    .data = Player{},
+  };
+  auto* player = get_data<Player>(player_entity);
+  ASSERT(player);
+  player->inventory[0]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 85};
+  player->inventory[14] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
+  player->inventory[13] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
+  player->inventory[8]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 20};
+  player->inventory[9]  = ItemSlot{.type = ItemType::BLOCK, .count = 30};
+  player->inventory[3]  = ItemSlot{.type = ItemType::STORAGE, .count = 6};
+  player->inventory[11] = ItemSlot{.type = ItemType::STORAGE, .count = 11};
+  state.player_id       = add_entity(state.store, player_entity);
 
-  add_entity(state.store, init_entity(EntityType::BLOCK, {5, 9}));
+  add_entity(state.store, Entity{.pos = {5, 9}, .data = Block{}});
 
-  add_entity(state.store, init_entity(EntityType::STORAGE, {9, 6}));
-  add_entity(state.store, init_entity(EntityType::STORAGE, {9, 10}));
-  add_entity(state.store, init_entity(EntityType::STORAGE, {6, 10}));
+  add_entity(state.store, Entity{.pos = {9, 6}, .data = Storage{}});
+  add_entity(state.store, Entity{.pos = {9, 10}, .data = Storage{}});
+  add_entity(state.store, Entity{.pos = {6, 10}, .data = Storage{}});
 
-  add_entity(state.store, init_entity(EntityType::CONVEYOR, {9, 7}, Rotation::Down));
-  add_entity(state.store, init_entity(EntityType::CONVEYOR, {9, 8}, Rotation::Down));
-  add_entity(state.store, init_entity(EntityType::CONVEYOR, {9, 9}, Rotation::Down));
-  add_entity(state.store, init_entity(EntityType::CONVEYOR, {8, 10}, Rotation::Left));
-  add_entity(state.store, init_entity(EntityType::CONVEYOR, {7, 10}, Rotation::Left));
+  add_entity(state.store, Entity{.pos = {9, 7}, .data = Conveyor{.rotation = Rotation::Down}});
+  add_entity(state.store, Entity{.pos = {9, 8}, .data = Conveyor{.rotation = Rotation::Down}});
+  add_entity(state.store, Entity{.pos = {9, 9}, .data = Conveyor{.rotation = Rotation::Down}});
+  add_entity(state.store, Entity{.pos = {8, 10}, .data = Conveyor{.rotation = Rotation::Left}});
+  add_entity(state.store, Entity{.pos = {7, 10}, .data = Conveyor{.rotation = Rotation::Left}});
 
   flush(state.store);
 }
@@ -136,79 +141,69 @@ void render(State& state) {
   // TODO: better arrow drawing code?
   // TODO: should not draw when mouse is hovering over some entity
   {
-    auto* player = get_entity(state.store, state.player_id);
+    auto* player = get_data<Player>(state.store, state.player_id);
     ASSERT(player);
-    if (player->hand) {
-      if (rotatable(item_to_entity(player->hand.type))) {
-        static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
+    if (player->hand && rotatable(player->hand.type)) {
+      static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
 
-        ivec2 main_start_pos = (grid_pos(state.input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
-        ivec2 main_end_pos   = main_start_pos;
+      ivec2 main_start_pos = (grid_pos(state.input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
+      ivec2 main_end_pos   = main_start_pos;
 
-        switch (state.current_place_rotation) {
-          case Rotation::Up:
-            main_start_pos.y -= GRID_DIMS.y / 3;
-            main_end_pos.y += GRID_DIMS.y / 3;
-            break;
-          case Rotation::Down:
-            main_start_pos.y += GRID_DIMS.y / 3;
-            main_end_pos.y -= GRID_DIMS.y / 3;
-            break;
-          case Rotation::Right:
-            main_start_pos.x += GRID_DIMS.x / 3;
-            main_end_pos.x -= GRID_DIMS.x / 3;
-            break;
-          case Rotation::Left:
-            main_start_pos.x -= GRID_DIMS.x / 3;
-            main_end_pos.x += GRID_DIMS.x / 3;
-            break;
-          case Rotation::Count:
-            ASSERT(false);
-            break;
-        }
-
-        auto& hands_start_pos = main_start_pos;
-        ivec2 left_end_pos    = hands_start_pos;
-        ivec2 right_end_pos   = hands_start_pos;
-
-        switch (state.current_place_rotation) {
-          case Rotation::Up:
-            right_end_pos += ivec2{-(GRID_DIMS.x / 4), GRID_DIMS.y / 4};
-            left_end_pos += ivec2{GRID_DIMS.x / 4, GRID_DIMS.y / 4};
-            break;
-          case Rotation::Down:
-            right_end_pos += ivec2{GRID_DIMS.x / 4, -(GRID_DIMS.y / 4)};
-            left_end_pos += ivec2{-(GRID_DIMS.x / 4), -(GRID_DIMS.y / 4)};
-            break;
-          case Rotation::Right:
-            right_end_pos += ivec2{-(GRID_DIMS.y / 4), GRID_DIMS.x / 4};
-            left_end_pos += ivec2{-(GRID_DIMS.y / 4), -(GRID_DIMS.x / 4)};
-            break;
-          case Rotation::Left:
-            right_end_pos += ivec2{GRID_DIMS.y / 4, -(GRID_DIMS.x / 4)};
-            left_end_pos += ivec2{GRID_DIMS.y / 4, GRID_DIMS.x / 4};
-            break;
-          case Rotation::Count:
-            ASSERT(false);
-            break;
-        }
-
-        DrawLineV(
-          vector2_from_ivec2(main_start_pos),
-          vector2_from_ivec2(main_end_pos),
-          ARROW_COLOR
-        );
-        DrawLineV(
-          vector2_from_ivec2(hands_start_pos),
-          vector2_from_ivec2(right_end_pos),
-          ARROW_COLOR
-        );
-        DrawLineV(
-          vector2_from_ivec2(hands_start_pos),
-          vector2_from_ivec2(left_end_pos),
-          ARROW_COLOR
-        );
+      switch (state.current_place_rotation) {
+        case Rotation::Up:
+          main_start_pos.y -= GRID_DIMS.y / 3;
+          main_end_pos.y += GRID_DIMS.y / 3;
+          break;
+        case Rotation::Down:
+          main_start_pos.y += GRID_DIMS.y / 3;
+          main_end_pos.y -= GRID_DIMS.y / 3;
+          break;
+        case Rotation::Right:
+          main_start_pos.x += GRID_DIMS.x / 3;
+          main_end_pos.x -= GRID_DIMS.x / 3;
+          break;
+        case Rotation::Left:
+          main_start_pos.x -= GRID_DIMS.x / 3;
+          main_end_pos.x += GRID_DIMS.x / 3;
+          break;
+        case Rotation::Count:
+          ASSERT(false);
+          break;
       }
+
+      auto& hands_start_pos = main_start_pos;
+      ivec2 left_end_pos    = hands_start_pos;
+      ivec2 right_end_pos   = hands_start_pos;
+
+      switch (state.current_place_rotation) {
+        case Rotation::Up:
+          right_end_pos += ivec2{-(GRID_DIMS.x / 4), GRID_DIMS.y / 4};
+          left_end_pos += ivec2{GRID_DIMS.x / 4, GRID_DIMS.y / 4};
+          break;
+        case Rotation::Down:
+          right_end_pos += ivec2{GRID_DIMS.x / 4, -(GRID_DIMS.y / 4)};
+          left_end_pos += ivec2{-(GRID_DIMS.x / 4), -(GRID_DIMS.y / 4)};
+          break;
+        case Rotation::Right:
+          right_end_pos += ivec2{-(GRID_DIMS.y / 4), GRID_DIMS.x / 4};
+          left_end_pos += ivec2{-(GRID_DIMS.y / 4), -(GRID_DIMS.x / 4)};
+          break;
+        case Rotation::Left:
+          right_end_pos += ivec2{GRID_DIMS.y / 4, -(GRID_DIMS.x / 4)};
+          left_end_pos += ivec2{GRID_DIMS.y / 4, GRID_DIMS.x / 4};
+          break;
+        case Rotation::Count:
+          ASSERT(false);
+          break;
+      }
+
+      DrawLineV(vector2_from_ivec2(main_start_pos), vector2_from_ivec2(main_end_pos), ARROW_COLOR);
+      DrawLineV(
+        vector2_from_ivec2(hands_start_pos),
+        vector2_from_ivec2(right_end_pos),
+        ARROW_COLOR
+      );
+      DrawLineV(vector2_from_ivec2(hands_start_pos), vector2_from_ivec2(left_end_pos), ARROW_COLOR);
     }
   }
 
@@ -232,12 +227,14 @@ void render(State& state) {
   // NOTE: debug
   if (state.debug) {
     // NOTE: this should be a system, but because it is a debug thing i will let it slide
-    auto* player = get_entity(state.store, state.player_id);
+    auto* player_entity = get_entity(state.store, state.player_id);
+    ASSERT(player_entity);
+    auto* player = get_data<Player>(*player_entity);
     ASSERT(player);
-    auto render = render_rect(EntityType::PLAYER);
+    auto render = get_render_rect(*player_entity);
     DrawCircleLines(
-      (player->pos.x * GRID_DIMS.x) + (render.dims.x * 0.5f),
-      (player->pos.y * GRID_DIMS.y) + (render.dims.y * 0.5f),
+      (player_entity->pos.x * GRID_DIMS.x) + (render.dims.x * 0.5f),
+      (player_entity->pos.y * GRID_DIMS.y) + (render.dims.y * 0.5f),
       player->interaction_radius * GRID_DIMS.x,
       GREEN
     );

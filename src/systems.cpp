@@ -145,6 +145,23 @@ void system_player_inventory_interactions(
       }
     }
   }
+
+  // NOTE: hand dropping items on the ground (not sure if it belongs in this system)
+  // TODO: not sure if lmb_pressed is the right keybind
+  if (input.lmb_pressed && player->hand &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
+    auto hovered = find(store, [&](Entity& entity) {
+      return entity.pos == grid_pos(input.mouse_pos);
+    });
+    if (!hovered || is<Item>(*hovered)) {
+      Entity entity = {
+        .pos  = grid_pos(input.mouse_pos),
+        .data = Item{.slot = player->hand},
+      };
+      add_entity(store, entity);
+      player->hand = {};
+    }
+  }
 }
 
 ItemSlotIdx system_generate_inventory_uis(

@@ -12,9 +12,11 @@ struct Input {
   bool interact{};
   bool close_inv{};
   bool rotate{};
+  bool toggle_world{};
 
   bool toggle_debug{};
 };
+
 void clear(Input& input) {
   auto mouse_pos  = input.mouse_pos;
   input           = {};
@@ -122,6 +124,10 @@ void gather_input(State& state) {
     state.input.rotate = true;
   }
 
+  if (IsKeyPressed(KEY_T)) {
+    state.input.toggle_world = true;
+  }
+
   if (IsKeyPressed(KEY_F1)) {
     state.debug = !state.debug;
   }
@@ -145,6 +151,7 @@ void update_tick(State& state, f32 dt) {
   system_remove_entity(state.store, state.player_id, state.input);
   system_pickup_item(state.store, state.player_id);
   system_move_items(state.store, dt);
+  system_toggle_world(state.store, state.player_id, state.input);
 
   flush(state.store);
   clear_event_bus(state.store);
@@ -178,7 +185,7 @@ void render(State& state) {
   }
 
   // NOTE: entities
-  system_render(state.store);
+  system_render(state.store, state.player_id);
   // TODO: move to system_render()?
   // TODO: it should also be related to mouse somehow i think
   // TODO: better arrow drawing code?

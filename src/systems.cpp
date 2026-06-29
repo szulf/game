@@ -67,16 +67,14 @@ static ItemSlotIdx inventory_ui(
   return hovered;
 }
 
-void system_move_player(EntityStore& store, EntityId player_entity, Input& input) {
+void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
   if (input.move == ivec2{0, 0}) {
     return;
   }
 
-  auto* player = get_entity(store, player_entity);
-  ASSERT_NO_MSG(player);
-  auto collided = find_all(store, [&](Entity& entity) {
-    return entity.pos == player->pos + input.move;
-  });
+  auto* player_entity = get_entity(store, player_id);
+  ASSERT_NO_MSG(player_entity);
+  auto collided = get_entities_at_pos(store, player_entity->pos + input.move, player_entity->world);
   bool can_move = true;
 
   for (auto& collision : collided) {
@@ -86,7 +84,7 @@ void system_move_player(EntityStore& store, EntityId player_entity, Input& input
     }
   }
   if (can_move) {
-    player->pos += input.move;
+    player_entity->pos += input.move;
   }
 }
 
@@ -104,10 +102,8 @@ void system_player_inventory_interactions(
   // NOTE: opening
   if (input.interact &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
-    auto hovered = find(store, [&](Entity& entity) {
-      return entity.pos == grid_pos(input.mouse_pos) && has_inventory(entity);
-    });
-    if (hovered) {
+    auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
+    if (hovered && has_inventory(*hovered)) {
       player->open_inventory = hovered->id;
     }
   }
@@ -147,9 +143,7 @@ void system_player_inventory_interactions(
   // TODO: not sure if lmb_pressed is the right keybind
   if (input.lmb_pressed && player->hand &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
-    auto hovered = find(store, [&](Entity& entity) {
-      return entity.pos == grid_pos(input.mouse_pos);
-    });
+    auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
         .pos  = grid_pos(input.mouse_pos),
@@ -204,9 +198,7 @@ void system_place_entity(
   // TODO: should check if im not hovering over an item slot
   if (input.rmb_pressed && player->hand &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
-      !find(store, [&](Entity& entity) {
-        return entity.pos == grid_pos(input.mouse_pos);
-      })) {
+      !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)) {
     auto entity = entity_from_item(player->hand.type);
     entity.pos  = grid_pos(input.mouse_pos);
     if (auto* rotation = get_rotation(entity)) {
@@ -225,10 +217,8 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
 
   if (input.lmb_pressed &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
-    auto hovered = find(store, [&](Entity& entity) {
-      return breakable(entity) && entity.pos == grid_pos(input.mouse_pos);
-    });
-    if (hovered) {
+    auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
+    if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
       ASSERT(item_type, "broken breakable item doesnt have an item_type");
 
@@ -347,15 +337,12 @@ void system_move_items(EntityStore& store, f32 dt) {
       }
       if (can_pull) {
         ivec2 from_pos    = entity.pos + direction_to_ivec2(conveyor_from(*conveyor));
-        auto* from_entity = find(store, [&](Entity& from_entity) {
-          return from_entity.pos == from_pos && has_inventory(from_entity) &&
-                 !is<Player>(from_entity);
-        });
-        if (from_entity) {
+        auto* from_entity = get_entity_at_pos(store, from_pos, entity.world);
+        if (from_entity && has_inventory(*from_entity) && !is<Player>(*from_entity)) {
           auto* from_inv = get_inventory(*from_entity);
           ASSERT(
             from_inv,
-            "entity that satisifies HasInventory doesnt return an inventory from get_inventory()"
+            "entity that satisifies HasInventory has to return an inventory from get_inventory()"
           );
           auto* first_used = find_first_used_slot(*from_inv);
           if (first_used) {
@@ -373,10 +360,8 @@ void system_move_items(EntityStore& store, f32 dt) {
       auto& item = conveyor->items[0];
       if (item.t >= 1) {
         ivec2 to_pos    = entity.pos + direction_to_ivec2(conveyor_to(*conveyor));
-        auto* to_entity = find(store, [&](Entity& to_entity) {
-          return to_entity.pos == to_pos && !is<Player>(to_entity);
-        });
-        if (to_entity) {
+        auto* to_entity = get_entity_at_pos(store, to_pos, entity.world);
+        if (to_entity && !is<Player>(*to_entity)) {
           bool success = false;
 
           if (auto* to_conveyor = get_data<Conveyor>(*to_entity)) {
@@ -402,11 +387,31 @@ void system_move_items(EntityStore& store, f32 dt) {
   }
 }
 
-void system_render(EntityStore& store) {
+void system_toggle_world(EntityStore& store, EntityId player_id, const Input& input) {
+  auto* player_entity = get_entity(store, player_id);
+  ASSERT_NO_MSG(player_entity);
+
+  if (input.toggle_world) {
+    if (player_entity->world == World::OVERWORLD) {
+      player_entity->world = World::OTHER;
+    } else {
+      player_entity->world = World::OVERWORLD;
+    }
+  }
+}
+
+void system_render(EntityStore& store, EntityId player_id) {
   static constexpr f32 ITEM_SCALE        = 0.625f;
   static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
 
+  auto* player_entity = get_entity(store, player_id);
+  ASSERT_NO_MSG(player_entity);
+
   for (auto& entity : store) {
+    if (entity.world != player_entity->world) {
+      continue;
+    }
+
     RenderRect render{};
     if (auto* item = get_data<Item>(entity)) {
       render = get_render_rect(item->slot.type);

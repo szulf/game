@@ -30,6 +30,9 @@
 
 # game design:
 
+THERE WILL BE A PLAYABLE VERSION OF THE FIRST 2/3 LEVELS BY END OF JULY!!!
+ - just gameplay, i dont really care about graphics rn
+
 ## random ideas:
 
 SMALL!!! (whatever that means)
@@ -59,12 +62,17 @@ like in "Order of the Sinking Star" have multiple puzzles you can do in any orde
 on the other hand that implies a large amount of puzzles, and that is feature creep, remember SMALLL!!!
 
 what do i do about getting resources?
+supply drops from earth?
+basically you would send a message of what you are missing (there would be a way of automatic message sending)
+and based on that message in N hours/minutes you would get a package with the wanted items
 
 some puzzle level ideas:
-1. fix the lights
+1. fix the message sender?
+   - before the lights level, to get some more usage out of the flashlight system, and for it to not be a throw away system after the first 5 minutes
+2. fix the lights
    - at the start of the game you only get a flashlight and only see in a limited range in front of the player
    - only after fixing the lights everything gets a uniform illumination
-2. some circuits were burned and you need to rebuild them?
+3. some circuits were burned and you need to rebuild them?
    - processing line to make circuit boards
    - once you have the circuit board item you can go around the spaceship and replace them?
    - maybe you somehow have to automate the replacing process? (to avoid future repare needs??? so youre not only repairing the spaceship, youre building an automatic reparation system?)

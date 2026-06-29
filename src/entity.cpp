@@ -65,9 +65,15 @@ struct Item {
 // so i dont want "entity = {}" to do any heap allocations
 using EntityData = std::variant<Block, Player, Storage, Conveyor, Item>;
 
+enum class World {
+  OVERWORLD,
+  OTHER,
+};
+
 struct Entity {
   EntityId id{};
   ivec2 pos{};
+  World world{};
   EntityData data{};
 };
 
@@ -194,25 +200,23 @@ Entity* get_entity(EntityStore& store, EntityId id) {
   return &entity;
 }
 
-template <typename Pred>
-Entity* find(EntityStore& store, Pred&& pred) {
+Entity* get_entity_at_pos(EntityStore& store, const ivec2& pos, World world) {
   for (auto& entity : store) {
-    if (pred(entity)) {
+    if (entity.world == world && entity.pos == pos) {
       return &entity;
     }
   }
   return nullptr;
 }
 
-template <typename Pred>
-std::vector<Entity*> find_all(EntityStore& store, Pred&& pred) {
-  std::vector<Entity*> out{};
+std::vector<Entity*> get_entities_at_pos(EntityStore& store, const ivec2& pos, World world) {
+  std::vector<Entity*> entities{};
   for (auto& entity : store) {
-    if (pred(entity)) {
-      out.push_back(&entity);
+    if (entity.world == world && entity.pos == pos) {
+      entities.push_back(&entity);
     }
   }
-  return out;
+  return entities;
 }
 
 void emit(EntityStore& store, const Event& event) {

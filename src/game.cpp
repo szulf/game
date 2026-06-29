@@ -86,6 +86,12 @@ void init(State& state) {
   add_entity(state.store, Entity{.pos = {8, 10}, .data = Conveyor{.rotation = Rotation::LEFT}});
   add_entity(state.store, Entity{.pos = {7, 10}, .data = Conveyor{.rotation = Rotation::LEFT}});
 
+  add_entity(state.store, Entity{.pos = {10, 10}, .data = WorldTunnel{.to = World::OTHER}});
+  add_entity(
+    state.store,
+    Entity{.pos = {10, 10}, .world = World::OTHER, .data = WorldTunnel{.to = World::OVERWORLD}}
+  );
+
   flush(state.store);
 }
 
@@ -151,7 +157,7 @@ void update_tick(State& state, f32 dt) {
   system_remove_entity(state.store, state.player_id, state.input);
   system_pickup_item(state.store, state.player_id);
   system_move_items(state.store, dt);
-  system_toggle_world(state.store, state.player_id, state.input);
+  system_tunnel_through_worlds(state.store, state.player_id);
 
   flush(state.store);
   clear_event_bus(state.store);

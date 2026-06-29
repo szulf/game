@@ -60,15 +60,19 @@ struct Item {
   ItemSlot slot{};
 };
 
-// NOTE: keep a type with no heap allocations as the first one,
-// because std::variant by default initializes to the first type
-// so i dont want "entity = {}" to do any heap allocations
-using EntityData = std::variant<Block, Player, Storage, Conveyor, Item>;
-
 enum class World {
   OVERWORLD,
   OTHER,
 };
+
+struct WorldTunnel {
+  World to{};
+};
+
+// NOTE: keep a type with no heap allocations as the first one,
+// because std::variant by default initializes to the first type
+// so i dont want "entity = {}" to do any heap allocations
+using EntityData = std::variant<Block, Player, Storage, Conveyor, Item, WorldTunnel>;
 
 struct Entity {
   EntityId id{};
@@ -328,7 +332,7 @@ bool solid(const Entity& entity) {
       if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage>) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Conveyor> ||
-                           std::is_same_v<T, Item>) {
+                           std::is_same_v<T, Item> || std::is_same_v<T, WorldTunnel>) {
         return false;
       } else {
         static_assert(false);
@@ -345,7 +349,8 @@ bool breakable(const Entity& entity) {
       if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
                     std::is_same_v<T, Conveyor>) {
         return true;
-      } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Item>) {
+      } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Item> ||
+                           std::is_same_v<T, WorldTunnel>) {
         return false;
       } else {
         static_assert(false);
@@ -383,6 +388,9 @@ std::optional<ItemType> entity_to_item(const Entity& entity) {
       [](const Item&) -> std::optional<ItemType> {
         return std::nullopt;
       },
+      [](const WorldTunnel&) -> std::optional<ItemType> {
+        return std::nullopt;
+      }
     },
     entity.data
   );
@@ -408,24 +416,27 @@ struct RenderRect {
 RenderRect get_render_rect(const Entity& entity) {
   return std::visit(
     overloaded{
-      [&](const Player&) -> RenderRect {
+      [](const Player&) -> RenderRect {
         return {.color = MAROON, .dims = GRID_DIMS};
       },
-      [&](const Block&) -> RenderRect {
+      [](const Block&) -> RenderRect {
         return {.color = GRAY, .dims = GRID_DIMS};
       },
-      [&](const Storage&) -> RenderRect {
+      [](const Storage&) -> RenderRect {
         static constexpr f32 SCALE = 0.75f;
         return {.color = DARKBROWN, .dims = GRID_DIMS * SCALE};
       },
-      [&](const Conveyor&) -> RenderRect {
+      [](const Conveyor&) -> RenderRect {
         return {.color = YELLOW, .dims = {i32(f32(GRID_DIMS.x) * 0.625f), GRID_DIMS.y}};
       },
-      [&](const Item&) -> RenderRect {
+      [](const Item&) -> RenderRect {
         ASSERT(
           false,
           "the item entity does not have a render rect, use its items render rect instead"
         );
+      },
+      [](const WorldTunnel&) -> RenderRect {
+        return {.color = ORANGE, .dims = GRID_DIMS};
       },
     },
     entity.data
@@ -527,7 +538,7 @@ void for_each_active_slot(Entity& entity, Func&& func) {
           }
         }
       },
-      [&](Block&) {},
+      [](Block&) {},
       [&](Storage& storage) {
         for (auto& slot : storage.inventory) {
           if (slot) {
@@ -542,7 +553,8 @@ void for_each_active_slot(Entity& entity, Func&& func) {
           }
         }
       },
-      [&](Item&) {},
+      [](Item&) {},
+      [](WorldTunnel&) {},
     },
     entity.data
   );

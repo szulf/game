@@ -146,8 +146,9 @@ void system_player_inventory_interactions(
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
-        .pos  = grid_pos(input.mouse_pos),
-        .data = Item{.slot = player->hand},
+        .pos   = grid_pos(input.mouse_pos),
+        .world = player_entity->world,
+        .data  = Item{.slot = player->hand},
       };
       add_entity(store, entity);
       player->hand = {};
@@ -199,8 +200,9 @@ void system_place_entity(
   if (input.rmb_pressed && player->hand &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
       !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)) {
-    auto entity = entity_from_item(player->hand.type);
-    entity.pos  = grid_pos(input.mouse_pos);
+    auto entity  = entity_from_item(player->hand.type);
+    entity.pos   = grid_pos(input.mouse_pos);
+    entity.world = player_entity->world;
     if (auto* rotation = get_rotation(entity)) {
       *rotation = place_rotation;
     }
@@ -223,15 +225,17 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
       ASSERT(item_type, "broken breakable item doesnt have an item_type");
 
       Entity entity = {
-        .pos  = hovered->pos,
-        .data = Item{.slot = {.type = *item_type, .count = 1}},
+        .pos   = hovered->pos,
+        .world = player_entity->world,
+        .data  = Item{.slot = {.type = *item_type, .count = 1}},
       };
       add_entity(store, entity);
 
       for_each_active_slot(*hovered, [&](const ItemSlot& slot) {
         Entity item_entity = {
-          .pos  = hovered->pos,
-          .data = Item{.slot = slot},
+          .pos   = hovered->pos,
+          .world = player_entity->world,
+          .data  = Item{.slot = slot},
         };
         add_entity(store, item_entity);
       });
@@ -387,15 +391,15 @@ void system_move_items(EntityStore& store, f32 dt) {
   }
 }
 
-void system_toggle_world(EntityStore& store, EntityId player_id, const Input& input) {
+// TODO: not sure whether i want to travel via interaction or via walk into
+void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);
 
-  if (input.toggle_world) {
-    if (player_entity->world == World::OVERWORLD) {
-      player_entity->world = World::OTHER;
-    } else {
-      player_entity->world = World::OVERWORLD;
+  for (auto& event : listen(store, EventType::PLAYER_COLLIDED)) {
+    auto* tunnel = get_data<WorldTunnel>(store, event.entity);
+    if (tunnel) {
+      player_entity->world = tunnel->to;
     }
   }
 }

@@ -14,7 +14,7 @@ struct EntityId {
 
 static constexpr EntityId NULL_ENTITY = {0, 0};
 
-static constexpr u32 PLAYER_INVENTORY_SIZE = 32;
+static constexpr u32 PLAYER_INVENTORY_SIZE = 16;
 
 struct Player {
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
@@ -67,6 +67,16 @@ enum class World {
 
 struct WorldTunnel {
   World to{};
+  std::vector<ItemSlot> inventory = {
+    {.flags = ITEM_SLOT_INPUT},
+    {.flags = ITEM_SLOT_INPUT},
+    {.flags = ITEM_SLOT_INPUT},
+    {.flags = ITEM_SLOT_INPUT},
+    {.flags = ITEM_SLOT_OUTPUT},
+    {.flags = ITEM_SLOT_OUTPUT},
+    {.flags = ITEM_SLOT_OUTPUT},
+    {.flags = ITEM_SLOT_OUTPUT}
+  };
 };
 
 // NOTE: keep a type with no heap allocations as the first one,

@@ -55,6 +55,25 @@ static ItemSlotIdx inventory_ui(
       .dims  = CELL_DIMS,
     });
 
+    bool in_only = inv[i].flags == ITEM_SLOT_INPUT;
+    if (in_only) {
+      ui_cmds.push_back(ui::TextCommand{
+        .pos   = cell_pos,
+        .color = BLUE,
+        .text  = "IN",
+        .size  = 10,
+      });
+    }
+    bool out_only = inv[i].flags == ITEM_SLOT_OUTPUT;
+    if (out_only) {
+      ui_cmds.push_back(ui::TextCommand{
+        .pos   = cell_pos,
+        .color = ORANGE,
+        .text  = "OUT",
+        .size  = 10,
+      });
+    }
+
     bool hovered_x = mouse_pos.x > cell_pos.x && mouse_pos.x < (cell_pos.x + CELL_DIMS.x);
     bool hovered_y = mouse_pos.y > cell_pos.y && mouse_pos.y < (cell_pos.y + CELL_DIMS.y);
     if (hovered_x && hovered_y) {
@@ -100,6 +119,7 @@ void system_player_inventory_interactions(
   ASSERT_NO_MSG(player);
 
   // NOTE: opening
+  // TODO: forbid opening the player inventory as another inventory
   if (input.interact &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
@@ -114,7 +134,7 @@ void system_player_inventory_interactions(
     if (input.close_inv ||
         (open_inv_entity &&
          !pos_in_radius(open_inv_entity->pos, player_entity->pos, player->interaction_radius)) ||
-        !open_inv_entity) {
+        (open_inv_entity && open_inv_entity->world != player_entity->world) || !open_inv_entity) {
       player->open_inventory = NULL_ENTITY;
     }
   }
@@ -124,8 +144,11 @@ void system_player_inventory_interactions(
     auto* hovered_inv = get_inventory(store, hovered_slot.entity);
     if (hovered_inv) {
       auto& slot = (*hovered_inv)[hovered_slot.slot_idx];
+      // NOTE: im not checking the flags for the hand slot,
+      // i dont see myself ever changing the flags on the player hand
       auto& hand = player->hand;
-      if (slot && hand && slot.type == hand.type) {
+
+      if (slot && (slot.flags & ITEM_SLOT_INPUT) && hand && slot.type == hand.type) {
         if (slot.count + hand.count > ITEM_MAX_COUNT) {
           hand.count = (slot.count + hand.count) - ITEM_MAX_COUNT;
           slot.count = ITEM_MAX_COUNT;
@@ -133,8 +156,13 @@ void system_player_inventory_interactions(
           slot.count += hand.count;
           hand = {};
         }
-      } else {
-        std::swap(slot, hand);
+      } else if (slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) &&
+                 hand) {
+        swap_slots(slot, hand);
+      } else if (slot && (slot.flags & ITEM_SLOT_OUTPUT) && !hand) {
+        swap_slots(slot, hand);
+      } else if (!slot && (slot.flags & ITEM_SLOT_INPUT) && hand) {
+        swap_slots(slot, hand);
       }
     }
   }
@@ -249,7 +277,15 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
 // also modified the slot to contain the left amount of items after the transfer
 // so if it succeeded slot.count == 0
 static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
+  if (!(slot.flags & ITEM_SLOT_OUTPUT)) {
+    return false;
+  }
+
   for (u32 i = 0; i < inventory.size(); ++i) {
+    if (!(inventory[i].flags & ITEM_SLOT_INPUT)) {
+      continue;
+    }
+
     if (inventory[i].type == slot.type) {
       if (inventory[i].count + slot.count > ITEM_MAX_COUNT) {
         slot.count         = (inventory[i].count + slot.count) - ITEM_MAX_COUNT;
@@ -260,11 +296,20 @@ static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
         return true;
       }
     } else if (!inventory[i]) {
-      std::swap(inventory[i], slot);
+      swap_slots(inventory[i], slot);
       return true;
     }
   }
   return false;
+}
+
+static bool transfer_items(std::vector<ItemSlot>& to, std::vector<ItemSlot>& from) {
+  for (auto& slot : from) {
+    if (!transfer_items(to, slot)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void system_pickup_item(EntityStore& store, EntityId player_id) {
@@ -281,9 +326,9 @@ void system_pickup_item(EntityStore& store, EntityId player_id) {
   }
 }
 
-static ItemSlot* find_first_used_slot(std::vector<ItemSlot>& inventory) {
+static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
   for (u32 i = 0; i < inventory.size(); ++i) {
-    if (inventory[i]) {
+    if (inventory[i] && (inventory[i].flags & ITEM_SLOT_OUTPUT)) {
       return &inventory[i];
     }
   }
@@ -348,11 +393,11 @@ void system_move_items(EntityStore& store, f32 dt) {
             from_inv,
             "entity that satisifies HasInventory has to return an inventory from get_inventory()"
           );
-          auto* first_used = find_first_used_slot(*from_inv);
-          if (first_used) {
-            item.slot.type  = first_used->type;
+          auto* first_extractable = find_first_extractable_slot(*from_inv);
+          if (first_extractable) {
+            item.slot.type  = first_extractable->type;
             item.slot.count = 1;
-            --first_used->count;
+            --first_extractable->count;
           }
         }
         break;
@@ -372,7 +417,7 @@ void system_move_items(EntityStore& store, f32 dt) {
             for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
               auto& to_item = to_conveyor->items[i];
               if (!to_item.slot) {
-                std::swap(item.slot, to_item.slot);
+                swap_slots(item.slot, to_item.slot);
                 to_item.t = 0;
                 success   = true;
                 break;
@@ -391,15 +436,53 @@ void system_move_items(EntityStore& store, f32 dt) {
   }
 }
 
+Entity* find_corresponding_world_tunnel(EntityStore& store, Entity& tunnel_entity) {
+  auto* tunnel = get_data<WorldTunnel>(tunnel_entity);
+  ASSERT(tunnel, "cannot find corresponding world tunnel of none world tunnel entity");
+  for (auto& entity : store) {
+    if (entity.world == tunnel->to) {
+      auto* tunnel = get_data<WorldTunnel>(entity);
+      if (tunnel && tunnel->to == tunnel_entity.world) {
+        return &entity;
+      }
+    }
+  }
+  return nullptr;
+}
+
+static void swap_slot_flags(std::vector<ItemSlot>& inventory) {
+  for (auto& slot : inventory) {
+    slot.flags ^= ITEM_SLOT_FLAGS_MASK;
+  }
+}
+
+// NOTE: assumes there is always a 1-1 mapping of tunnels between worlds
 // TODO: not sure whether i want to travel via interaction or via walk into
 void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);
 
+  // NOTE: player
   for (auto& event : listen(store, EventType::PLAYER_COLLIDED)) {
     auto* tunnel = get_data<WorldTunnel>(store, event.entity);
     if (tunnel) {
       player_entity->world = tunnel->to;
+    }
+  }
+
+  // NOTE: items
+  for (auto& entity : store) {
+    if (auto* tunnel = get_data<WorldTunnel>(entity)) {
+      auto* corresponding_tunnel_entity = find_corresponding_world_tunnel(store, entity);
+      ASSERT(corresponding_tunnel_entity, "there should always be a corresponding tunnel");
+      auto* corresponding_tunnel = get_data<WorldTunnel>(*corresponding_tunnel_entity);
+      ASSERT_NO_MSG(corresponding_tunnel);
+
+      swap_slot_flags(corresponding_tunnel->inventory);
+      swap_slot_flags(tunnel->inventory);
+      transfer_items(corresponding_tunnel->inventory, tunnel->inventory);
+      swap_slot_flags(corresponding_tunnel->inventory);
+      swap_slot_flags(tunnel->inventory);
     }
   }
 }

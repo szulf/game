@@ -1,5 +1,6 @@
 #include "core.cpp"
 #include "ui.cpp"
+#include "assets.cpp"
 #include "items.cpp"
 #include "entity.cpp"
 
@@ -41,6 +42,7 @@ void clear(FrameData& frame) {
 struct State {
   Input input{};
   FrameData frame{};
+  AssetManager assets{};
 
   // TODO: should reset when changing the player hand item
   Rotation current_place_rotation{};
@@ -58,6 +60,8 @@ void init(State& state) {
   InitWindow(WINDOW_DIMS.x, WINDOW_DIMS.y, "test");
   SetTargetFPS(165);
   SetExitKey(KEY_NULL);
+
+  load_textures(state.assets);
 
   auto player_entity = Entity{
     .pos  = {8, 4},
@@ -171,7 +175,8 @@ void update_frame(State& state) {
     state.store,
     state.player_id,
     state.input.mouse_pos,
-    state.frame.ui_cmds
+    state.frame.ui_cmds,
+    state.assets
   );
 }
 
@@ -191,7 +196,7 @@ void render(State& state) {
   }
 
   // NOTE: entities
-  system_render(state.store, state.player_id);
+  system_render(state.store, state.player_id, state.assets);
   // TODO: move to system_render()?
   // TODO: it should also be related to mouse somehow i think
   // TODO: better arrow drawing code?
@@ -287,10 +292,10 @@ void render(State& state) {
     ASSERT_NO_MSG(player_entity);
     auto* player = get_data<Player>(*player_entity);
     ASSERT_NO_MSG(player);
-    auto render = get_render_rect(*player_entity);
+    auto& texture = state.assets.textures[get_texture_type(*player_entity)];
     DrawCircleLines(
-      (player_entity->pos.x * GRID_DIMS.x) + (render.dims.x * 0.5f),
-      (player_entity->pos.y * GRID_DIMS.y) + (render.dims.y * 0.5f),
+      (player_entity->pos.x * GRID_DIMS.x) + (texture.width * 0.5f),
+      (player_entity->pos.y * GRID_DIMS.y) + (texture.height * 0.5f),
       player->interaction_radius * GRID_DIMS.x,
       GREEN
     );

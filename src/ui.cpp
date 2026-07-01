@@ -13,7 +13,12 @@ struct TextCommand {
   i32 size{};
 };
 
-using Command = std::variant<RectCommand, TextCommand>;
+struct TextureCommand {
+  ivec2 pos{};
+  Texture2D* texture{};
+};
+
+using Command = std::variant<RectCommand, TextCommand, TextureCommand>;
 
 void render(const std::vector<Command>& commands) {
   for (const auto& cmd : commands) {
@@ -24,6 +29,9 @@ void render(const std::vector<Command>& commands) {
         },
         [&](const TextCommand& text) {
           DrawText(text.text.c_str(), text.pos.x, text.pos.y, text.size, text.color);
+        },
+        [&](const TextureCommand& texture) {
+          DrawTexture(*texture.texture, texture.pos.x, texture.pos.y, WHITE);
         },
       },
       cmd

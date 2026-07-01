@@ -423,49 +423,33 @@ struct RenderRect {
   ivec2 dims{};
 };
 
-RenderRect get_render_rect(const Entity& entity) {
+TextureType get_texture_type(const Entity& entity) {
   return std::visit(
     overloaded{
-      [](const Player&) -> RenderRect {
-        return {.color = MAROON, .dims = GRID_DIMS};
+      [](const Player&) {
+        return TEXTURE_PLAYER;
       },
-      [](const Block&) -> RenderRect {
-        return {.color = GRAY, .dims = GRID_DIMS};
+      [](const Block&) {
+        return TEXTURE_BLOCK;
       },
-      [](const Storage&) -> RenderRect {
-        static constexpr f32 SCALE = 0.75f;
-        return {.color = DARKBROWN, .dims = GRID_DIMS * SCALE};
+      [](const Storage&) {
+        return TEXTURE_STORAGE;
       },
-      [](const Conveyor&) -> RenderRect {
-        return {.color = YELLOW, .dims = {i32(f32(GRID_DIMS.x) * 0.625f), GRID_DIMS.y}};
+      [](const Conveyor&) {
+        return TEXTURE_CONVEYOR;
       },
-      [](const Item&) -> RenderRect {
+      [](const Item&) -> TextureType {
         ASSERT(
           false,
           "the item entity does not have a render rect, use its items render rect instead"
         );
       },
-      [](const WorldTunnel&) -> RenderRect {
-        return {.color = ORANGE, .dims = GRID_DIMS};
+      [](const WorldTunnel&) {
+        return TEXTURE_WORLD_TUNNEL;
       },
     },
     entity.data
   );
-}
-
-// NOTE: currently the same as entity one,
-// but in the future this will have different values, so might as well just write it now
-RenderRect get_render_rect(ItemType item_type) {
-  switch (item_type) {
-    case ItemType::BLOCK:
-      return {.color = GRAY, .dims = GRID_DIMS};
-    case ItemType::STORAGE:
-      static constexpr f32 SCALE = 0.75f;
-      return {.color = DARKBROWN, .dims = GRID_DIMS * SCALE};
-    case ItemType::CONVEYOR:
-      return {.color = YELLOW, .dims = {i32(f32(GRID_DIMS.x) * 0.625f), GRID_DIMS.y}};
-  }
-  ASSERT(false, "invalid item type: %d\n", i32(item_type));
 }
 
 // TODO: better name?

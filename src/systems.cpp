@@ -7,21 +7,23 @@ static bool pos_in_radius(const ivec2& pos, const ivec2& start_pos, i32 radius) 
   return diff2 < radius * radius;
 }
 
-static void
-item_slot_icon_ui(const ItemSlot& item_slot, const ivec2& pos, std::vector<ui::Command>& ui_cmds) {
+static void item_slot_icon_ui(
+  const ItemSlot& item_slot,
+  const ivec2& pos,
+  std::vector<ui::Command>& ui_cmds,
+  AssetManager& assets
+) {
   // TODO: somehow combine this constant with inventory_ui?
   static constexpr ivec2 CELL_DIMS = GRID_DIMS;
-  static constexpr f32 ICON_SCALE  = 0.75f;
 
   if (item_slot) {
-    auto render     = get_render_rect(item_slot.type);
-    ivec2 icon_dims = render.dims * ICON_SCALE;
+    auto& texture   = assets.textures[get_texture_type(item_slot.type)];
+    ivec2 icon_dims = ivec2{texture.width, texture.height};
     ivec2 icon_pos  = pos + ((CELL_DIMS - icon_dims) / 2);
 
-    ui_cmds.push_back(ui::RectCommand{
-      .pos   = icon_pos,
-      .color = render.color,
-      .dims  = icon_dims,
+    ui_cmds.push_back(ui::TextureCommand{
+      .pos     = icon_pos,
+      .texture = &texture,
     });
 
     ui_cmds.push_back(ui::TextCommand{
@@ -38,7 +40,8 @@ static ItemSlotIdx inventory_ui(
   const std::vector<ItemSlot>& inv,
   const ivec2& pos,
   const ivec2& mouse_pos,
-  std::vector<ui::Command>& ui_cmds
+  std::vector<ui::Command>& ui_cmds,
+  AssetManager& assets
 ) {
   // TODO: somehow combine this constant with item_slot_icon_ui?
   static constexpr ivec2 CELL_DIMS = GRID_DIMS;
@@ -81,7 +84,7 @@ static ItemSlotIdx inventory_ui(
       hovered.slot_idx = i;
     }
 
-    item_slot_icon_ui(inv[i], cell_pos, ui_cmds);
+    item_slot_icon_ui(inv[i], cell_pos, ui_cmds, assets);
   }
   return hovered;
 }
@@ -188,17 +191,19 @@ ItemSlotIdx system_generate_inventory_uis(
   EntityStore& store,
   EntityId player_id,
   const ivec2& mouse_pos,
-  std::vector<ui::Command>& ui_cmds
+  std::vector<ui::Command>& ui_cmds,
+  AssetManager& assets
 ) {
   auto* player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
-  auto hovered_slot = inventory_ui(player_id, player->inventory, {10, 580}, mouse_pos, ui_cmds);
+  auto hovered_slot =
+    inventory_ui(player_id, player->inventory, {10, 580}, mouse_pos, ui_cmds, assets);
 
   if (player->open_inventory) {
     auto* open_inv = get_inventory(store, player->open_inventory);
     if (open_inv) {
       auto open_inv_hovered_slot =
-        inventory_ui(player->open_inventory, *open_inv, {10, 300}, mouse_pos, ui_cmds);
+        inventory_ui(player->open_inventory, *open_inv, {10, 300}, mouse_pos, ui_cmds, assets);
       if (open_inv_hovered_slot.entity) {
         hovered_slot = open_inv_hovered_slot;
       }
@@ -207,7 +212,7 @@ ItemSlotIdx system_generate_inventory_uis(
 
   // TODO: not sure whether this belongs here
   if (player->hand) {
-    item_slot_icon_ui(player->hand, mouse_pos, ui_cmds);
+    item_slot_icon_ui(player->hand, mouse_pos, ui_cmds, assets);
   }
 
   return hovered_slot;
@@ -487,8 +492,7 @@ void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
   }
 }
 
-void system_render(EntityStore& store, EntityId player_id) {
-  static constexpr f32 ITEM_SCALE        = 0.625f;
+void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
   static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
 
   auto* player_entity = get_entity(store, player_id);
@@ -499,65 +503,73 @@ void system_render(EntityStore& store, EntityId player_id) {
       continue;
     }
 
-    RenderRect render{};
+    const Texture2D* texture{};
     if (auto* item = get_data<Item>(entity)) {
-      render = get_render_rect(item->slot.type);
+      texture = &assets.textures[get_texture_type(item->slot.type)];
     } else {
-      render = get_render_rect(entity);
+      texture = &assets.textures[get_texture_type(entity)];
     }
 
-    Rectangle rect = {
-      .x = f32((entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - render.dims.x) / 2)) +
-           (f32(render.dims.x) * 0.5f),
-      .y = f32((entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - render.dims.y) / 2)) +
-           (f32(render.dims.y) * 0.5f),
-      .width  = f32(render.dims.x),
-      .height = f32(render.dims.y),
+    Rectangle source_rect = {
+      .x      = 0,
+      .y      = 0,
+      .width  = f32(texture->width),
+      .height = f32(texture->height),
     };
-    Vector2 origin = vector2_from_ivec2(render.dims) * 0.5f;
+
+    Rectangle dest_rect = {
+      .x = f32((entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - texture->width) / 2)) +
+           (f32(texture->width) * 0.5f),
+      .y = f32((entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - texture->height) / 2)) +
+           (f32(texture->height) * 0.5f),
+      .width  = f32(texture->width),
+      .height = f32(texture->height),
+    };
+
+    Vector2 origin = Vector2{f32(texture->width), f32(texture->height)} * 0.5f;
 
     f32 rotation = 0;
     if (auto* rot = get_rotation(entity)) {
       rotation = rotation_degrees(*rot);
     }
 
-    if (is<Item>(entity)) {
-      rect.width *= ITEM_SCALE;
-      rect.height *= ITEM_SCALE;
-      origin *= ITEM_SCALE;
-    }
-
-    DrawRectanglePro(rect, origin, rotation, render.color);
+    DrawTexturePro(*texture, source_rect, dest_rect, origin, rotation, WHITE);
 
     if (auto* conveyor = get_data<Conveyor>(entity)) {
       for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
         auto& item = conveyor->items[i];
         if (item.slot) {
-          RenderRect on_render = get_render_rect(item.slot.type);
-          Vector2 on_origin    = vector2_from_ivec2(on_render.dims) * 0.5f * ON_CONVEYOR_SCALE;
-          Rectangle on_rect    = {
-               .x = f32((entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - on_render.dims.x) / 2)) +
-                 (f32(on_render.dims.x) * 0.5f),
-               .y = f32((entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - on_render.dims.y) / 2)) +
-                 (f32(on_render.dims.y) * 0.5f),
-               .width  = f32(on_render.dims.x) * ON_CONVEYOR_SCALE,
-               .height = f32(on_render.dims.y) * ON_CONVEYOR_SCALE,
+          auto& on_texture  = assets.textures[get_texture_type(item.slot.type)];
+          ivec2 dims        = {on_texture.width, on_texture.height};
+          Vector2 on_origin = vector2_from_ivec2(dims) * 0.5f * ON_CONVEYOR_SCALE;
+
+          Rectangle on_source_rect = {0, 0, f32(dims.x), f32(dims.y)};
+
+          Rectangle on_dest_rect = {
+            .x = f32((entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - dims.x) / 2)) +
+                 (f32(dims.x) * 0.5f),
+            .y = f32((entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - dims.y) / 2)) +
+                 (f32(dims.y) * 0.5f),
+            .width  = f32(dims.x) * ON_CONVEYOR_SCALE,
+            .height = f32(dims.y) * ON_CONVEYOR_SCALE,
           };
 
-          on_rect.x += (f32(direction_to_ivec2(conveyor_from(*conveyor)).x) * 0.5f) * GRID_DIMS.x;
-          on_rect.y += (f32(direction_to_ivec2(conveyor_from(*conveyor)).y) * 0.5f) * GRID_DIMS.y;
+          on_dest_rect.x +=
+            (f32(direction_to_ivec2(conveyor_from(*conveyor)).x) * 0.5f) * GRID_DIMS.x;
+          on_dest_rect.y +=
+            (f32(direction_to_ivec2(conveyor_from(*conveyor)).y) * 0.5f) * GRID_DIMS.y;
 
-          on_rect.x -=
+          on_dest_rect.x -=
             ((f32(direction_to_ivec2(conveyor_from(*conveyor)).x) * 0.5f) * item.t) * GRID_DIMS.x;
-          on_rect.y -=
+          on_dest_rect.y -=
             ((f32(direction_to_ivec2(conveyor_from(*conveyor)).y) * 0.5f) * item.t) * GRID_DIMS.y;
 
-          on_rect.x +=
+          on_dest_rect.x +=
             ((f32(direction_to_ivec2(conveyor_to(*conveyor)).x) * 0.5f) * item.t) * GRID_DIMS.x;
-          on_rect.y +=
+          on_dest_rect.y +=
             ((f32(direction_to_ivec2(conveyor_to(*conveyor)).y) * 0.5f) * item.t) * GRID_DIMS.y;
 
-          DrawRectanglePro(on_rect, on_origin, 0, on_render.color);
+          DrawTexturePro(on_texture, on_source_rect, on_dest_rect, on_origin, 0, WHITE);
         }
       }
     }

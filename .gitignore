@@ -1,2 +1,5 @@
 vendor/
 main
+
+# TODO: remove after moving to my own assets
+assets/

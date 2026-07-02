@@ -1,15 +1,12 @@
 #include "core.cpp"
-#include "ui.cpp"
-#include "assets.cpp"
-#include "items.cpp"
-#include "entity.cpp"
 
 struct Input {
-  ivec2 mouse_pos{};
+  vec2 mouse_pos{};
+  i32 mouse_scroll{};
   bool lmb_pressed{};
   bool rmb_pressed{};
 
-  ivec2 move{};
+  vec2 move{};
   bool interact{};
   bool close_inv{};
   bool rotate{};
@@ -24,6 +21,11 @@ void clear(Input& input) {
   input.mouse_pos = mouse_pos;
 }
 
+#include "assets.cpp"
+#include "ui.cpp"
+#include "items.cpp"
+#include "entity.cpp"
+
 struct ItemSlotIdx {
   EntityId entity{};
   u32 slot_idx{};
@@ -31,18 +33,17 @@ struct ItemSlotIdx {
 
 struct FrameData {
   ItemSlotIdx hovered_slot{};
-  std::vector<ui::Command> ui_cmds{};
 };
 
 void clear(FrameData& frame) {
   frame.hovered_slot = {};
-  frame.ui_cmds.clear();
 }
 
 struct State {
   Input input{};
   FrameData frame{};
   AssetManager assets{};
+  UI_System ui_system{};
 
   // TODO: should reset when changing the player hand item
   Rotation current_place_rotation{};
@@ -100,7 +101,7 @@ void init(State& state) {
 }
 
 void gather_input(State& state) {
-  state.input.mouse_pos = ivec2_from_vector2(GetMousePosition());
+  state.input.mouse_pos = vec2_from_vector2(GetMousePosition());
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     state.input.lmb_pressed = true;
   }
@@ -120,8 +121,8 @@ void gather_input(State& state) {
   if (IsKeyPressed(KEY_D)) {
     ++state.input.move.x;
   }
-  state.input.move.x = std::clamp(state.input.move.x, -1, 1);
-  state.input.move.y = std::clamp(state.input.move.y, -1, 1);
+  state.input.move.x = std::clamp(state.input.move.x, -1.0f, 1.0f);
+  state.input.move.y = std::clamp(state.input.move.y, -1.0f, 1.0f);
 
   if (IsKeyPressed(KEY_E)) {
     state.input.interact = true;
@@ -170,13 +171,14 @@ void update_tick(State& state, f32 dt) {
 
 void update_frame(State& state) {
   clear(state.frame);
+  ui_system_update(state.ui_system);
 
   state.frame.hovered_slot = system_generate_inventory_uis(
+    state.assets,
+    state.ui_system,
+    state.input,
     state.store,
-    state.player_id,
-    state.input.mouse_pos,
-    state.frame.ui_cmds,
-    state.assets
+    state.player_id
   );
 }
 
@@ -207,25 +209,25 @@ void render(State& state) {
     if (player->hand && rotatable(player->hand.type)) {
       static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
 
-      ivec2 main_start_pos = (grid_pos(state.input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
-      ivec2 main_end_pos   = main_start_pos;
+      vec2 main_start_pos = (grid_pos(state.input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
+      vec2 main_end_pos   = main_start_pos;
 
       switch (state.current_place_rotation) {
         case Rotation::UP:
-          main_start_pos.y -= GRID_DIMS.y / 3;
-          main_end_pos.y += GRID_DIMS.y / 3;
+          main_start_pos.y -= GRID_DIMS.y / 3.0f;
+          main_end_pos.y += GRID_DIMS.y / 3.0f;
           break;
         case Rotation::DOWN:
-          main_start_pos.y += GRID_DIMS.y / 3;
-          main_end_pos.y -= GRID_DIMS.y / 3;
+          main_start_pos.y += GRID_DIMS.y / 3.0f;
+          main_end_pos.y -= GRID_DIMS.y / 3.0f;
           break;
         case Rotation::RIGHT:
-          main_start_pos.x += GRID_DIMS.x / 3;
-          main_end_pos.x -= GRID_DIMS.x / 3;
+          main_start_pos.x += GRID_DIMS.x / 3.0f;
+          main_end_pos.x -= GRID_DIMS.x / 3.0f;
           break;
         case Rotation::LEFT:
-          main_start_pos.x -= GRID_DIMS.x / 3;
-          main_end_pos.x += GRID_DIMS.x / 3;
+          main_start_pos.x -= GRID_DIMS.x / 3.0f;
+          main_end_pos.x += GRID_DIMS.x / 3.0f;
           break;
         case Rotation::COUNT:
           ASSERT(false, "invalid rotation: Rotation::COUNT");
@@ -233,43 +235,39 @@ void render(State& state) {
       }
 
       auto& hands_start_pos = main_start_pos;
-      ivec2 left_end_pos    = hands_start_pos;
-      ivec2 right_end_pos   = hands_start_pos;
+      vec2 left_end_pos     = hands_start_pos;
+      vec2 right_end_pos    = hands_start_pos;
 
       switch (state.current_place_rotation) {
         case Rotation::UP:
-          right_end_pos += ivec2{-(GRID_DIMS.x / 4), GRID_DIMS.y / 4};
-          left_end_pos += ivec2{GRID_DIMS.x / 4, GRID_DIMS.y / 4};
+          right_end_pos += vec2{-(GRID_DIMS.x / 4.0f), GRID_DIMS.y / 4.0f};
+          left_end_pos += vec2{GRID_DIMS.x / 4.0f, GRID_DIMS.y / 4.0f};
           break;
         case Rotation::DOWN:
-          right_end_pos += ivec2{GRID_DIMS.x / 4, -(GRID_DIMS.y / 4)};
-          left_end_pos += ivec2{-(GRID_DIMS.x / 4), -(GRID_DIMS.y / 4)};
+          right_end_pos += vec2{GRID_DIMS.x / 4.0f, -(GRID_DIMS.y / 4.0f)};
+          left_end_pos += vec2{-(GRID_DIMS.x / 4.0f), -(GRID_DIMS.y / 4.0f)};
           break;
         case Rotation::RIGHT:
-          right_end_pos += ivec2{-(GRID_DIMS.y / 4), GRID_DIMS.x / 4};
-          left_end_pos += ivec2{-(GRID_DIMS.y / 4), -(GRID_DIMS.x / 4)};
+          right_end_pos += vec2{-(GRID_DIMS.y / 4.0f), GRID_DIMS.x / 4.0f};
+          left_end_pos += vec2{-(GRID_DIMS.y / 4.0f), -(GRID_DIMS.x / 4.0f)};
           break;
         case Rotation::LEFT:
-          right_end_pos += ivec2{GRID_DIMS.y / 4, -(GRID_DIMS.x / 4)};
-          left_end_pos += ivec2{GRID_DIMS.y / 4, GRID_DIMS.x / 4};
+          right_end_pos += vec2{GRID_DIMS.y / 4.0f, -(GRID_DIMS.x / 4.0f)};
+          left_end_pos += vec2{GRID_DIMS.y / 4.0f, GRID_DIMS.x / 4.0f};
           break;
         case Rotation::COUNT:
           ASSERT(false, "invalid rotation: Rotation::COUNT");
           break;
       }
 
-      DrawLineV(vector2_from_ivec2(main_start_pos), vector2_from_ivec2(main_end_pos), ARROW_COLOR);
-      DrawLineV(
-        vector2_from_ivec2(hands_start_pos),
-        vector2_from_ivec2(right_end_pos),
-        ARROW_COLOR
-      );
-      DrawLineV(vector2_from_ivec2(hands_start_pos), vector2_from_ivec2(left_end_pos), ARROW_COLOR);
+      DrawLineV(vector2_from_vec2(main_start_pos), vector2_from_vec2(main_end_pos), ARROW_COLOR);
+      DrawLineV(vector2_from_vec2(hands_start_pos), vector2_from_vec2(right_end_pos), ARROW_COLOR);
+      DrawLineV(vector2_from_vec2(hands_start_pos), vector2_from_vec2(left_end_pos), ARROW_COLOR);
     }
   }
 
   // NOTE: ui
-  ui::render(state.frame.ui_cmds);
+  ui_render(state.ui_system);
   DrawFPS(5, 5);
 
   // NOTE: mouse

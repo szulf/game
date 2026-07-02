@@ -10,18 +10,26 @@
   - with a toggle for it
   - and a toggle for global lighting
 
-- [ ] mini puzzle worlds
+- [x] mini puzzle worlds
   - with item input/output
   
-- [ ] circuit board line
+- [ ] message sending system
+  - [ ] message sender block
+    - displays the current message list
+    - allows for building and sending messages
+
+- [ ] crafting system
+  - not sure whether i want inventory crafting alongside machine crafting (i think no)
+  
+- [ ] machine fixing system
 
 - [ ] better movement system
 
 ## rendering/art:
 
-- [ ] use the UI library
+- [x] use the UI library
 
-- [ ] 3D rendering or better textures (distant future)
+- [ ] better textures and animations
 
 ## other:
 
@@ -31,7 +39,39 @@
 # game design:
 
 THERE WILL BE A PLAYABLE VERSION OF THE FIRST 2/3 LEVELS BY END OF JULY!!!
- - just gameplay, i dont really care about graphics rn
+
+- just gameplay, i dont really care about graphics rn
+
+## message sending system:
+
+sending messages is a way of getting resources on the spaceship
+
+you send messages back to earth and earth sends back resources
+
+building messages works by building a list of items you need and how much of them you need \
+there is no guarantee that the right amount will be sent, you might get a little bit less, might get a little bit more \
+there is also no guarantee about how quickly the items will come, there is an estimated time (a couple of in game hours?)
+
+there is a special output only container that receives items from earth, it limits how much you can order
+(maybe you can upgrade it later in the game somehow? (probably not))
+
+### repair message system level design (level 1)
+
+at first the messaging system is broken, it is also the main reason you are sent to the spaceship to repair things (lack of ability to contact the spaceships automatic systems means you need to send someone there (not sure whether you are a robot or an engineer) when you get there you also discover more things are broken (more levels))
+
+you get sent to the spaceship, and the message system starts to break, you have to collect items from other broken systems to repair the message system
+after you repair it once, you can send a few messages and then it would break again.
+you can then build an automatic system to auto repair the system, because you have some items ordered from earth
+
+repairing the message system actually takes:
+
+- have the correct items in your inventory
+- multiple right clicks with some screwdriver or toolbox or smth
+
+and later you can craft something like a fixer robot that would sit in front of a machine, accept items from a conveyor and fix the machine if it breaks down (in this case the message sender)
+
+maybe you would also have some sort of repair schematic to both repair it yourself and to give to the fixer robot for it to know how to repair the machine \
+(or maybe some data stick with the repair schematic on it for the robot, and just the schematic for you)
 
 ## random ideas:
 

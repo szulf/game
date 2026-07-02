@@ -62,6 +62,35 @@ Vector2 vector2_from_ivec2(const ivec2& vec) {
   return {f32(vec.x), f32(vec.y)};
 }
 
+vec2 vec2_from_vector2(const Vector2& vec) {
+  return {vec.x, vec.y};
+}
+
+Vector2 vector2_from_vec2(const vec2& vec) {
+  return {vec.x, vec.y};
+}
+
+Rectangle rect_from_vec2x2(const vec2& pos, const vec2& dims) {
+  return {
+    .x      = pos.x,
+    .y      = pos.y,
+    .width  = dims.x,
+    .height = dims.y,
+  };
+}
+
+vec2 pos_from_rect(const Rectangle& rect) {
+  return {rect.x, rect.y};
+}
+
+vec2 dims_from_rect(const Rectangle& rect) {
+  return {rect.width, rect.height};
+}
+
+vec2 dims_from_texture(const Texture2D& texture) {
+  return {f32(texture.width), f32(texture.height)};
+}
+
 enum class Direction {
   UP,
   RIGHT,
@@ -86,7 +115,7 @@ Direction opposite_direction(Direction direction) {
   ASSERT(false, "invalid direction: %d\n", i32(direction));
 }
 
-ivec2 direction_to_ivec2(Direction direction) {
+vec2 direction_to_vec2(Direction direction) {
   switch (direction) {
     case Direction::UP:
       return {0, -1};
@@ -121,8 +150,8 @@ f32 rotation_degrees(Rotation rotation) {
   ASSERT(false, "invalid rotation: %d\n", i32(rotation));
 }
 
-static constexpr ivec2 WINDOW_DIMS = {1280, 720};
-static constexpr ivec2 GRID_DIMS   = {32, 32};
+static constexpr vec2 WINDOW_DIMS = {1280, 720};
+static constexpr vec2 GRID_DIMS   = {32, 32};
 
 static constexpr i32 TPS = 60;
 static constexpr f32 DT  = 1.0f / TPS;

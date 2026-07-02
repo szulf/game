@@ -86,7 +86,7 @@ using EntityData = std::variant<Block, Player, Storage, Conveyor, Item, WorldTun
 
 struct Entity {
   EntityId id{};
-  ivec2 pos{};
+  vec2 pos{};
   World world{};
   EntityData data{};
 };
@@ -214,7 +214,7 @@ Entity* get_entity(EntityStore& store, EntityId id) {
   return &entity;
 }
 
-Entity* get_entity_at_pos(EntityStore& store, const ivec2& pos, World world) {
+Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world) {
   for (auto& entity : store) {
     if (entity.world == world && entity.pos == pos) {
       return &entity;
@@ -223,7 +223,7 @@ Entity* get_entity_at_pos(EntityStore& store, const ivec2& pos, World world) {
   return nullptr;
 }
 
-std::vector<Entity*> get_entities_at_pos(EntityStore& store, const ivec2& pos, World world) {
+std::vector<Entity*> get_entities_at_pos(EntityStore& store, const vec2& pos, World world) {
   std::vector<Entity*> entities{};
   for (auto& entity : store) {
     if (entity.world == world && entity.pos == pos) {

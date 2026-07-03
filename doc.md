@@ -13,10 +13,17 @@
 - [x] mini puzzle worlds
   - with item input/output
   
+- [x] in game time
+  - needed for the message system
+  - time in hud
+
 - [ ] message sending system
   - [ ] message sender block
-    - displays the current message list
+    - displays the current message queue
     - allows for building and sending messages
+  - [ ] message receiver block
+    - displays the currently pending message if no message is present
+    - has an output only inventory for the received items
 
 - [ ] crafting system
   - not sure whether i want inventory crafting alongside machine crafting (i think no)
@@ -105,6 +112,8 @@ what do i do about getting resources?
 supply drops from earth?
 basically you would send a message of what you are missing (there would be a way of automatic message sending)
 and based on that message in N hours/minutes you would get a package with the wanted items
+
+what do i do about power?
 
 some puzzle level ideas:
 1. fix the message sender?

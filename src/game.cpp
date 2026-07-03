@@ -45,6 +45,10 @@ struct State {
   AssetManager assets{};
   UI_System ui_system{};
 
+  f32 minutes_accumulator{};
+  // TODO: should the time always start at 0?
+  u64 minutes{};
+
   // TODO: should reset when changing the player hand item
   Rotation current_place_rotation{};
 
@@ -151,6 +155,7 @@ void update_tick(State& state, f32 dt) {
       Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
   }
 
+  system_update_time(state.minutes, state.minutes_accumulator, dt);
   system_move_player(state.store, state.player_id, state.input);
   system_player_inventory_interactions(
     state.store,
@@ -268,6 +273,13 @@ void render(State& state) {
 
   // NOTE: ui
   ui_render(state.ui_system);
+  auto time_str = std::format(
+    "{:02}:{:02} DAY: {}",
+    (state.minutes / 60) % 24,
+    state.minutes % 60,
+    (state.minutes / 60) / 24
+  );
+  DrawText(time_str.c_str(), 5, 25, 20, DARKGREEN);
   DrawFPS(5, 5);
 
   // NOTE: mouse

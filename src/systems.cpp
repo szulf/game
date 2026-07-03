@@ -85,6 +85,14 @@ static ItemSlotIdx inventory_ui(
   return hovered_slot;
 }
 
+void system_update_time(u64& min, f32& min_accumulator, f32 dt) {
+  min_accumulator += dt;
+  if (min_accumulator > 1.0f) {
+    ++min;
+    min_accumulator -= 1.0f;
+  }
+}
+
 void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
   if (input.move == vec2{0, 0}) {
     return;

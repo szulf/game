@@ -2,8 +2,12 @@
 
 ## gameplay: 
 
-- [x] conveyors move items
-  
+- [ ] conveyors
+  - [x] basic item movement on conveyors
+  - [ ] proper from/to directions
+  - [ ] fix the todos in the comment over system_move_items()
+        (add them here after fixing to say what issues i encountered)
+
 - [x] dropping items on the floor
 
 - [ ] flashlight and basic lighting system
@@ -42,6 +46,10 @@
 
 - [ ] sounds
 
+- [ ] resizable window
+
+- [ ] proper positions for ui
+
 
 # game design:
 
@@ -61,6 +69,8 @@ there is also no guarantee about how quickly the items will come, there is an es
 
 there is a special output only container that receives items from earth, it limits how much you can order
 (maybe you can upgrade it later in the game somehow? (probably not))
+
+how do i automate message sending?
 
 ### repair message system level design (level 1)
 

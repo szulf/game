@@ -1,7 +1,9 @@
-enum class ItemType {
-  BLOCK,
-  STORAGE,
-  CONVEYOR,
+enum ItemType {
+  ITEM_BLOCK,
+  ITEM_STORAGE,
+  ITEM_CONVEYOR,
+
+  ITEM_COUNT,
 };
 
 enum ItemSlotFlag {
@@ -36,12 +38,28 @@ void swap_slots(ItemSlot& a, ItemSlot& b) {
 
 TextureType get_texture_type(ItemType item) {
   switch (item) {
-    case ItemType::BLOCK:
+    case ITEM_BLOCK:
       return TEXTURE_BLOCK_ITEM;
-    case ItemType::STORAGE:
+    case ITEM_STORAGE:
       return TEXTURE_STORAGE_ITEM;
-    case ItemType::CONVEYOR:
+    case ITEM_CONVEYOR:
       return TEXTURE_CONVEYOR_ITEM;
+    default:
+      break;
+  }
+  ASSERT_NO_MSG(false);
+}
+
+std::string_view get_item_name(ItemType item) {
+  switch (item) {
+    case ITEM_BLOCK:
+      return "Block";
+    case ITEM_STORAGE:
+      return "Storage";
+    case ITEM_CONVEYOR:
+      return "Conveyor";
+    default:
+      break;
   }
   ASSERT_NO_MSG(false);
 }

@@ -40,7 +40,7 @@ static ItemSlotIdx inventory_ui(
   static constexpr i32 ROW_SIZE = 4;
 
   ItemSlotIdx hovered_slot{};
-  auto layout = ui_layout_begin(layout_id, ui_system, input, assets, pos, WINDOW_DIMS);
+  auto layout = ui_layout_begin(layout_id, ui_system, input, pos, WINDOW_DIMS);
 
   ui_element_begin(layout, UI_AUTO_ID);
   for (u32 i = 0; i < inv.size() / ROW_SIZE; ++i) {
@@ -62,8 +62,7 @@ static ItemSlotIdx inventory_ui(
         }
 #endif
 
-        bool icon_hovered = item_slot_icon_ui(assets, layout, inv[slot_idx]);
-        hovered           = hovered || icon_hovered;
+        item_slot_icon_ui(assets, layout, inv[slot_idx]);
       }
       ui_element_end(
         layout,
@@ -114,39 +113,46 @@ void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
   }
 }
 
-void system_player_inventory_interactions(
-  EntityStore& store,
-  EntityId player_id,
-  ItemSlotIdx& hovered_slot,
-  Input& input
-) {
-  auto* player_entity = get_entity(store, player_id);
+void system_open_gui(EntityStore& store, EntityId player_id, const Input& input) {
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity);
-  auto* player = get_data<Player>(*player_entity);
   ASSERT_NO_MSG(player);
 
-  // NOTE: opening
-  // TODO: forbid opening the player inventory as another inventory
   if (input.interact &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
-    if (hovered && has_inventory(*hovered)) {
-      player->open_inventory = hovered->id;
+    if (hovered && has_gui(*hovered)) {
+      player->open_gui = hovered->id;
     }
   }
+}
 
-  // NOTE: closing
-  if (player->open_inventory) {
-    auto* open_inv_entity = get_entity(store, player->open_inventory);
+void system_close_gui(EntityStore& store, EntityId player_id, const Input& input) {
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player_entity);
+  ASSERT_NO_MSG(player);
+
+  if (player->open_gui) {
+    auto* gui_entity = get_entity(store, player->open_gui);
     if (input.close_inv ||
-        (open_inv_entity &&
-         !pos_in_radius(open_inv_entity->pos, player_entity->pos, player->interaction_radius)) ||
-        (open_inv_entity && open_inv_entity->world != player_entity->world) || !open_inv_entity) {
-      player->open_inventory = NULL_ENTITY;
+        (gui_entity &&
+         !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
+        (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
+      player->open_gui = NULL_ENTITY;
     }
   }
+}
 
-  // NOTE: hand slot interactions
+void system_hand_slot_interactions(
+  EntityStore& store,
+  EntityId player_id,
+  ItemSlotIdx& hovered_slot,
+  const Input& input
+) {
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player_entity);
+  ASSERT_NO_MSG(player);
+
   if (hovered_slot.entity && input.lmb_pressed) {
     auto* hovered_inv = get_inventory(store, hovered_slot.entity);
     if (hovered_inv) {
@@ -173,8 +179,11 @@ void system_player_inventory_interactions(
       }
     }
   }
+}
 
-  // NOTE: hand dropping items on the ground (not sure if it belongs in this system)
+void system_drop_items(EntityStore& store, EntityId player_id, const Input& input) {
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
+
   // TODO: not sure if lmb_pressed is the right keybind
   if (input.lmb_pressed && player->hand &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
@@ -191,9 +200,9 @@ void system_player_inventory_interactions(
   }
 }
 
-ItemSlotIdx system_generate_inventory_uis(
-  AssetManager& assets,
+ItemSlotIdx system_inventory_uis(
   UI_System& ui_system,
+  AssetManager& assets,
   const Input& input,
   EntityStore& store,
   EntityId player_id
@@ -210,8 +219,8 @@ ItemSlotIdx system_generate_inventory_uis(
     player->inventory
   );
 
-  if (player->open_inventory) {
-    auto* open_inv = get_inventory(store, player->open_inventory);
+  if (player->open_gui) {
+    auto* open_inv = get_inventory(store, player->open_gui);
     if (open_inv) {
       auto open_inv_hovered_slot = inventory_ui(
         assets,
@@ -219,7 +228,7 @@ ItemSlotIdx system_generate_inventory_uis(
         ui_system,
         input,
         {10, 300},
-        player->open_inventory,
+        player->open_gui,
         *open_inv
       );
       if (open_inv_hovered_slot.entity) {
@@ -231,12 +240,325 @@ ItemSlotIdx system_generate_inventory_uis(
   // TODO: not sure whether this belongs here
   if (player->hand) {
     auto player_hand_layout =
-      ui_layout_begin("player hand", ui_system, input, assets, input.mouse_pos, GRID_DIMS);
+      ui_layout_begin("player hand", ui_system, input, input.mouse_pos, GRID_DIMS);
     item_slot_icon_ui(assets, player_hand_layout, player->hand);
     ui_layout_end(player_hand_layout);
   }
 
   return hovered_slot;
+}
+
+static bool
+message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, u32 idx) {
+  static constexpr f32 FONT_SIZE = 15;
+  bool cancel_clicked{};
+
+  ui_element_begin(layout, UI_AUTO_ID);
+  {
+    // NOTE: header
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_text(layout, std::format("{}.", idx + 1), FONT_SIZE, WHITE);
+      }
+      ui_element_end(
+        layout,
+        {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+         .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER}}
+      );
+
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_text(layout, "ETA: ", FONT_SIZE, WHITE);
+      }
+      ui_element_end(
+        layout,
+        {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+         .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
+      );
+
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &cancel_clicked});
+        {
+          ui_text(layout, "cancel", FONT_SIZE, RED);
+        }
+        ui_element_end(layout, {.bg_color = LIGHTGRAY});
+      }
+      ui_element_end(
+        layout,
+        {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+         .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_CENTER}}
+      );
+    }
+    ui_element_end(layout, {.sizing = {ui_sizing_fill(), ui_sizing_fit()}});
+
+    // NOTE: body
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_text(layout, "requested items:", FONT_SIZE, WHITE);
+
+      for (u32 i = 0; i < ITEM_COUNT; ++i) {
+        ItemType item_type     = ItemType(i);
+        const auto& item_count = msg.requested_items[i];
+        auto& texture          = assets.textures[get_texture_type(item_type)];
+
+        if (item_count == 0) {
+          continue;
+        }
+
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          ui_element_begin(layout, UI_AUTO_ID);
+          {
+            ui_element_begin(layout, UI_AUTO_ID);
+            ui_element_end(
+              layout,
+              {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+               .texture = &texture}
+            );
+            ui_text(layout, get_item_name(item_type), FONT_SIZE, WHITE);
+          }
+          ui_element_end(
+            layout,
+            {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+             .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER}}
+          );
+
+          ui_element_begin(layout, UI_AUTO_ID);
+          {
+            ui_text(layout, std::format("amount: {}", item_count), FONT_SIZE, WHITE);
+          }
+          ui_element_end(
+            layout,
+            {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+             .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_CENTER}}
+          );
+        }
+        ui_element_end(layout, {.sizing = {ui_sizing_fill(), ui_sizing_fit()}});
+      }
+    }
+    ui_element_end(
+      layout,
+      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+       .sizing           = {ui_sizing_fill(), ui_sizing_fit()}}
+    );
+  }
+  ui_element_end(
+    layout,
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .sizing = {ui_sizing_fill(), ui_sizing_fit()}
+    }
+  );
+
+  return cancel_clicked;
+}
+
+bool message_sender_header_ui(UI_Layout& layout, std::string_view switch_page_text) {
+  bool switch_page_clicked{};
+
+  ui_element_begin(layout, UI_AUTO_ID);
+  {
+    ui_text(layout, "Message Sender", 30, GREEN);
+
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &switch_page_clicked});
+      {
+        ui_text(layout, switch_page_text, 50, BLACK);
+      }
+      // TODO: should this depend on grid dims?
+      ui_element_end(
+        layout,
+        {.sizing          = {ui_sizing_fixed(GRID_DIMS.x), ui_sizing_fixed(GRID_DIMS.y)},
+         .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+         .bg_color        = LIGHTGRAY}
+      );
+    }
+    ui_element_end(
+      layout,
+      {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+       .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_START}}
+    );
+  }
+  ui_element_end(layout, {});
+
+  return switch_page_clicked;
+}
+
+void system_message_sender_ui(
+  UI_System& ui_system,
+  const Input& input,
+  AssetManager& assets,
+  EntityStore& store,
+  EntityId player_id,
+  std::vector<ResourceMessage>& msg_queue
+) {
+  auto* player = get_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player);
+  auto* msg_sender = get_data<ResourceMessageSender>(store, player->open_gui);
+
+  if (msg_sender) {
+    auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
+
+    ui_element_begin(layout, UI_AUTO_ID);
+    switch (msg_sender->page) {
+      case ResourceMessageSenderPage::DISPLAY: {
+        bool switch_page_clicked = message_sender_header_ui(layout, "+");
+
+        // NOTE: body
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          for (u32 i = 0; i < msg_queue.size(); ++i) {
+            bool cancel_clicked = message_ui(layout, assets, msg_queue[i], i);
+
+            // NOTE: this could potentially be bad if somehow two are pressed in the same frame,
+            // but that probably will never happen
+            if (cancel_clicked) {
+              msg_queue.erase(msg_queue.begin() + i);
+            }
+          }
+        }
+        ui_element_end(
+          layout,
+          {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+           .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
+           .child_gap        = 8}
+        );
+
+        if (switch_page_clicked) {
+          msg_sender->page = ResourceMessageSenderPage::CREATE;
+        }
+      } break;
+
+      case ResourceMessageSenderPage::CREATE: {
+        auto& msg = msg_sender->msg_in_create;
+        bool create_clicked{};
+
+        bool switch_page_clicked = message_sender_header_ui(layout, "<");
+
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          for (u32 i = 0; i < ITEM_COUNT; ++i) {
+            bool add_clicked{};
+            bool remove_clicked{};
+
+            ui_element_begin(layout, UI_AUTO_ID);
+            {
+
+              ui_element_begin(layout, UI_AUTO_ID);
+              {
+                auto& texture = assets.textures[get_texture_type(ItemType(i))];
+                ui_element_begin(layout, UI_AUTO_ID);
+                ui_element_end(
+                  layout,
+                  {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+                   .texture = &texture}
+                );
+                ui_text(layout, get_item_name(ItemType(i)), 15, WHITE);
+              }
+              ui_element_end(
+                layout,
+                {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+                 .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER}}
+              );
+
+              ui_element_begin(layout, UI_AUTO_ID);
+              {
+                ui_element_begin(layout, UI_AUTO_ID, {.clicked = &add_clicked});
+                {
+                  ui_text(layout, "+", 20, BLACK);
+                }
+                ui_element_end(
+                  layout,
+                  {.sizing =
+                     {ui_sizing_fixed(GRID_DIMS.x * 0.5f), ui_sizing_fixed(GRID_DIMS.y * 0.5f)},
+                   .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+                   .bg_color        = LIGHTGRAY}
+                );
+
+                ui_text(layout, std::format("amount: {}", msg.requested_items[i]), 15, WHITE);
+
+                ui_element_begin(layout, UI_AUTO_ID, {.clicked = &remove_clicked});
+                {
+                  ui_text(layout, "-", 20, BLACK);
+                }
+                ui_element_end(
+                  layout,
+                  {.sizing =
+                     {ui_sizing_fixed(GRID_DIMS.x * 0.5f), ui_sizing_fixed(GRID_DIMS.y * 0.5f)},
+                   .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+                   .bg_color        = LIGHTGRAY}
+                );
+              }
+              ui_element_end(
+                layout,
+                {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+                 .child_gap       = 4,
+                 .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_CENTER}}
+              );
+            }
+            ui_element_end(layout, {.sizing = {ui_sizing_fill(), ui_sizing_fit()}});
+
+            if (add_clicked && msg.requested_items[i] < MAX_REQUESTED_ITEMS) {
+              ++msg.requested_items[i];
+            }
+
+            if (remove_clicked && msg.requested_items[i] > 0) {
+              --msg.requested_items[i];
+            }
+          }
+
+          ui_element_begin(layout, UI_AUTO_ID);
+          {
+            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &create_clicked});
+            {
+              ui_text(layout, "CREATE", 20, BLACK);
+            }
+            ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
+          }
+          ui_element_end(
+            layout,
+            {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+             .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_CENTER}}
+          );
+        }
+        ui_element_end(
+          layout,
+          {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+           .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
+           .child_gap        = 2}
+        );
+
+        if (switch_page_clicked) {
+          msg_sender->page = ResourceMessageSenderPage::DISPLAY;
+        }
+
+        if (create_clicked) {
+          bool all_zero = true;
+          for (u32 i = 0; i < ITEM_COUNT; ++i) {
+            if (msg.requested_items[i] > 0) {
+              all_zero = false;
+              break;
+            }
+          }
+          if (!all_zero) {
+            msg_queue.push_back(msg);
+            msg = {};
+          }
+        }
+      } break;
+    }
+    ui_element_end(
+      layout,
+      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+       .padding          = ui_padding_all(4),
+       .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+       .bg_color         = BLACK}
+    );
+
+    ui_layout_end(layout);
+  }
 }
 
 void system_place_entity(
@@ -245,9 +567,8 @@ void system_place_entity(
   const Input& input,
   Rotation place_rotation
 ) {
-  auto* player_entity = get_entity(store, player_id);
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity);
-  auto* player = get_data<Player>(*player_entity);
   ASSERT_NO_MSG(player);
 
   // TODO: should check if im not hovering over an item slot
@@ -266,9 +587,8 @@ void system_place_entity(
 }
 
 void system_remove_entity(EntityStore& store, EntityId player_id, const Input& input) {
-  auto* player_entity = get_entity(store, player_id);
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity);
-  auto* player = get_data<Player>(*player_entity);
   ASSERT_NO_MSG(player);
 
   if (input.lmb_pressed &&
@@ -369,6 +689,8 @@ static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
 //      update everything based on this frames step into a second buffer then swap them
 //    - build graphs of conveyor chains, sort them, then update in order
 //      (this fucking sucks actually (but sounds like the coolest thing ever))
+//    - something like a update push system, not updating all conveyors in a frame,
+//      not sure how this one works seem briefly on youtube
 // 2. items are moved faster if they are moving through containers all the time
 //    so this
 //    c-c-c-c-c-c
@@ -417,7 +739,8 @@ void system_move_items(EntityStore& store, f32 dt) {
           auto* from_inv = get_inventory(*from_entity);
           ASSERT(
             from_inv,
-            "entity that satisifies HasInventory has to return an inventory from get_inventory()"
+            "entity that satisifies HasInventory has to return an inventory from "
+            "get_inventory()"
           );
           auto* first_extractable = find_first_extractable_slot(*from_inv);
           if (first_extractable) {

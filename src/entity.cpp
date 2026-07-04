@@ -19,7 +19,7 @@ static constexpr u32 PLAYER_INVENTORY_SIZE = 16;
 struct Player {
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
   i32 interaction_radius          = 4;
-  EntityId open_inventory{};
+  EntityId open_gui{};
   ItemSlot hand{};
 };
 
@@ -79,10 +79,28 @@ struct WorldTunnel {
   };
 };
 
+static constexpr u32 MAX_REQUESTED_ITEMS = 16;
+
+struct ResourceMessage {
+  // NOTE: map from ItemType to amount of item requested
+  std::array<u32, ITEM_COUNT> requested_items{};
+};
+
+enum class ResourceMessageSenderPage {
+  DISPLAY,
+  CREATE,
+};
+
+struct ResourceMessageSender {
+  ResourceMessageSenderPage page{};
+  ResourceMessage msg_in_create{};
+};
+
 // NOTE: keep a type with no heap allocations as the first one,
 // because std::variant by default initializes to the first type
 // so i dont want "entity = {}" to do any heap allocations
-using EntityData = std::variant<Block, Player, Storage, Conveyor, Item, WorldTunnel>;
+using EntityData =
+  std::variant<Block, Player, Storage, Conveyor, Item, WorldTunnel, ResourceMessageSender>;
 
 struct Entity {
   EntityId id{};
@@ -325,12 +343,14 @@ bool rotatable(const Entity& entity) {
 
 bool rotatable(ItemType type) {
   switch (type) {
-    case ItemType::BLOCK:
+    case ITEM_BLOCK:
       return Rotatable<Block>;
-    case ItemType::STORAGE:
+    case ITEM_STORAGE:
       return Rotatable<Storage>;
-    case ItemType::CONVEYOR:
+    case ITEM_CONVEYOR:
       return Rotatable<Conveyor>;
+    default:
+      break;
   }
   ASSERT(false, "invalid item type: %d\n", i32(type));
 }
@@ -339,7 +359,8 @@ bool solid(const Entity& entity) {
   return std::visit(
     [](auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage>) {
+      if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
+                    std::is_same_v<T, ResourceMessageSender>) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Conveyor> ||
                            std::is_same_v<T, Item> || std::is_same_v<T, WorldTunnel>) {
@@ -354,13 +375,32 @@ bool solid(const Entity& entity) {
 
 bool breakable(const Entity& entity) {
   return std::visit(
-    [](auto& value) {
+    [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
                     std::is_same_v<T, Conveyor>) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Item> ||
-                           std::is_same_v<T, WorldTunnel>) {
+                           std::is_same_v<T, WorldTunnel> ||
+                           std::is_same_v<T, ResourceMessageSender>) {
+        return false;
+      } else {
+        static_assert(false);
+      }
+    },
+    entity.data
+  );
+}
+
+bool has_gui(const Entity& entity) {
+  return std::visit(
+    [](const auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (std::is_same_v<T, Storage> || std::is_same_v<T, WorldTunnel> ||
+                    std::is_same_v<T, ResourceMessageSender>) {
+        return true;
+      } else if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Player> ||
+                           std::is_same_v<T, Conveyor> || std::is_same_v<T, Item>) {
         return false;
       } else {
         static_assert(false);
@@ -387,18 +427,21 @@ std::optional<ItemType> entity_to_item(const Entity& entity) {
         return std::nullopt;
       },
       [](const Block&) -> std::optional<ItemType> {
-        return {ItemType::BLOCK};
+        return {ITEM_BLOCK};
       },
       [](const Storage&) -> std::optional<ItemType> {
-        return {ItemType::STORAGE};
+        return {ITEM_STORAGE};
       },
       [](const Conveyor&) -> std::optional<ItemType> {
-        return {ItemType::CONVEYOR};
+        return {ITEM_CONVEYOR};
       },
       [](const Item&) -> std::optional<ItemType> {
         return std::nullopt;
       },
       [](const WorldTunnel&) -> std::optional<ItemType> {
+        return std::nullopt;
+      },
+      [](const ResourceMessageSender&) -> std::optional<ItemType> {
         return std::nullopt;
       }
     },
@@ -408,12 +451,14 @@ std::optional<ItemType> entity_to_item(const Entity& entity) {
 
 Entity entity_from_item(ItemType item) {
   switch (item) {
-    case ItemType::BLOCK:
+    case ITEM_BLOCK:
       return {.data = Block{}};
-    case ItemType::STORAGE:
+    case ITEM_STORAGE:
       return {.data = Storage{}};
-    case ItemType::CONVEYOR:
+    case ITEM_CONVEYOR:
       return {.data = Conveyor{}};
+    default:
+      break;
   }
   ASSERT(false, "invalid item type: %d\n", i32(item));
 }
@@ -447,6 +492,9 @@ TextureType get_texture_type(const Entity& entity) {
       [](const WorldTunnel&) {
         return TEXTURE_WORLD_TUNNEL;
       },
+      [](const ResourceMessageSender&) {
+        return TEXTURE_MESSAGE_SENDER;
+      }
     },
     entity.data
   );
@@ -465,6 +513,15 @@ T* get_data(EntityStore& store, EntityId id) {
     return get_data<T>(*entity);
   }
   return nullptr;
+}
+
+template <typename T>
+std::tuple<Entity*, T*> get_entity_and_data(EntityStore& store, EntityId id) {
+  auto* entity = get_entity(store, id);
+  if (entity) {
+    return {entity, get_data<T>(*entity)};
+  }
+  return {nullptr, nullptr};
 }
 
 template <typename T>
@@ -549,6 +606,7 @@ void for_each_active_slot(Entity& entity, Func&& func) {
       },
       [](Item&) {},
       [](WorldTunnel&) {},
+      [](ResourceMessageSender&) {},
     },
     entity.data
   );

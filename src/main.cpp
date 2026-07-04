@@ -16,12 +16,16 @@ int main() {
 
     gather_input(state);
 
+    // TODO: not sure if this is supposed to happen before update_tick (1 tick ui latency i think)
+    // but if it happens after,
+    // the input is cleared in update_tick and sometimes clicked ui events dont register
+    update_frame(state);
+
     while (accumulator >= DT) {
       update_tick(state, DT);
       accumulator -= DT;
     }
 
-    update_frame(state);
     render(state);
   }
 

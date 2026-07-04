@@ -49,6 +49,12 @@ struct State {
   // TODO: should the time always start at 0?
   u64 minutes{};
 
+  std::vector<ResourceMessage> resource_message_queue = {
+    ResourceMessage{.requested_items = {0, 15, 0}},
+    ResourceMessage{.requested_items = {60, 10, 100}},
+    ResourceMessage{.requested_items = {100, 0, 0}},
+  };
+
   // TODO: should reset when changing the player hand item
   Rotation current_place_rotation{};
 
@@ -74,13 +80,13 @@ void init(State& state) {
   };
   auto* player = get_data<Player>(player_entity);
   ASSERT_NO_MSG(player);
-  player->inventory[0]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 85};
-  player->inventory[14] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
-  player->inventory[13] = ItemSlot{.type = ItemType::CONVEYOR, .count = 100};
-  player->inventory[8]  = ItemSlot{.type = ItemType::CONVEYOR, .count = 20};
-  player->inventory[9]  = ItemSlot{.type = ItemType::BLOCK, .count = 30};
-  player->inventory[3]  = ItemSlot{.type = ItemType::STORAGE, .count = 6};
-  player->inventory[11] = ItemSlot{.type = ItemType::STORAGE, .count = 11};
+  player->inventory[0]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 85};
+  player->inventory[14] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
+  player->inventory[13] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
+  player->inventory[8]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 20};
+  player->inventory[9]  = ItemSlot{.type = ITEM_BLOCK, .count = 30};
+  player->inventory[3]  = ItemSlot{.type = ITEM_STORAGE, .count = 6};
+  player->inventory[11] = ItemSlot{.type = ITEM_STORAGE, .count = 11};
   state.player_id       = add_entity(state.store, player_entity);
 
   add_entity(state.store, Entity{.pos = {5, 9}, .data = Block{}});
@@ -100,6 +106,8 @@ void init(State& state) {
     state.store,
     Entity{.pos = {10, 10}, .world = World::OTHER, .data = WorldTunnel{.to = World::OVERWORLD}}
   );
+
+  add_entity(state.store, Entity{.pos = {12, 10}, .data = ResourceMessageSender{}});
 
   flush(state.store);
 }
@@ -157,12 +165,15 @@ void update_tick(State& state, f32 dt) {
 
   system_update_time(state.minutes, state.minutes_accumulator, dt);
   system_move_player(state.store, state.player_id, state.input);
-  system_player_inventory_interactions(
+  system_open_gui(state.store, state.player_id, state.input);
+  system_close_gui(state.store, state.player_id, state.input);
+  system_hand_slot_interactions(
     state.store,
     state.player_id,
     state.frame.hovered_slot,
     state.input
   );
+  system_drop_items(state.store, state.player_id, state.input);
   system_place_entity(state.store, state.player_id, state.input, state.current_place_rotation);
   system_remove_entity(state.store, state.player_id, state.input);
   system_pickup_item(state.store, state.player_id);
@@ -178,12 +189,16 @@ void update_frame(State& state) {
   clear(state.frame);
   ui_system_update(state.ui_system);
 
-  state.frame.hovered_slot = system_generate_inventory_uis(
-    state.assets,
+  state.frame.hovered_slot =
+    system_inventory_uis(state.ui_system, state.assets, state.input, state.store, state.player_id);
+
+  system_message_sender_ui(
     state.ui_system,
     state.input,
+    state.assets,
     state.store,
-    state.player_id
+    state.player_id,
+    state.resource_message_queue
   );
 }
 

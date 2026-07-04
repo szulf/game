@@ -1,6 +1,19 @@
 // NOTE: possibly im doing way too many iterations over the whole data set
 // so if ever performance becomes an issue i could look at that
 
+// TODO: borders
+
+// TODO: something like justify-content: space-between in css
+// TODO: something like justify-content: space-evenly in css
+
+// TODO: helper function to render textures?
+// ui_element_begin(layout, UI_AUTO_ID);
+// ui_element_end(
+//   layout,
+//   {.sizing = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)}, .texture =
+//   &texture}
+// );
+
 enum UI_LayoutDirection {
   UI_LAYOUT_DIRECTION_HORIZONTAL,
   UI_LAYOUT_DIRECTION_VERTICAL,
@@ -156,7 +169,6 @@ struct UI_Layout {
   UI_IdInternal id{};
   UI_System* system{};
   const Input* input{};
-  AssetManager* assets{};
   // NOTE: weird hack to get the union working, because c++
   // (should probably switch to a std::variant somewhere to fix this properly)
   std::vector<std::string> strings{};
@@ -366,6 +378,7 @@ static f32 ui_end_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis
   ASSERT(false, "Invalid axis provided");
 }
 
+// TODO: check all the centering code, not sure if its correct!
 static void ui_calculate_position_axis(
   UI_Layout& layout,
   UI_ElementIdx idx,
@@ -627,28 +640,11 @@ void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_
       pos_from_rect(interaction_rect),
       dims_from_rect(interaction_rect)
     );
-    bool nothing_on_top = true;
+    // TODO: should check if there are no non child elements on top of me
+    // before setting hovered/clicked to true
+    // tho currently i dont think there even is a way to have two non related elements overlap
+    // but i do plan to add that
     if (hovered) {
-      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
-           child_idx = layout.system->last_frame_data[layout.id].elements[child_idx].next_sibling) {
-        auto& child = layout.system->last_frame_data[layout.id].elements[child_idx];
-        if (child.config.type != UI_ELEMENT_NORMAL) {
-          continue;
-        }
-        auto child_interaction_rect = ui_intersection_rectangle(
-          rect_from_vec2x2(child.pos, child.dimensions),
-          child.clip_rectangle
-        );
-        if (ui_intersects(
-              layout.input->mouse_pos,
-              pos_from_rect(child_interaction_rect),
-              dims_from_rect(child_interaction_rect)
-            )) {
-          nothing_on_top = false;
-        }
-      }
-    }
-    if (nothing_on_top) {
       if (state_options.hovered) {
         *state_options.hovered = hovered;
       }
@@ -690,7 +686,6 @@ UI_Layout ui_layout_begin(
   UI_Id id,
   UI_System& system,
   const Input& input,
-  AssetManager& assets,
   const vec2& pos,
   const vec2& max_dimensions
 ) {
@@ -700,7 +695,6 @@ UI_Layout ui_layout_begin(
              .id             = id_internal,
              .system         = &system,
              .input          = &input,
-             .assets         = &assets,
              .pos            = pos,
              .max_dimensions = max_dimensions,
   };

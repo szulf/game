@@ -36,6 +36,12 @@ void swap_slots(ItemSlot& a, ItemSlot& b) {
   b.count = temp.count;
 }
 
+void swap_slot_flags(std::span<ItemSlot> inventory) {
+  for (auto& slot : inventory) {
+    slot.flags ^= ITEM_SLOT_FLAGS_MASK;
+  }
+}
+
 TextureType get_texture_type(ItemType item) {
   switch (item) {
     case ITEM_BLOCK:

@@ -132,7 +132,7 @@ bool fits_in_last_batch(ResourceMessageQueue& queue, const ResourceMessage& msg,
   }
 
   // NOTE: time check
-  if (last_batch[0].arrival_time - game_time < 3 * 60) {
+  if (last_batch[0].arrival_time - game_time <= 3 * 60) {
     return false;
   }
 
@@ -172,7 +172,6 @@ void add_resource_message(ResourceMessageQueue& queue, ResourceMessage& msg, u64
   queue.msgs.push_back(msg);
 }
 
-// TODO: potentially bad when calling while iterating messages (which is what im doing)
 void remove_resource_message(ResourceMessageQueue& queue, u32 idx) {
   queue.msgs.erase(queue.msgs.begin() + idx);
 }

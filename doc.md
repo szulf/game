@@ -21,7 +21,7 @@
   - needed for the message system
   - time in hud
 
-- [ ] message sending system
+- [x] message sending system
   - [x] sender block
     - displays the current message queue
     - allows for building and sending messages
@@ -29,7 +29,7 @@
     - displays the currently pending batch if no batch is currently present to extract
     - has an output only inventory for the received items
   - [x] batching
-  - [ ] message transfer
+  - [x] message transfer
 
 - [ ] crafting system
   - not sure whether i want inventory crafting alongside machine crafting (i think no)

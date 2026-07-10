@@ -422,11 +422,13 @@ void system_message_sender_ui(
 
         ui_element_begin(layout, UI_AUTO_ID);
         {
-          for (u32 i = 0; i < msg_queue.msgs.size(); ++i) {
+          for (u32 i = 0; i < msg_queue.msgs.size();) {
             bool cancel_clicked = message_ui(layout, assets, msg_queue.msgs[i], i + 1);
 
             if (cancel_clicked) {
               remove_resource_message(msg_queue, i);
+            } else {
+              ++i;
             }
           }
         }
@@ -593,19 +595,21 @@ ItemSlotIdx system_message_receiver_ui(
       message_header_ui<ResourceMessageReceiver>(layout);
 
       ui_element_begin(layout, UI_AUTO_ID);
-      if (msg_queue.msgs.empty()) {
-        ui_element_begin(layout, UI_AUTO_ID);
-        {
-          ui_text(layout, "no arriving messages", 20, WHITE);
-          ui_text(layout, "create messages in the Message Sender", 10, WHITE);
-        }
-        ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
-      } else if (resource_message_receiver_empty(*msg_receiver)) {
-        ui_text(layout, "next arriving messages:", 20, WHITE);
-        auto first_batch = get_first_resource_message_batch(msg_queue);
-        for (u32 i = 0; i < first_batch.size(); ++i) {
-          auto& msg = first_batch[i];
-          message_ui(layout, assets, msg, i + 1);
+      if (resource_message_receiver_empty(*msg_receiver)) {
+        if (msg_queue.msgs.empty()) {
+          ui_element_begin(layout, UI_AUTO_ID);
+          {
+            ui_text(layout, "no arriving messages", 20, WHITE);
+            ui_text(layout, "create messages in the Message Sender", 10, WHITE);
+          }
+          ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
+        } else {
+          ui_text(layout, "next arriving messages:", 20, WHITE);
+          auto first_batch = get_first_resource_message_batch(msg_queue);
+          for (u32 i = 0; i < first_batch.size(); ++i) {
+            auto& msg = first_batch[i];
+            message_ui(layout, assets, msg, i + 1);
+          }
         }
       } else {
         ui_text(layout, "currently available items:", 20, WHITE);
@@ -638,6 +642,80 @@ ItemSlotIdx system_message_receiver_ui(
     ui_layout_end(layout);
   }
   return hovered_slot;
+}
+
+// NOTE: returns whether it succeeded in transfering all items from the slot into the inventory
+// also modified the slot to contain the left amount of items after the transfer
+// so if it succeeded slot.count == 0
+static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
+  if (!(slot.flags & ITEM_SLOT_OUTPUT)) {
+    return false;
+  }
+
+  for (u32 i = 0; i < inventory.size(); ++i) {
+    if (!(inventory[i].flags & ITEM_SLOT_INPUT)) {
+      continue;
+    }
+
+    if (inventory[i].type == slot.type) {
+      if (inventory[i].count + slot.count > ITEM_MAX_COUNT) {
+        slot.count         = (inventory[i].count + slot.count) - ITEM_MAX_COUNT;
+        inventory[i].count = ITEM_MAX_COUNT;
+      } else {
+        inventory[i].count += slot.count;
+        slot.count = 0;
+        return true;
+      }
+    } else if (!inventory[i]) {
+      swap_slots(inventory[i], slot);
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool transfer_items(std::vector<ItemSlot>& to, std::span<ItemSlot> from) {
+  for (auto& slot : from) {
+    if (!transfer_items(to, slot)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// NOTE: currently voiding items that cannot fit into the message receivers inventory
+// is that really the behaviour i want?
+void system_transfer_resource_messages(
+  EntityStore& store,
+  EntityId message_receiver_id,
+  ResourceMessageQueue& msg_queue,
+  u64 game_time
+) {
+  auto* msg_receiver = get_data<ResourceMessageReceiver>(store, message_receiver_id);
+  ASSERT_NO_MSG(msg_receiver);
+
+  // NOTE: dont need to care about batches here,
+  // the max requested item count is already guaranteed here
+  // and all of the messages in a single batch have the same arrival_time
+  // so i can just treat them as separate units
+  for (u32 i = 0; i < msg_queue.msgs.size();) {
+    auto& msg = msg_queue.msgs[i];
+    if (msg.arrival_time == game_time) {
+      std::array<ItemSlot, ITEM_COUNT> msg_items{};
+      for (u32 item_type = 0; item_type < ITEM_COUNT; ++item_type) {
+        msg_items[item_type] = {
+          .type  = ItemType(item_type),
+          .count = msg.requested_items[item_type],
+        };
+      }
+      swap_slot_flags(msg_receiver->inventory);
+      transfer_items(msg_receiver->inventory, msg_items);
+      swap_slot_flags(msg_receiver->inventory);
+      remove_resource_message(msg_queue, i);
+    } else {
+      ++i;
+    }
+  }
 }
 
 void system_place_entity(
@@ -694,45 +772,6 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
       remove_entity(store, hovered->id);
     }
   }
-}
-
-// NOTE: returns whether it succeeded in transfering all items from the slot into the inventory
-// also modified the slot to contain the left amount of items after the transfer
-// so if it succeeded slot.count == 0
-static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
-  if (!(slot.flags & ITEM_SLOT_OUTPUT)) {
-    return false;
-  }
-
-  for (u32 i = 0; i < inventory.size(); ++i) {
-    if (!(inventory[i].flags & ITEM_SLOT_INPUT)) {
-      continue;
-    }
-
-    if (inventory[i].type == slot.type) {
-      if (inventory[i].count + slot.count > ITEM_MAX_COUNT) {
-        slot.count         = (inventory[i].count + slot.count) - ITEM_MAX_COUNT;
-        inventory[i].count = ITEM_MAX_COUNT;
-      } else {
-        inventory[i].count += slot.count;
-        slot.count = 0;
-        return true;
-      }
-    } else if (!inventory[i]) {
-      swap_slots(inventory[i], slot);
-      return true;
-    }
-  }
-  return false;
-}
-
-static bool transfer_items(std::vector<ItemSlot>& to, std::vector<ItemSlot>& from) {
-  for (auto& slot : from) {
-    if (!transfer_items(to, slot)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 void system_pickup_item(EntityStore& store, EntityId player_id) {
@@ -874,12 +913,6 @@ Entity* find_corresponding_world_tunnel(EntityStore& store, Entity& tunnel_entit
     }
   }
   return nullptr;
-}
-
-static void swap_slot_flags(std::vector<ItemSlot>& inventory) {
-  for (auto& slot : inventory) {
-    slot.flags ^= ITEM_SLOT_FLAGS_MASK;
-  }
 }
 
 // NOTE: assumes there is always a 1-1 mapping of tunnels between worlds

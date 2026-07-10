@@ -54,6 +54,8 @@ struct State {
 
   // NOTE: there is only one player
   EntityId player_id{};
+  // NOTE: there is only one resource message receiver
+  EntityId resource_message_receiver_id{};
   EntityStore store{};
 
   bool debug{};
@@ -102,7 +104,8 @@ void init(State& state) {
   );
 
   add_entity(state.store, Entity{.pos = {12, 10}, .data = ResourceMessageSender{}});
-  add_entity(state.store, Entity{.pos = {14, 11}, .data = ResourceMessageReceiver{}});
+  state.resource_message_receiver_id =
+    add_entity(state.store, Entity{.pos = {14, 11}, .data = ResourceMessageReceiver{}});
 
   flush(state.store);
 }
@@ -184,6 +187,12 @@ void update_tick(State& state, f32 dt) {
   system_pickup_item(state.store, state.player_id);
   system_move_items(state.store, dt);
   system_tunnel_through_worlds(state.store, state.player_id);
+  system_transfer_resource_messages(
+    state.store,
+    state.resource_message_receiver_id,
+    state.resource_message_queue,
+    state.minutes
+  );
 
   flush(state.store);
   clear_event_bus(state.store);

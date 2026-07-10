@@ -22,12 +22,13 @@
   - time in hud
 
 - [ ] message sending system
-  - [ ] message sender block
+  - [x] message sender block
     - displays the current message queue
     - allows for building and sending messages
   - [ ] message receiver block
-    - displays the currently pending message if no message is present
+    - displays the currently pending batch if no batch is currently present to extract
     - has an output only inventory for the received items
+  - [ ] message transfer and message items batching
 
 - [ ] crafting system
   - not sure whether i want inventory crafting alongside machine crafting (i think no)
@@ -35,6 +36,8 @@
 - [ ] machine fixing system
 
 - [ ] better movement system
+
+- [ ] containers that can output only from a single side
 
 ## rendering/art:
 
@@ -69,6 +72,10 @@ there is also no guarantee about how quickly the items will come, there is an es
 
 there is a special output only container that receives items from earth, it limits how much you can order
 (maybe you can upgrade it later in the game somehow? (probably not))
+
+messages are sent in batches, realistically the sender would not send every package as a separate thing,
+while preparing one batch if a new message comes in, it would be packaged into the same batch,
+if there is enough space of course and if it is not too late of course
 
 how do i automate message sending?
 

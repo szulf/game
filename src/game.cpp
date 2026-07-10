@@ -49,10 +49,11 @@ struct State {
   // TODO: should the time always start at 0?
   u64 minutes{};
 
-  std::vector<ResourceMessage> resource_message_queue = {
-    ResourceMessage{.requested_items = {0, 15, 0}},
-    ResourceMessage{.requested_items = {60, 10, 100}},
-    ResourceMessage{.requested_items = {100, 0, 0}},
+  ResourceMessageQueue resource_message_queue = {
+    .msgs =
+      {ResourceMessage{.requested_items = {0, 15, 0}},
+       ResourceMessage{.requested_items = {60, 10, 64}},
+       ResourceMessage{.requested_items = {64, 0, 0}}},
   };
 
   // TODO: should reset when changing the player hand item
@@ -108,6 +109,9 @@ void init(State& state) {
   );
 
   add_entity(state.store, Entity{.pos = {12, 10}, .data = ResourceMessageSender{}});
+  ResourceMessageReceiver receiver{};
+  receiver.inventory[ITEM_BLOCK] = {.type = ITEM_BLOCK, .count = 5};
+  add_entity(state.store, Entity{.pos = {14, 11}, .data = receiver});
 
   flush(state.store);
 }
@@ -200,6 +204,17 @@ void update_frame(State& state) {
     state.player_id,
     state.resource_message_queue
   );
+  auto receiver_hovered_slot = system_message_receiver_ui(
+    state.ui_system,
+    state.input,
+    state.assets,
+    state.store,
+    state.player_id,
+    state.resource_message_queue
+  );
+  if (receiver_hovered_slot.entity) {
+    state.frame.hovered_slot = receiver_hovered_slot;
+  }
 }
 
 void render(State& state) {

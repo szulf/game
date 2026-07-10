@@ -28,6 +28,35 @@ static bool item_slot_icon_ui(AssetManager& assets, UI_Layout& layout, const Ite
   return hovered;
 }
 
+static bool item_slot_ui(AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
+  bool hovered = false;
+
+  ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
+  {
+    // TODO: this is also bad, same reasoning as in item_slot_icon_ui()
+#if 0
+        bool in = inv[slot_idx].flags == ITEM_SLOT_INPUT;
+        if (in) {
+          ui_text(layout, "IN ", 10, BLUE);
+        }
+        bool out = inv[slot_idx].flags == ITEM_SLOT_OUTPUT;
+        if (out) {
+          ui_text(layout, "OUT ", 10, ORANGE);
+        }
+#endif
+
+    item_slot_icon_ui(assets, layout, item_slot);
+  }
+  ui_element_end(
+    layout,
+    {.sizing          = {ui_sizing_fixed(GRID_DIMS.x), ui_sizing_fixed(GRID_DIMS.y)},
+     .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+     .bg_color        = LIGHTGRAY}
+  );
+
+  return hovered;
+}
+
 static ItemSlotIdx inventory_ui(
   AssetManager& assets,
   UI_Id layout_id,
@@ -47,30 +76,7 @@ static ItemSlotIdx inventory_ui(
     ui_element_begin(layout, UI_AUTO_ID);
     for (u32 j = 0; j < ROW_SIZE; ++j) {
       auto slot_idx = i * ROW_SIZE + j;
-      bool hovered  = false;
-      ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
-      {
-        // TODO: this is also bad, same reasoning as in item_slot_icon_ui()
-#if 0
-        bool in = inv[slot_idx].flags == ITEM_SLOT_INPUT;
-        if (in) {
-          ui_text(layout, "IN ", 10, BLUE);
-        }
-        bool out = inv[slot_idx].flags == ITEM_SLOT_OUTPUT;
-        if (out) {
-          ui_text(layout, "OUT ", 10, ORANGE);
-        }
-#endif
-
-        item_slot_icon_ui(assets, layout, inv[slot_idx]);
-      }
-      ui_element_end(
-        layout,
-        {.sizing          = {ui_sizing_fixed(GRID_DIMS.x), ui_sizing_fixed(GRID_DIMS.y)},
-         .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-         .bg_color        = LIGHTGRAY}
-      );
-
+      bool hovered  = item_slot_ui(assets, layout, inv[slot_idx]);
       if (hovered) {
         hovered_slot.entity   = entity_id;
         hovered_slot.slot_idx = slot_idx;
@@ -115,8 +121,7 @@ void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
 
 void system_open_gui(EntityStore& store, EntityId player_id, const Input& input) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
-  ASSERT_NO_MSG(player_entity);
-  ASSERT_NO_MSG(player);
+  ASSERT_NO_MSG(player_entity && player);
 
   if (input.interact &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
@@ -129,8 +134,7 @@ void system_open_gui(EntityStore& store, EntityId player_id, const Input& input)
 
 void system_close_gui(EntityStore& store, EntityId player_id, const Input& input) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
-  ASSERT_NO_MSG(player_entity);
-  ASSERT_NO_MSG(player);
+  ASSERT_NO_MSG(player_entity && player);
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
@@ -146,12 +150,11 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 void system_hand_slot_interactions(
   EntityStore& store,
   EntityId player_id,
-  ItemSlotIdx& hovered_slot,
+  const ItemSlotIdx& hovered_slot,
   const Input& input
 ) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
-  ASSERT_NO_MSG(player_entity);
-  ASSERT_NO_MSG(player);
+  ASSERT_NO_MSG(player_entity && player);
 
   if (hovered_slot.entity && input.lmb_pressed) {
     auto* hovered_inv = get_inventory(store, hovered_slot.entity);
@@ -183,6 +186,7 @@ void system_hand_slot_interactions(
 
 void system_drop_items(EntityStore& store, EntityId player_id, const Input& input) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player_entity && player);
 
   // TODO: not sure if lmb_pressed is the right keybind
   if (input.lmb_pressed && player->hand &&
@@ -200,6 +204,7 @@ void system_drop_items(EntityStore& store, EntityId player_id, const Input& inpu
   }
 }
 
+// TODO: split into multiple systems
 ItemSlotIdx system_inventory_uis(
   UI_System& ui_system,
   AssetManager& assets,
@@ -260,7 +265,7 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
     {
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        ui_text(layout, std::format("{}.", idx + 1), FONT_SIZE, WHITE);
+        ui_text(layout, std::format("{}.", idx), FONT_SIZE, WHITE);
       }
       ui_element_end(
         layout,
@@ -294,7 +299,6 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
     }
     ui_element_end(layout, {.sizing = {ui_sizing_fill(), ui_sizing_fit()}});
 
-    // NOTE: body
     ui_element_begin(layout, UI_AUTO_ID);
     {
       ui_text(layout, "requested items:", FONT_SIZE, WHITE);
@@ -354,15 +358,22 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
   return cancel_clicked;
 }
 
-bool message_sender_header_ui(UI_Layout& layout, std::string_view switch_page_text) {
+template <typename T>
+static bool message_header_ui(UI_Layout& layout, std::string_view switch_page_text = "") {
   bool switch_page_clicked{};
 
   ui_element_begin(layout, UI_AUTO_ID);
   {
-    ui_text(layout, "Message Sender", 30, GREEN);
+    if constexpr (std::is_same_v<T, ResourceMessageSender>) {
+      ui_text(layout, "Message Sender", 30, GREEN);
+    } else if constexpr (std::is_same_v<T, ResourceMessageReceiver>) {
+      ui_text(layout, "Message Receiver", 30, GREEN);
+    } else {
+      static_assert(false);
+    }
 
     ui_element_begin(layout, UI_AUTO_ID);
-    {
+    if (!switch_page_text.empty()) {
       ui_element_begin(layout, UI_AUTO_ID, {.clicked = &switch_page_clicked});
       {
         ui_text(layout, switch_page_text, 50, BLACK);
@@ -392,7 +403,7 @@ void system_message_sender_ui(
   AssetManager& assets,
   EntityStore& store,
   EntityId player_id,
-  std::vector<ResourceMessage>& msg_queue
+  ResourceMessageQueue& msg_queue
 ) {
   auto* player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
@@ -404,18 +415,15 @@ void system_message_sender_ui(
     ui_element_begin(layout, UI_AUTO_ID);
     switch (msg_sender->page) {
       case ResourceMessageSenderPage::DISPLAY: {
-        bool switch_page_clicked = message_sender_header_ui(layout, "+");
+        bool switch_page_clicked = message_header_ui<ResourceMessageSender>(layout, "+");
 
-        // NOTE: body
         ui_element_begin(layout, UI_AUTO_ID);
         {
-          for (u32 i = 0; i < msg_queue.size(); ++i) {
-            bool cancel_clicked = message_ui(layout, assets, msg_queue[i], i);
+          for (u32 i = 0; i < msg_queue.msgs.size(); ++i) {
+            bool cancel_clicked = message_ui(layout, assets, msg_queue.msgs[i], i + 1);
 
-            // NOTE: this could potentially be bad if somehow two are pressed in the same frame,
-            // but that probably will never happen
             if (cancel_clicked) {
-              msg_queue.erase(msg_queue.begin() + i);
+              remove_resource_message(msg_queue, i);
             }
           }
         }
@@ -435,7 +443,7 @@ void system_message_sender_ui(
         auto& msg = msg_sender->msg_in_create;
         bool create_clicked{};
 
-        bool switch_page_clicked = message_sender_header_ui(layout, "<");
+        bool switch_page_clicked = message_header_ui<ResourceMessageSender>(layout, "<");
 
         ui_element_begin(layout, UI_AUTO_ID);
         {
@@ -501,11 +509,11 @@ void system_message_sender_ui(
             ui_element_end(layout, {.sizing = {ui_sizing_fill(), ui_sizing_fit()}});
 
             if (add_clicked && msg.requested_items[i] < MAX_REQUESTED_ITEMS) {
-              ++msg.requested_items[i];
+              msg.requested_items[i] += REQUESTED_ITEMS_MULTIPLE;
             }
 
             if (remove_clicked && msg.requested_items[i] > 0) {
-              --msg.requested_items[i];
+              msg.requested_items[i] -= REQUESTED_ITEMS_MULTIPLE;
             }
           }
 
@@ -543,7 +551,7 @@ void system_message_sender_ui(
             }
           }
           if (!all_zero) {
-            msg_queue.push_back(msg);
+            add_resource_message(msg_queue, msg);
             msg = {};
           }
         }
@@ -561,6 +569,67 @@ void system_message_sender_ui(
   }
 }
 
+ItemSlotIdx system_message_receiver_ui(
+  UI_System& ui_system,
+  const Input& input,
+  AssetManager& assets,
+  EntityStore& store,
+  EntityId player_id,
+  ResourceMessageQueue& msg_queue
+) {
+  auto player = get_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player);
+  auto* msg_receiver = get_data<ResourceMessageReceiver>(store, player->open_gui);
+  ItemSlotIdx hovered_slot{};
+
+  if (msg_receiver) {
+    auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
+
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      message_header_ui<ResourceMessageReceiver>(layout);
+
+      ui_element_begin(layout, UI_AUTO_ID);
+      if (resource_message_receiver_empty(*msg_receiver)) {
+        ui_text(layout, "next arriving messages:", 20, WHITE);
+        auto first_batch = get_first_resource_message_batch(msg_queue);
+        for (u32 i = 0; i < first_batch.size(); ++i) {
+          auto& msg = first_batch[i];
+          message_ui(layout, assets, msg, i + 1);
+        }
+      } else {
+        ui_text(layout, "currently available items:", 20, WHITE);
+        ui_element_begin(layout, UI_AUTO_ID);
+        for (u32 i = 0; i < msg_receiver->inventory.size(); ++i) {
+          auto& slot   = msg_receiver->inventory[i];
+          bool hovered = item_slot_ui(assets, layout, slot);
+          if (hovered) {
+            hovered_slot.entity   = player->open_gui;
+            hovered_slot.slot_idx = i;
+          }
+        }
+        ui_element_end(layout, {.child_gap = 2});
+      }
+      ui_element_end(
+        layout,
+        {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+         .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
+         .child_gap        = 8}
+      );
+    }
+    ui_element_end(
+      layout,
+      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+       .padding          = ui_padding_all(4),
+       .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+       .bg_color         = BLACK}
+    );
+
+    ui_layout_end(layout);
+  }
+  return hovered_slot;
+}
+
 void system_place_entity(
   EntityStore& store,
   EntityId player_id,
@@ -568,8 +637,7 @@ void system_place_entity(
   Rotation place_rotation
 ) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
-  ASSERT_NO_MSG(player_entity);
-  ASSERT_NO_MSG(player);
+  ASSERT_NO_MSG(player_entity && player);
 
   // TODO: should check if im not hovering over an item slot
   if (input.rmb_pressed && player->hand &&
@@ -588,8 +656,7 @@ void system_place_entity(
 
 void system_remove_entity(EntityStore& store, EntityId player_id, const Input& input) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
-  ASSERT_NO_MSG(player_entity);
-  ASSERT_NO_MSG(player);
+  ASSERT_NO_MSG(player_entity && player);
 
   if (input.lmb_pressed &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {

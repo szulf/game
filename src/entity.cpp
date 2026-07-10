@@ -79,12 +79,44 @@ struct WorldTunnel {
   };
 };
 
-static constexpr u32 MAX_REQUESTED_ITEMS = 16;
+static constexpr u32 MAX_REQUESTED_ITEMS      = 64;
+static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
 
 struct ResourceMessage {
   // NOTE: map from ItemType to amount of item requested
   std::array<u32, ITEM_COUNT> requested_items{};
 };
+
+struct ResourceMessageQueue {
+  std::vector<ResourceMessage> msgs{};
+  // NOTE: each ith batch is in this range [batch_end_idx[i - 1]; batch_end_idx[i])
+  // except the first batch which just starts at 0, since there is no batch_end_idx[-1]
+  std::vector<u32> batch_end_idx{};
+};
+
+// TODO: implement when working on resource message batching
+bool fits_in_last_batch(ResourceMessageQueue&, const ResourceMessage&) {
+  return true;
+}
+
+void add_resource_message(ResourceMessageQueue& queue, const ResourceMessage& msg) {
+  if (!fits_in_last_batch(queue, msg)) {
+    queue.batch_end_idx.push_back(queue.msgs.size());
+  }
+  queue.msgs.push_back(msg);
+}
+
+// TODO: potentially bad when calling while iterating messages (which is what im doing)
+void remove_resource_message(ResourceMessageQueue& queue, u32 idx) {
+  queue.msgs.erase(queue.msgs.begin() + idx);
+}
+
+std::span<ResourceMessage> get_first_resource_message_batch(ResourceMessageQueue& queue) {
+  if (queue.batch_end_idx.empty()) {
+    return queue.msgs;
+  }
+  return {queue.msgs.begin(), queue.msgs.begin() + queue.batch_end_idx[0]};
+}
 
 enum class ResourceMessageSenderPage {
   DISPLAY,
@@ -96,11 +128,38 @@ struct ResourceMessageSender {
   ResourceMessage msg_in_create{};
 };
 
+struct ResourceMessageReceiver {
+  // NOTE: this effectively means that max batch size is a max stack of each item type
+  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(ITEM_COUNT);
+
+  ResourceMessageReceiver() {
+    for (auto& slot : inventory) {
+      slot.flags = ITEM_SLOT_OUTPUT;
+    }
+  }
+};
+
+bool resource_message_receiver_empty(const ResourceMessageReceiver& msg_receiver) {
+  for (auto& slot : msg_receiver.inventory) {
+    if (slot) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // NOTE: keep a type with no heap allocations as the first one,
 // because std::variant by default initializes to the first type
 // so i dont want "entity = {}" to do any heap allocations
-using EntityData =
-  std::variant<Block, Player, Storage, Conveyor, Item, WorldTunnel, ResourceMessageSender>;
+using EntityData = std::variant<
+  Block,
+  Player,
+  Storage,
+  Conveyor,
+  Item,
+  WorldTunnel,
+  ResourceMessageSender,
+  ResourceMessageReceiver>;
 
 struct Entity {
   EntityId id{};
@@ -349,7 +408,7 @@ bool rotatable(ItemType type) {
       return Rotatable<Storage>;
     case ITEM_CONVEYOR:
       return Rotatable<Conveyor>;
-    default:
+    case ITEM_COUNT:
       break;
   }
   ASSERT(false, "invalid item type: %d\n", i32(type));
@@ -360,7 +419,8 @@ bool solid(const Entity& entity) {
     [](auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
-                    std::is_same_v<T, ResourceMessageSender>) {
+                    std::is_same_v<T, ResourceMessageSender> ||
+                    std::is_same_v<T, ResourceMessageReceiver>) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Conveyor> ||
                            std::is_same_v<T, Item> || std::is_same_v<T, WorldTunnel>) {
@@ -382,7 +442,8 @@ bool breakable(const Entity& entity) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Item> ||
                            std::is_same_v<T, WorldTunnel> ||
-                           std::is_same_v<T, ResourceMessageSender>) {
+                           std::is_same_v<T, ResourceMessageSender> ||
+                           std::is_same_v<T, ResourceMessageReceiver>) {
         return false;
       } else {
         static_assert(false);
@@ -397,7 +458,8 @@ bool has_gui(const Entity& entity) {
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, Storage> || std::is_same_v<T, WorldTunnel> ||
-                    std::is_same_v<T, ResourceMessageSender>) {
+                    std::is_same_v<T, ResourceMessageSender> ||
+                    std::is_same_v<T, ResourceMessageReceiver>) {
         return true;
       } else if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Player> ||
                            std::is_same_v<T, Conveyor> || std::is_same_v<T, Item>) {
@@ -443,7 +505,10 @@ std::optional<ItemType> entity_to_item(const Entity& entity) {
       },
       [](const ResourceMessageSender&) -> std::optional<ItemType> {
         return std::nullopt;
-      }
+      },
+      [](const ResourceMessageReceiver&) -> std::optional<ItemType> {
+        return std::nullopt;
+      },
     },
     entity.data
   );
@@ -457,7 +522,7 @@ Entity entity_from_item(ItemType item) {
       return {.data = Storage{}};
     case ITEM_CONVEYOR:
       return {.data = Conveyor{}};
-    default:
+    case ITEM_COUNT:
       break;
   }
   ASSERT(false, "invalid item type: %d\n", i32(item));
@@ -494,7 +559,10 @@ TextureType get_texture_type(const Entity& entity) {
       },
       [](const ResourceMessageSender&) {
         return TEXTURE_MESSAGE_SENDER;
-      }
+      },
+      [](const ResourceMessageReceiver&) {
+        return TEXTURE_MESSAGE_RECEIVER;
+      },
     },
     entity.data
   );
@@ -578,6 +646,7 @@ std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id) {
   return nullptr;
 }
 
+// TODO: think about what is the real purpose of this function
 template <typename Func>
 void for_each_active_slot(Entity& entity, Func&& func) {
   std::visit(
@@ -604,9 +673,16 @@ void for_each_active_slot(Entity& entity, Func&& func) {
           }
         }
       },
-      [](Item&) {},
-      [](WorldTunnel&) {},
+      [](Item&) {
+        // TODO: should i put the item here?
+      },
+      [](WorldTunnel&) {
+        // TODO: should i put the inventory here?
+      },
       [](ResourceMessageSender&) {},
+      [](ResourceMessageReceiver&) {
+        // TODO: should probably put something here after i add some sort of an inventory to this
+      },
     },
     entity.data
   );

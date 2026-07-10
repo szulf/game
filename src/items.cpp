@@ -44,7 +44,7 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_STORAGE_ITEM;
     case ITEM_CONVEYOR:
       return TEXTURE_CONVEYOR_ITEM;
-    default:
+    case ITEM_COUNT:
       break;
   }
   ASSERT_NO_MSG(false);
@@ -58,7 +58,7 @@ std::string_view get_item_name(ItemType item) {
       return "Storage";
     case ITEM_CONVEYOR:
       return "Conveyor";
-    default:
+    case ITEM_COUNT:
       break;
   }
   ASSERT_NO_MSG(false);

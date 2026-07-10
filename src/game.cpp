@@ -10,9 +10,6 @@ struct Input {
   bool interact{};
   bool close_inv{};
   bool rotate{};
-  bool toggle_world{};
-
-  bool toggle_debug{};
 };
 
 void clear(Input& input) {
@@ -40,21 +37,17 @@ void clear(FrameData& frame) {
 }
 
 struct State {
-  Input input{};
+  Input frame_input{};
+  Input tick_input{};
+
   FrameData frame{};
   AssetManager assets{};
   UI_System ui_system{};
 
   f32 minutes_accumulator{};
-  // TODO: should the time always start at 0?
   u64 minutes{};
 
-  ResourceMessageQueue resource_message_queue = {
-    .msgs =
-      {ResourceMessage{.requested_items = {0, 15, 0}},
-       ResourceMessage{.requested_items = {60, 10, 64}},
-       ResourceMessage{.requested_items = {64, 0, 0}}},
-  };
+  ResourceMessageQueue resource_message_queue{};
 
   // TODO: should reset when changing the player hand item
   Rotation current_place_rotation{};
@@ -109,104 +102,118 @@ void init(State& state) {
   );
 
   add_entity(state.store, Entity{.pos = {12, 10}, .data = ResourceMessageSender{}});
-  ResourceMessageReceiver receiver{};
-  receiver.inventory[ITEM_BLOCK] = {.type = ITEM_BLOCK, .count = 5};
-  add_entity(state.store, Entity{.pos = {14, 11}, .data = receiver});
+  add_entity(state.store, Entity{.pos = {14, 11}, .data = ResourceMessageReceiver{}});
 
   flush(state.store);
 }
 
 void gather_input(State& state) {
-  state.input.mouse_pos = vec2_from_vector2(GetMousePosition());
+  clear(state.frame_input);
+
+  state.frame_input.mouse_pos = vec2_from_vector2(GetMousePosition());
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-    state.input.lmb_pressed = true;
+    state.frame_input.lmb_pressed = true;
   }
   if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-    state.input.rmb_pressed = true;
+    state.frame_input.rmb_pressed = true;
   }
 
   if (IsKeyPressed(KEY_W)) {
-    --state.input.move.y;
+    --state.frame_input.move.y;
   }
   if (IsKeyPressed(KEY_S)) {
-    ++state.input.move.y;
+    ++state.frame_input.move.y;
   }
   if (IsKeyPressed(KEY_A)) {
-    --state.input.move.x;
+    --state.frame_input.move.x;
   }
   if (IsKeyPressed(KEY_D)) {
-    ++state.input.move.x;
+    ++state.frame_input.move.x;
   }
-  state.input.move.x = std::clamp(state.input.move.x, -1.0f, 1.0f);
-  state.input.move.y = std::clamp(state.input.move.y, -1.0f, 1.0f);
+  state.frame_input.move.x = std::clamp(state.frame_input.move.x, -1.0f, 1.0f);
+  state.frame_input.move.y = std::clamp(state.frame_input.move.y, -1.0f, 1.0f);
 
   if (IsKeyPressed(KEY_E)) {
-    state.input.interact = true;
+    state.frame_input.interact = true;
   }
   if (IsKeyPressed(KEY_ESCAPE)) {
-    state.input.close_inv = true;
+    state.frame_input.close_inv = true;
   }
 
   if (IsKeyPressed(KEY_R)) {
-    state.input.rotate = true;
-  }
-
-  if (IsKeyPressed(KEY_T)) {
-    state.input.toggle_world = true;
+    state.frame_input.rotate = true;
   }
 
   if (IsKeyPressed(KEY_F1)) {
     state.debug = !state.debug;
   }
+
+  state.tick_input.mouse_pos = state.frame_input.mouse_pos;
+  state.tick_input.mouse_scroll += state.frame_input.mouse_scroll;
+  state.tick_input.lmb_pressed = state.tick_input.lmb_pressed || state.frame_input.lmb_pressed;
+  state.tick_input.rmb_pressed = state.tick_input.rmb_pressed || state.frame_input.rmb_pressed;
+  state.tick_input.move.x =
+    std::clamp(state.tick_input.move.x + state.frame_input.move.x, -1.0f, 1.0f);
+  state.tick_input.move.y =
+    std::clamp(state.tick_input.move.y + state.frame_input.move.y, -1.0f, 1.0f);
+  state.tick_input.interact  = state.tick_input.interact || state.frame_input.interact;
+  state.tick_input.close_inv = state.tick_input.close_inv || state.frame_input.close_inv;
+  state.tick_input.rotate    = state.tick_input.rotate || state.frame_input.rotate;
 }
 
 void update_tick(State& state, f32 dt) {
   // TODO: i dont think this belongs in a system, but maybe?
-  if (state.input.rotate) {
+  if (state.tick_input.rotate) {
     state.current_place_rotation =
       Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
   }
 
   system_update_time(state.minutes, state.minutes_accumulator, dt);
-  system_move_player(state.store, state.player_id, state.input);
-  system_open_gui(state.store, state.player_id, state.input);
-  system_close_gui(state.store, state.player_id, state.input);
+  system_move_player(state.store, state.player_id, state.tick_input);
+  system_open_gui(state.store, state.player_id, state.tick_input);
+  system_close_gui(state.store, state.player_id, state.tick_input);
   system_hand_slot_interactions(
     state.store,
     state.player_id,
     state.frame.hovered_slot,
-    state.input
+    state.tick_input
   );
-  system_drop_items(state.store, state.player_id, state.input);
-  system_place_entity(state.store, state.player_id, state.input, state.current_place_rotation);
-  system_remove_entity(state.store, state.player_id, state.input);
+  system_drop_items(state.store, state.player_id, state.tick_input);
+  system_place_entity(state.store, state.player_id, state.tick_input, state.current_place_rotation);
+  system_remove_entity(state.store, state.player_id, state.tick_input);
   system_pickup_item(state.store, state.player_id);
   system_move_items(state.store, dt);
   system_tunnel_through_worlds(state.store, state.player_id);
 
   flush(state.store);
   clear_event_bus(state.store);
-  clear(state.input);
+  clear(state.tick_input);
 }
 
 void update_frame(State& state) {
   clear(state.frame);
   ui_system_update(state.ui_system);
 
-  state.frame.hovered_slot =
-    system_inventory_uis(state.ui_system, state.assets, state.input, state.store, state.player_id);
+  state.frame.hovered_slot = system_inventory_uis(
+    state.ui_system,
+    state.assets,
+    state.frame_input,
+    state.store,
+    state.player_id
+  );
 
   system_message_sender_ui(
     state.ui_system,
-    state.input,
+    state.frame_input,
     state.assets,
     state.store,
     state.player_id,
-    state.resource_message_queue
+    state.resource_message_queue,
+    state.minutes
   );
   auto receiver_hovered_slot = system_message_receiver_ui(
     state.ui_system,
-    state.input,
+    state.frame_input,
     state.assets,
     state.store,
     state.player_id,
@@ -244,7 +251,7 @@ void render(State& state) {
     if (player->hand && rotatable(player->hand.type)) {
       static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
 
-      vec2 main_start_pos = (grid_pos(state.input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
+      vec2 main_start_pos = (grid_pos(state.frame_input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
       vec2 main_end_pos   = main_start_pos;
 
       switch (state.current_place_rotation) {
@@ -316,8 +323,8 @@ void render(State& state) {
   {
     if (!state.frame.hovered_slot.entity) {
       Rectangle rect = {
-        .x      = f32(grid_pos(state.input.mouse_pos).x * GRID_DIMS.x),
-        .y      = f32(grid_pos(state.input.mouse_pos).y * GRID_DIMS.y),
+        .x      = f32(grid_pos(state.frame_input.mouse_pos).x * GRID_DIMS.x),
+        .y      = f32(grid_pos(state.frame_input.mouse_pos).y * GRID_DIMS.y),
         .width  = GRID_DIMS.x,
         .height = GRID_DIMS.y,
       };

@@ -275,7 +275,9 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
 
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        ui_text(layout, "ETA: ", FONT_SIZE, WHITE);
+        u64 eta_hour = (msg.arrival_time / 60) % 24;
+        u64 eta_min  = msg.arrival_time % 60;
+        ui_text(layout, std::format("ETA: {}:{}", eta_hour, eta_min), FONT_SIZE, WHITE);
       }
       ui_element_end(
         layout,
@@ -403,7 +405,8 @@ void system_message_sender_ui(
   AssetManager& assets,
   EntityStore& store,
   EntityId player_id,
-  ResourceMessageQueue& msg_queue
+  ResourceMessageQueue& msg_queue,
+  u64 game_time
 ) {
   auto* player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
@@ -551,7 +554,7 @@ void system_message_sender_ui(
             }
           }
           if (!all_zero) {
-            add_resource_message(msg_queue, msg);
+            add_resource_message(msg_queue, msg, game_time);
             msg = {};
           }
         }
@@ -590,7 +593,14 @@ ItemSlotIdx system_message_receiver_ui(
       message_header_ui<ResourceMessageReceiver>(layout);
 
       ui_element_begin(layout, UI_AUTO_ID);
-      if (resource_message_receiver_empty(*msg_receiver)) {
+      if (msg_queue.msgs.empty()) {
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          ui_text(layout, "no arriving messages", 20, WHITE);
+          ui_text(layout, "create messages in the Message Sender", 10, WHITE);
+        }
+        ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
+      } else if (resource_message_receiver_empty(*msg_receiver)) {
         ui_text(layout, "next arriving messages:", 20, WHITE);
         auto first_batch = get_first_resource_message_batch(msg_queue);
         for (u32 i = 0; i < first_batch.size(); ++i) {

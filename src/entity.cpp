@@ -79,29 +79,95 @@ struct WorldTunnel {
   };
 };
 
-static constexpr u32 MAX_REQUESTED_ITEMS      = 64;
+static constexpr u32 MAX_REQUESTED_ITEMS      = ITEM_MAX_COUNT;
 static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
 
 struct ResourceMessage {
   // NOTE: map from ItemType to amount of item requested
   std::array<u32, ITEM_COUNT> requested_items{};
+  u64 arrival_time{};
+  u32 batch_number{};
 };
 
 struct ResourceMessageQueue {
   std::vector<ResourceMessage> msgs{};
-  // NOTE: each ith batch is in this range [batch_end_idx[i - 1]; batch_end_idx[i])
-  // except the first batch which just starts at 0, since there is no batch_end_idx[-1]
-  std::vector<u32> batch_end_idx{};
 };
 
-// TODO: implement when working on resource message batching
-bool fits_in_last_batch(ResourceMessageQueue&, const ResourceMessage&) {
+std::span<ResourceMessage> get_first_resource_message_batch(ResourceMessageQueue& queue) {
+  if (queue.msgs.empty()) {
+    return {};
+  }
+  u32 first_batch_number = queue.msgs[0].batch_number;
+  u32 batch_end{};
+  for (auto& msg : queue.msgs) {
+    if (msg.batch_number != first_batch_number) {
+      break;
+    }
+    ++batch_end;
+  }
+  return {queue.msgs.begin(), queue.msgs.begin() + batch_end};
+}
+
+std::span<ResourceMessage> get_last_resource_message_batch(ResourceMessageQueue& queue) {
+  if (queue.msgs.empty()) {
+    return {};
+  }
+  u32 last_batch_number = queue.msgs.back().batch_number;
+  u32 batch_start{};
+  for (i32 i = i32(queue.msgs.size()) - 1; i >= 0; --i) {
+    auto& msg = queue.msgs[i];
+    if (msg.batch_number != last_batch_number) {
+      break;
+    }
+    batch_start = i;
+  }
+  return {queue.msgs.begin() + batch_start, queue.msgs.end()};
+}
+
+bool fits_in_last_batch(ResourceMessageQueue& queue, const ResourceMessage& msg, u64 game_time) {
+  ResourceMessage dummy_msg{};
+  auto last_batch = get_last_resource_message_batch(queue);
+  if (last_batch.empty()) {
+    return true;
+  }
+
+  // NOTE: time check
+  if (last_batch[0].arrival_time - game_time < 3 * 60) {
+    return false;
+  }
+
+  // NOTE: item count check
+  for (const auto& batch_msg : last_batch) {
+    for (u32 i = 0; i < ITEM_COUNT; ++i) {
+      dummy_msg.requested_items[i] += batch_msg.requested_items[i];
+    }
+  }
+  for (u32 i = 0; i < ITEM_COUNT; ++i) {
+    dummy_msg.requested_items[i] += msg.requested_items[i];
+  }
+  for (u32 i = 0; i < ITEM_COUNT; ++i) {
+    if (dummy_msg.requested_items[i] > MAX_REQUESTED_ITEMS) {
+      return false;
+    }
+  }
   return true;
 }
 
-void add_resource_message(ResourceMessageQueue& queue, const ResourceMessage& msg) {
-  if (!fits_in_last_batch(queue, msg)) {
-    queue.batch_end_idx.push_back(queue.msgs.size());
+void add_resource_message(ResourceMessageQueue& queue, ResourceMessage& msg, u64 game_time) {
+  // TODO: maybe calculate this from the amount of items requested?
+  static constexpr u64 MINUTES_TO_ARRIVAL = 300;
+
+  if (queue.msgs.empty()) {
+    msg.batch_number = 0;
+    msg.arrival_time = game_time + MINUTES_TO_ARRIVAL;
+  } else {
+    if (fits_in_last_batch(queue, msg, game_time)) {
+      msg.batch_number = queue.msgs.back().batch_number;
+      msg.arrival_time = queue.msgs.back().arrival_time;
+    } else {
+      msg.batch_number = queue.msgs.back().batch_number + 1;
+      msg.arrival_time = game_time + MINUTES_TO_ARRIVAL;
+    }
   }
   queue.msgs.push_back(msg);
 }
@@ -109,13 +175,6 @@ void add_resource_message(ResourceMessageQueue& queue, const ResourceMessage& ms
 // TODO: potentially bad when calling while iterating messages (which is what im doing)
 void remove_resource_message(ResourceMessageQueue& queue, u32 idx) {
   queue.msgs.erase(queue.msgs.begin() + idx);
-}
-
-std::span<ResourceMessage> get_first_resource_message_batch(ResourceMessageQueue& queue) {
-  if (queue.batch_end_idx.empty()) {
-    return queue.msgs;
-  }
-  return {queue.msgs.begin(), queue.msgs.begin() + queue.batch_end_idx[0]};
 }
 
 enum class ResourceMessageSenderPage {

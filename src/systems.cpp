@@ -759,8 +759,10 @@ ItemSlotIdx system_assembler_ui(
     for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
       const auto& recipe = Assembler::RECIPES[i];
       bool clicked = recipe_button_ui(layout, recipe.name, assembler->selected_recipe_idx == i);
-      if (clicked) {
+      if (clicked && assembler->selected_recipe_idx != i) {
         assembler->selected_recipe_idx = i;
+        // TODO: pull out to a clear or something function
+        assembler->t = 0;
       }
     }
     ui_element_end(layout, {.child_gap = 4});
@@ -818,6 +820,8 @@ ItemSlotIdx system_assembler_ui(
        .child_gap       = 4,
        .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
     );
+
+    ui_text(layout, std::format("{:.2}/{}", assembler->t, selected_recipe.recipe_time), 20, WHITE);
   }
   ui_element_end(
     layout,
@@ -829,6 +833,79 @@ ItemSlotIdx system_assembler_ui(
   ui_layout_end(layout);
 
   return hovered;
+}
+
+void system_progress_recipes(EntityStore& store, f32 dt) {
+  for (auto& entity : store) {
+    auto* assembler = get_data<Assembler>(entity);
+    if (!assembler) {
+      continue;
+    }
+
+    auto& selected_recipe = Assembler::RECIPES[assembler->selected_recipe_idx];
+    bool inputs_ok        = true;
+    // TODO: this shouldnt really care about the ordering of the items
+    // 5. if you have two conveyors on the side pushing into a conveyor in the middle,
+    //    they wont do a nice split between them, just one will push all the items then the next one
+    // or maybe it should, but i could add a way to lock item slots to only a specific kind
+    for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
+      auto& recipe_input = selected_recipe.input_slots[i];
+      if (!recipe_input) {
+        continue;
+      }
+      auto& assembler_input = assembler_input_slot(*assembler, i);
+      if (assembler_input.type != recipe_input.type || assembler_input.count < recipe_input.count) {
+        inputs_ok = false;
+        break;
+      }
+    }
+
+    bool output_ok = true;
+    for (u32 i = 0; i < Recipe::MAX_OUTPUT_SLOTS; ++i) {
+      auto& recipe_output = selected_recipe.output_slots[i];
+      if (!recipe_output) {
+        continue;
+      }
+      auto& assembler_output = assembler_output_slot(*assembler, i);
+      if (assembler_output && assembler_output.type != recipe_output.type) {
+        output_ok = false;
+        break;
+      }
+      if (assembler_output.count + recipe_output.count > ITEM_MAX_COUNT) {
+        output_ok = false;
+        break;
+      }
+    }
+
+    if (inputs_ok) {
+      if (output_ok) {
+        assembler->t += dt;
+      }
+    } else {
+      assembler->t = 0;
+    }
+
+    if (assembler->t >= selected_recipe.recipe_time) {
+      for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
+        auto& recipe_input = selected_recipe.input_slots[i];
+        if (!recipe_input) {
+          continue;
+        }
+        auto& assembler_input = assembler_input_slot(*assembler, i);
+        assembler_input.count -= recipe_input.count;
+      }
+      for (u32 i = 0; i < Recipe::MAX_OUTPUT_SLOTS; ++i) {
+        auto& recipe_output = selected_recipe.output_slots[i];
+        if (!recipe_output) {
+          continue;
+        }
+        auto& assembler_output = assembler_output_slot(*assembler, i);
+        assembler_output.type  = recipe_output.type;
+        assembler_output.count += recipe_output.count;
+      }
+      assembler->t -= selected_recipe.recipe_time;
+    }
+  }
 }
 
 void system_place_entity(
@@ -919,7 +996,7 @@ static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
 //    - build graphs of conveyor chains, sort them, then update in order
 //      (this fucking sucks actually (but sounds like the coolest thing ever))
 //    - something like a update push system, not updating all conveyors in a frame,
-//      not sure how this one works seem briefly on youtube
+//      not sure how this one works saw it briefly mentioned on youtube
 // 2. items are moved faster if they are moving through containers all the time
 //    so this
 //    c-c-c-c-c-c
@@ -933,6 +1010,8 @@ static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
 //    they will not round robin
 //    just one of the pulling conveyors will take all items as they are coming
 // 4. i think i duped an item somehow, no clue how tho (potentially fixable by fixing 1.)
+// 5. if you have two conveyors on the side pushing into a conveyor in the middle,
+//    they wont do a nice split between them, just one will push all the items then the next one
 void system_move_items(EntityStore& store, f32 dt) {
   for (auto& entity : store) {
     auto* conveyor = get_data<Conveyor>(entity);

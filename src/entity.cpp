@@ -240,8 +240,15 @@ struct Assembler {
       .input_slots  = {{{.type = ITEM_BLOCK, .count = 5}, {.type = ITEM_STORAGE, .count = 1}}},
       .output_slots = {{{.type = ITEM_CONVEYOR, .count = 10}}},
     },
-    Recipe{.name = "storage", .input_slots = {{}}, .output_slots = {{}}},
-    Recipe{.name = "assembler", .input_slots = {{}}, .output_slots = {{}}},
+    Recipe{
+      .name        = "assembler",
+      .recipe_time = 10.0f,
+      .input_slots =
+        {{{.type = ITEM_BLOCK, .count = 8},
+          {.type = ITEM_STORAGE, .count = 1},
+          {.type = ITEM_CONVEYOR, .count = 4}}},
+      .output_slots = {{{.type = ITEM_ASSEMBLER, .count = 1}}},
+    },
   };
 };
 

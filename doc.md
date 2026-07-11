@@ -31,7 +31,7 @@
   - [x] batching
   - [x] message transfer
 
-- [ ] crafting system
+- [x] crafting system
   
 - [ ] machine fixing system
 

@@ -81,6 +81,7 @@ void init(State& state) {
   player->inventory[13] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
   player->inventory[8]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 20};
   player->inventory[9]  = ItemSlot{.type = ITEM_BLOCK, .count = 30};
+  player->inventory[10] = ItemSlot{.type = ITEM_BLOCK, .count = 50};
   player->inventory[3]  = ItemSlot{.type = ITEM_STORAGE, .count = 6};
   player->inventory[11] = ItemSlot{.type = ITEM_STORAGE, .count = 11};
   state.player_id       = add_entity(state.store, player_entity);
@@ -195,6 +196,7 @@ void update_tick(State& state, f32 dt) {
     state.resource_message_queue,
     state.minutes
   );
+  system_progress_recipes(state.store, dt);
 
   flush(state.store);
   clear_event_bus(state.store);

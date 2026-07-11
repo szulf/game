@@ -107,6 +107,8 @@ void init(State& state) {
   state.resource_message_receiver_id =
     add_entity(state.store, Entity{.pos = {14, 11}, .data = ResourceMessageReceiver{}});
 
+  add_entity(state.store, Entity{.pos = {10, 5}, .data = Assembler{}});
+
   flush(state.store);
 }
 
@@ -230,6 +232,17 @@ void update_frame(State& state) {
   );
   if (receiver_hovered_slot.entity) {
     state.frame.hovered_slot = receiver_hovered_slot;
+  }
+
+  auto assembler_hovered_slot = system_assembler_ui(
+    state.ui_system,
+    state.frame_input,
+    state.assets,
+    state.store,
+    state.player_id
+  );
+  if (assembler_hovered_slot.entity) {
+    state.frame.hovered_slot = assembler_hovered_slot;
   }
 }
 

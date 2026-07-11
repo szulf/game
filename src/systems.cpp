@@ -224,7 +224,12 @@ ItemSlotIdx system_inventory_uis(
     player->inventory
   );
 
-  if (player->open_gui) {
+  // TODO: will want a different gui for all gui types
+  // different systems will handle them too
+  // currently just have a different guis for
+  // message receiver, storage/world_tunnel, assembler
+  if (player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
+      !is<Assembler>(store, player->open_gui)) {
     auto* open_inv = get_inventory(store, player->open_gui);
     if (open_inv) {
       auto open_inv_hovered_slot = inventory_ui(
@@ -716,6 +721,114 @@ void system_transfer_resource_messages(
       ++i;
     }
   }
+}
+
+bool recipe_button_ui(UI_Layout& layout, std::string_view recipe_name, bool selected) {
+  bool clicked{};
+  ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+  {
+    ui_text(layout, recipe_name, 15, BLACK);
+  }
+  ui_element_end(layout, {.padding = ui_padding_all(4), .bg_color = selected ? GRAY : LIGHTGRAY});
+  return clicked;
+}
+
+ItemSlotIdx system_assembler_ui(
+  UI_System& ui_system,
+  const Input& input,
+  AssetManager& assets,
+  EntityStore& store,
+  EntityId player_id
+) {
+  auto* player = get_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player);
+  if (!player->open_gui) {
+    return {};
+  }
+
+  auto* assembler = get_data<Assembler>(store, player->open_gui);
+  if (!assembler) {
+    return {};
+  }
+
+  ItemSlotIdx hovered{};
+  auto layout = ui_layout_begin("assembler", ui_system, input, {10, 200}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
+  {
+    ui_element_begin(layout, UI_AUTO_ID);
+    for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
+      const auto& recipe = Assembler::RECIPES[i];
+      bool clicked = recipe_button_ui(layout, recipe.name, assembler->selected_recipe_idx == i);
+      if (clicked) {
+        assembler->selected_recipe_idx = i;
+      }
+    }
+    ui_element_end(layout, {.child_gap = 4});
+
+    const auto& selected_recipe = Assembler::RECIPES[assembler->selected_recipe_idx];
+    ui_text(layout, "Recipe:", 15, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
+        if (selected_recipe.input_slots[i]) {
+          item_slot_ui(assets, layout, selected_recipe.input_slots[i]);
+        }
+      }
+      ui_text(layout, "->", 20, WHITE);
+      for (u32 i = 0; i < Recipe::MAX_OUTPUT_SLOTS; ++i) {
+        if (selected_recipe.output_slots[i]) {
+          item_slot_ui(assets, layout, selected_recipe.output_slots[i]);
+        }
+      }
+    }
+    ui_element_end(
+      layout,
+      {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+       .child_gap       = 4,
+       .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
+    );
+
+    ui_text(layout, "Inventory:", 15, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
+        if (selected_recipe.input_slots[i]) {
+          bool slot_hovered = item_slot_ui(assets, layout, assembler_input_slot(*assembler, i));
+          if (slot_hovered) {
+            hovered.entity   = player->open_gui;
+            hovered.slot_idx = i;
+          }
+        }
+      }
+      ui_text(layout, "->", 20, WHITE);
+      for (u32 i = 0; i < Recipe::MAX_OUTPUT_SLOTS; ++i) {
+        if (selected_recipe.output_slots[i]) {
+          bool slot_hovered = item_slot_ui(assets, layout, assembler_output_slot(*assembler, i));
+          if (slot_hovered) {
+            hovered.entity = player->open_gui;
+            // TODO: dont like this addition here (it was supposed to be an implementation detail)
+            hovered.slot_idx = i + Recipe::MAX_INPUT_SLOTS;
+          }
+        }
+      }
+    }
+    ui_element_end(
+      layout,
+      {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+       .child_gap       = 4,
+       .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
+    );
+  }
+  ui_element_end(
+    layout,
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+     .padding          = ui_padding_all(4),
+     .child_gap        = 4,
+     .bg_color         = BLACK}
+  );
+  ui_layout_end(layout);
+
+  return hovered;
 }
 
 void system_place_entity(

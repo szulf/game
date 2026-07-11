@@ -2,6 +2,7 @@ enum ItemType {
   ITEM_BLOCK,
   ITEM_STORAGE,
   ITEM_CONVEYOR,
+  ITEM_ASSEMBLER,
 
   ITEM_COUNT,
 };
@@ -50,6 +51,8 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_STORAGE_ITEM;
     case ITEM_CONVEYOR:
       return TEXTURE_CONVEYOR_ITEM;
+    case ITEM_ASSEMBLER:
+      return TEXTURE_ASSEMBLER_ITEM;
     case ITEM_COUNT:
       break;
   }
@@ -64,6 +67,8 @@ std::string_view get_item_name(ItemType item) {
       return "Storage";
     case ITEM_CONVEYOR:
       return "Conveyor";
+    case ITEM_ASSEMBLER:
+      return "Assembler";
     case ITEM_COUNT:
       break;
   }

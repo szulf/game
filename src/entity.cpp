@@ -83,6 +83,8 @@ static constexpr u32 MAX_REQUESTED_ITEMS      = ITEM_MAX_COUNT;
 static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
 
 struct ResourceMessage {
+  // TODO: not all items should be requestable through the message systems,
+  // only a group of base items should be
   // NOTE: map from ItemType to amount of item requested
   std::array<u32, ITEM_COUNT> requested_items{};
   u64 arrival_time{};
@@ -206,6 +208,53 @@ bool resource_message_receiver_empty(const ResourceMessageReceiver& msg_receiver
   return true;
 }
 
+// NOTE: could potentially have different recipe types for different machines in the future
+// just to have different MAX_INPUT/OUTPUT_SLOTS values, dont think it would be too big of an issue
+struct Recipe {
+  static constexpr u32 MAX_INPUT_SLOTS  = 4;
+  static constexpr u32 MAX_OUTPUT_SLOTS = 2;
+
+  std::string_view name{};
+  f32 recipe_time{};
+  std::array<ItemSlot, MAX_INPUT_SLOTS> input_slots{};
+  std::array<ItemSlot, MAX_OUTPUT_SLOTS> output_slots{};
+};
+
+struct Assembler {
+  u32 selected_recipe_idx{};
+  std::vector<ItemSlot> inventory =
+    std::vector<ItemSlot>(Recipe::MAX_INPUT_SLOTS + Recipe::MAX_OUTPUT_SLOTS);
+  f32 t{};
+
+  Assembler() {
+    for (u32 i = Recipe::MAX_INPUT_SLOTS; i < inventory.size(); ++i) {
+      auto& slot = inventory[i];
+      slot.flags = ITEM_SLOT_OUTPUT;
+    }
+  }
+
+  static constexpr std::array RECIPES = {
+    Recipe{
+      .name         = "conveyor",
+      .recipe_time  = 3.0f,
+      .input_slots  = {{{.type = ITEM_BLOCK, .count = 5}, {.type = ITEM_STORAGE, .count = 1}}},
+      .output_slots = {{{.type = ITEM_CONVEYOR, .count = 10}}},
+    },
+    Recipe{.name = "storage", .input_slots = {{}}, .output_slots = {{}}},
+    Recipe{.name = "assembler", .input_slots = {{}}, .output_slots = {{}}},
+  };
+};
+
+ItemSlot& assembler_input_slot(Assembler& assembler, u32 idx) {
+  ASSERT_NO_MSG(idx < Recipe::MAX_INPUT_SLOTS);
+  return assembler.inventory[idx];
+}
+
+ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx) {
+  ASSERT_NO_MSG(idx < Recipe::MAX_OUTPUT_SLOTS);
+  return assembler.inventory[idx + Recipe::MAX_INPUT_SLOTS];
+}
+
 // NOTE: keep a type with no heap allocations as the first one,
 // because std::variant by default initializes to the first type
 // so i dont want "entity = {}" to do any heap allocations
@@ -217,7 +266,8 @@ using EntityData = std::variant<
   Item,
   WorldTunnel,
   ResourceMessageSender,
-  ResourceMessageReceiver>;
+  ResourceMessageReceiver,
+  Assembler>;
 
 struct Entity {
   EntityId id{};
@@ -466,6 +516,8 @@ bool rotatable(ItemType type) {
       return Rotatable<Storage>;
     case ITEM_CONVEYOR:
       return Rotatable<Conveyor>;
+    case ITEM_ASSEMBLER:
+      return Rotatable<Assembler>;
     case ITEM_COUNT:
       break;
   }
@@ -478,7 +530,7 @@ bool solid(const Entity& entity) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
                     std::is_same_v<T, ResourceMessageSender> ||
-                    std::is_same_v<T, ResourceMessageReceiver>) {
+                    std::is_same_v<T, ResourceMessageReceiver> || std::is_same_v<T, Assembler>) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Conveyor> ||
                            std::is_same_v<T, Item> || std::is_same_v<T, WorldTunnel>) {
@@ -496,7 +548,7 @@ bool breakable(const Entity& entity) {
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
-                    std::is_same_v<T, Conveyor>) {
+                    std::is_same_v<T, Conveyor> || std::is_same_v<T, Assembler>) {
         return true;
       } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Item> ||
                            std::is_same_v<T, WorldTunnel> ||
@@ -517,7 +569,7 @@ bool has_gui(const Entity& entity) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, Storage> || std::is_same_v<T, WorldTunnel> ||
                     std::is_same_v<T, ResourceMessageSender> ||
-                    std::is_same_v<T, ResourceMessageReceiver>) {
+                    std::is_same_v<T, ResourceMessageReceiver> || std::is_same_v<T, Assembler>) {
         return true;
       } else if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Player> ||
                            std::is_same_v<T, Conveyor> || std::is_same_v<T, Item>) {
@@ -567,6 +619,9 @@ std::optional<ItemType> entity_to_item(const Entity& entity) {
       [](const ResourceMessageReceiver&) -> std::optional<ItemType> {
         return std::nullopt;
       },
+      [](const Assembler&) -> std::optional<ItemType> {
+        return {ITEM_ASSEMBLER};
+      }
     },
     entity.data
   );
@@ -580,6 +635,8 @@ Entity entity_from_item(ItemType item) {
       return {.data = Storage{}};
     case ITEM_CONVEYOR:
       return {.data = Conveyor{}};
+    case ITEM_ASSEMBLER:
+      return {.data = Assembler{}};
     case ITEM_COUNT:
       break;
   }
@@ -621,6 +678,9 @@ TextureType get_texture_type(const Entity& entity) {
       [](const ResourceMessageReceiver&) {
         return TEXTURE_MESSAGE_RECEIVER;
       },
+      [](const Assembler&) {
+        return TEXTURE_ASSEMBLER;
+      }
     },
     entity.data
   );
@@ -738,9 +798,15 @@ void for_each_active_slot(Entity& entity, Func&& func) {
         // TODO: should i put the inventory here?
       },
       [](ResourceMessageSender&) {},
-      [](ResourceMessageReceiver&) {
-        // TODO: should probably put something here after i add some sort of an inventory to this
+      [&](ResourceMessageReceiver& receiver) {
+        for (auto& slot : receiver.inventory) {
+          func(slot);
+        }
       },
+      [](Assembler&) {
+        // TODO: put the thing here
+        ASSERT(false, "TODO");
+      }
     },
     entity.data
   );

@@ -24,7 +24,7 @@ static constexpr u16 U16_MAX = std::numeric_limits<u16>::max();
 #define ASSERT_NO_MSG(expr)                                                                        \
   do {                                                                                             \
     if (!(expr)) {                                                                                 \
-      printf("Assertion failed on expression: '%s'\n", #expr);                                     \
+      printf("Assertion (%s:%d) failed on expression: '%s'\n", __FILE__, __LINE__, #expr);         \
       abort();                                                                                     \
     }                                                                                              \
   } while (false)
@@ -32,7 +32,12 @@ static constexpr u16 U16_MAX = std::numeric_limits<u16>::max();
 #define ASSERT(expr, ...)                                                                          \
   do {                                                                                             \
     if (!(expr)) {                                                                                 \
-      printf("Assertion failed on expression: '%s' with message:\n", #expr);                       \
+      printf(                                                                                      \
+        "Assertion (%s:%d) failed on expression: '%s' with message:\n",                            \
+        __FILE__,                                                                                  \
+        __LINE__,                                                                                  \
+        #expr                                                                                      \
+      );                                                                                           \
       printf(__VA_ARGS__);                                                                         \
       printf("\n");                                                                                \
       abort();                                                                                     \

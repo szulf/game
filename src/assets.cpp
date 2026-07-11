@@ -9,6 +9,8 @@ enum TextureType {
   TEXTURE_WORLD_TUNNEL,
   TEXTURE_MESSAGE_SENDER,
   TEXTURE_MESSAGE_RECEIVER,
+  TEXTURE_ASSEMBLER,
+  TEXTURE_ASSEMBLER_ITEM,
 
   TEXTURE_COUNT,
 };
@@ -35,6 +37,10 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/message_sender.png";
     case TEXTURE_MESSAGE_RECEIVER:
       return "assets/message_receiver.png";
+    case TEXTURE_ASSEMBLER:
+      return "assets/assembler.png";
+    case TEXTURE_ASSEMBLER_ITEM:
+      return "assets/assembler_item.png";
     case TEXTURE_COUNT:
       break;
   }

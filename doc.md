@@ -32,7 +32,6 @@
   - [x] message transfer
 
 - [ ] crafting system
-  - not sure whether i want inventory crafting alongside machine crafting (i think no)
   
 - [ ] machine fixing system
 
@@ -97,6 +96,10 @@ and later you can craft something like a fixer robot that would sit in front of 
 
 maybe you would also have some sort of repair schematic to both repair it yourself and to give to the fixer robot for it to know how to repair the machine \
 (or maybe some data stick with the repair schematic on it for the robot, and just the schematic for you)
+
+## crafting system:
+
+machines have recipes that you can choose from, you choose one and then the machine expects the input items and after some processing time spits out output items
 
 ## random ideas:
 

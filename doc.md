@@ -1,26 +1,15 @@
 # task list:
 
-## gameplay: 
+## gameplay:
 
-- [ ] conveyors
-  - [x] basic item movement on conveyors
-  - [ ] proper from/to directions
-  - [ ] fix the todos in the comment over system_move_items()
-        (add them here after fixing to say what issues i encountered)
+### before alpha demo:
 
 - [x] dropping items on the floor
-
-- [ ] flashlight and basic lighting system
-  - with a toggle for it
-  - and a toggle for global lighting
-
 - [x] mini puzzle worlds
   - with item input/output
-  
 - [x] in game time
   - needed for the message system
   - time in hud
-
 - [x] message sending system
   - [x] sender block
     - displays the current message queue
@@ -30,29 +19,42 @@
     - has an output only inventory for the received items
   - [x] batching
   - [x] message transfer
-
+  - [ ] automation
 - [x] crafting system
-  
 - [ ] machine fixing system
+  - [ ] machine maintenance
+    - different machines can get different types of maintenance work
+  - [ ] fixing robot
+- [ ] map editor
+- [ ] serialization
+- [ ] flashlight and basic lighting system
 
+### after alpha demo:
+
+- [ ] conveyors
+  - [x] basic item movement on conveyors
+  - [ ] proper from/to directions
+  - [ ] fix the todos in the comment over system_move_items()
+        (add them here after fixing to say what issues i encountered)
 - [ ] better movement system
-
 - [ ] containers that can output only from a single side
+- [ ] power
 
 ## rendering/art:
 
-- [x] use the UI library
-
+- [x] UI library
+  - [ ] borders
+  - [ ] justify-content: space-between from css
+  - [ ] better element api (the UI_Scope thing probably)
+  - [ ] child layouts (?)
 - [ ] better textures and animations
 
 ## other:
 
 - [ ] sounds
-
 - [ ] resizable window
-
 - [ ] proper positions for ui
-
+- [ ] code cleanup (?)
 
 # game design:
 
@@ -78,28 +80,32 @@ while preparing one batch if a new message comes in, it would be packaged into t
 if there is enough space of course and if it is not too late of course
 
 how do i automate message sending?
-
-### repair message system level design (level 1)
-
-at first the messaging system is broken, it is also the main reason you are sent to the spaceship to repair things (lack of ability to contact the spaceships automatic systems means you need to send someone there (not sure whether you are a robot or an engineer) when you get there you also discover more things are broken (more levels))
-
-you get sent to the spaceship, and the message system starts to break, you have to collect items from other broken systems to repair the message system
-after you repair it once, you can send a few messages and then it would break again.
-you can then build an automatic system to auto repair the system, because you have some items ordered from earth
-
-repairing the message system actually takes:
-
-- have the correct items in your inventory
-- multiple right clicks with some screwdriver or toolbox or smth
-
-and later you can craft something like a fixer robot that would sit in front of a machine, accept items from a conveyor and fix the machine if it breaks down (in this case the message sender)
-
-maybe you would also have some sort of repair schematic to both repair it yourself and to give to the fixer robot for it to know how to repair the machine \
-(or maybe some data stick with the repair schematic on it for the robot, and just the schematic for you)
+something like a network system, that you could connect to a machine to check its inputs. and if the inputs are requestable through the message system and missing it will try to request them
 
 ## crafting system:
 
 machines have recipes that you can choose from, you choose one and then the machine expects the input items and after some processing time spits out output items
+
+## machine fixing system:
+
+machines over time will need to have some maintenance performed on them, until its done their work will be paused.
+
+there are different types of maintenance work and for these different types you need do perform different tasks, these tasks will work as really really simple mini games.
+kind of like greg tech maintenance combined with amogus tasks (but simpler)
+
+there is a way to automate this maintenance work, in the form of robots which will look around in a certain radius around their station and if a machine that needs maintenance is within reach (and there is a possible walking path from the station to the machine) and the proper items are in the robots station inventory it will approach that machine and fix the issues. \
+or maybe the robots will use the same network as the message automation to look for machines instead of the radius
+
+## core game idea:
+
+the game really boils down to 6 parts
+
+1. fixing the message sending system
+2. fixing the lights
+3. fixing the power
+4. fixing the point the space station is there at all (maybe some mining thingy?)
+5. automating all of the fixes
+6. going home (game checks here if everything is automated somehow) (the end)
 
 ## random ideas:
 
@@ -137,6 +143,7 @@ and based on that message in N hours/minutes you would get a package with the wa
 what do i do about power?
 
 some puzzle level ideas:
+
 1. fix the message sender?
    - before the lights level, to get some more usage out of the flashlight system, and for it to not be a throw away system after the first 5 minutes
 2. fix the lights

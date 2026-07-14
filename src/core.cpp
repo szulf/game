@@ -1,10 +1,12 @@
 #include <cstdint>
+#include <random>
 #include <type_traits>
 #include <unordered_map>
 #include <print>
 #include <vector>
 #include <limits>
 #include <algorithm>
+#include <bitset>
 
 #include "raylib.h"
 #include "raymath.h"
@@ -160,3 +162,17 @@ static constexpr vec2 GRID_DIMS   = {32, 32};
 
 static constexpr i32 TPS = 60;
 static constexpr f32 DT  = 1.0f / TPS;
+
+// TODO: seed it always in the same way in debug builds?
+inline std::mt19937 random_generate() {
+  std::random_device rd{};
+  std::seed_seq ss{rd()};
+  return std::mt19937{ss};
+}
+
+inline std::mt19937 g_random_mt = random_generate();
+
+template <typename T>
+inline T random_get(T min, T max) {
+  return std::uniform_int_distribution<T>{min, max}(g_random_mt);
+}

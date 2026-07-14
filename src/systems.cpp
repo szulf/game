@@ -1138,6 +1138,36 @@ void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
   }
 }
 
+void system_apply_maintenance(EntityStore& store) {
+  for (auto& entity : store) {
+    auto [maintenance, possible_maintenance] = get_maintenance(entity);
+    if (!maintenance) {
+      continue;
+    }
+    // TODO: possibly this needs a much much lower chance to happen
+    auto value = random_get<u32>(1, 1000);
+    if (value != 1) {
+      continue;
+    }
+    auto maintenance_kind_idx = random_get<u32>(0, possible_maintenance->count());
+    u32 maintenance_kind{};
+    u32 count = 0;
+    for (u32 i = 0; i < MAINTENANCE_COUNT; ++i) {
+      if ((*possible_maintenance)[i]) {
+        ++count;
+      }
+      if (count == maintenance_kind_idx) {
+        maintenance_kind = i;
+        break;
+      }
+    }
+    maintenance->set(maintenance_kind);
+    std::println("Maintenance needs happened!");
+    std::println("Possible maintenance: {}", possible_maintenance->to_string());
+    std::println("Current maintenance: {}", maintenance->to_string());
+  }
+}
+
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
   static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
 

@@ -79,6 +79,16 @@ struct WorldTunnel {
   };
 };
 
+// TODO: give them actual names
+enum MaintenanceFlag {
+  MAINTENANCE_ONE,
+  MAINTENANCE_TWO,
+  MAINTENANCE_THREE,
+  MAINTENANCE_COUNT,
+};
+
+using Maintenance = std::bitset<MAINTENANCE_COUNT>;
+
 static constexpr u32 MAX_REQUESTED_ITEMS      = ITEM_MAX_COUNT;
 static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
 
@@ -184,11 +194,16 @@ enum class ResourceMessageSenderPage {
 };
 
 struct ResourceMessageSender {
+  static constexpr Maintenance POSSIBLE_MAINTENANCE = (1 << MAINTENANCE_ONE) | (1 << MAINTENANCE_THREE);
+  Maintenance maintenance{};
   ResourceMessageSenderPage page{};
   ResourceMessage msg_in_create{};
 };
 
 struct ResourceMessageReceiver {
+  static constexpr Maintenance POSSIBLE_MAINTENANCE =
+    (1 << MAINTENANCE_ONE) | (1 << MAINTENANCE_TWO);
+  Maintenance maintenance{};
   // NOTE: this effectively means that max batch size is a max stack of each item type
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(ITEM_COUNT);
 
@@ -221,6 +236,8 @@ struct Recipe {
 };
 
 struct Assembler {
+  static constexpr Maintenance POSSIBLE_MAINTENANCE = (1 << MAINTENANCE_ONE) | (1 << MAINTENANCE_TWO) | (1 << MAINTENANCE_THREE);
+  Maintenance maintenance{};
   u32 selected_recipe_idx{};
   std::vector<ItemSlot> inventory =
     std::vector<ItemSlot>(Recipe::MAX_INPUT_SLOTS + Recipe::MAX_OUTPUT_SLOTS);
@@ -288,6 +305,12 @@ concept HasInventory = requires(T& t) { t.inventory; };
 
 template <typename T>
 concept Rotatable = requires(T& t) { t.rotation; };
+
+template <typename T>
+concept HasMaintenance = requires(T& t) {
+  t.maintenance;
+  T::POSSIBLE_MAINTENANCE;
+};
 
 struct AddCommand {
   Entity entity{};
@@ -532,15 +555,14 @@ bool rotatable(ItemType type) {
 }
 
 bool solid(const Entity& entity) {
+#define t(type) std::is_same_v<T, type>
   return std::visit(
     [](auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
-                    std::is_same_v<T, ResourceMessageSender> ||
-                    std::is_same_v<T, ResourceMessageReceiver> || std::is_same_v<T, Assembler>) {
+      if constexpr (t(Block) || t(Storage) || t(ResourceMessageSender) ||
+                    t(ResourceMessageReceiver) || t(Assembler)) {
         return true;
-      } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Conveyor> ||
-                           std::is_same_v<T, Item> || std::is_same_v<T, WorldTunnel>) {
+      } else if constexpr (t(Player) || t(Conveyor) || t(Item) || t(WorldTunnel)) {
         return false;
       } else {
         static_assert(false);
@@ -548,19 +570,18 @@ bool solid(const Entity& entity) {
     },
     entity.data
   );
+#undef t
 }
 
 bool breakable(const Entity& entity) {
+#define t(type) std::is_same_v<T, type>
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Storage> ||
-                    std::is_same_v<T, Conveyor> || std::is_same_v<T, Assembler>) {
+      if constexpr (t(Block) || t(Storage) || t(Conveyor) || t(Assembler)) {
         return true;
-      } else if constexpr (std::is_same_v<T, Player> || std::is_same_v<T, Item> ||
-                           std::is_same_v<T, WorldTunnel> ||
-                           std::is_same_v<T, ResourceMessageSender> ||
-                           std::is_same_v<T, ResourceMessageReceiver>) {
+      } else if constexpr (t(Player) || t(Item) || t(WorldTunnel) || t(ResourceMessageSender) ||
+                           t(ResourceMessageReceiver)) {
         return false;
       } else {
         static_assert(false);
@@ -568,18 +589,18 @@ bool breakable(const Entity& entity) {
     },
     entity.data
   );
+#undef t
 }
 
 bool has_gui(const Entity& entity) {
+#define t(type) std::is_same_v<T, type>
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (std::is_same_v<T, Storage> || std::is_same_v<T, WorldTunnel> ||
-                    std::is_same_v<T, ResourceMessageSender> ||
-                    std::is_same_v<T, ResourceMessageReceiver> || std::is_same_v<T, Assembler>) {
+      if constexpr (t(Storage) || t(WorldTunnel) || t(ResourceMessageSender) ||
+                    t(ResourceMessageReceiver) || t(Assembler)) {
         return true;
-      } else if constexpr (std::is_same_v<T, Block> || std::is_same_v<T, Player> ||
-                           std::is_same_v<T, Conveyor> || std::is_same_v<T, Item>) {
+      } else if constexpr (t(Block) || t(Player) || t(Conveyor) || t(Item)) {
         return false;
       } else {
         static_assert(false);
@@ -587,6 +608,7 @@ bool has_gui(const Entity& entity) {
     },
     entity.data
   );
+#undef t
 }
 
 bool has_inventory(const Entity& entity) {
@@ -598,6 +620,16 @@ bool has_inventory(const Entity& entity) {
     entity.data
   );
 }
+
+bool has_maintenance(const Entity& entity) {
+  return std::visit(
+    [](const auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      return HasMaintenance<T>;
+    },
+    entity.data
+  );
+};
 
 std::optional<ItemType> entity_to_item(const Entity& entity) {
   return std::visit(
@@ -769,6 +801,28 @@ std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id) {
     return get_inventory(*entity);
   }
   return nullptr;
+}
+
+std::tuple<Maintenance*, const Maintenance*> get_maintenance(Entity& entity) {
+  return std::visit(
+    [](auto& value) -> std::tuple<Maintenance*, const Maintenance*> {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (HasMaintenance<T>) {
+        return {&value.maintenance, &value.POSSIBLE_MAINTENANCE};
+      } else {
+        return {nullptr, nullptr};
+      }
+    },
+    entity.data
+  );
+}
+
+std::tuple<Maintenance*, const Maintenance*> get_maintenance(EntityStore& store, EntityId id) {
+  auto* entity = get_entity(store, id);
+  if (entity) {
+    return get_maintenance(*entity);
+  }
+  return {nullptr, nullptr};
 }
 
 // TODO: think about what is the real purpose of this function

@@ -1,11 +1,6 @@
 // NOTE: possibly im doing way too many iterations over the whole data set
 // so if ever performance becomes an issue i could look at that
 
-// TODO: borders
-
-// TODO: something like justify-content: space-between in css
-// TODO: something like justify-content: space-evenly in css
-
 // TODO: helper function to render textures?
 // ui_element_begin(layout, UI_AUTO_ID);
 // ui_element_end(

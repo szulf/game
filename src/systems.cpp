@@ -404,6 +404,65 @@ static bool message_header_ui(UI_Layout& layout, std::string_view switch_page_te
   return switch_page_clicked;
 }
 
+void maintenance_ui(
+  UI_Layout& layout,
+  AssetManager& assets,
+  const Player& player,
+  Maintenance& maintenance
+) {
+  auto fix_item       = maintenance_fix_item(maintenance);
+  auto* minigame_open = maintenance_is_minigame_open(maintenance);
+
+  if (minigame_open && *minigame_open) {
+    // TODO: render the minigames into a texture here and then display the texture as part of the ui
+    maintenance_render_minigame(maintenance);
+  } else {
+    bool fix_clicked{};
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_text(layout, std::format("Needs {}!", maintenance_name(maintenance)), 20, RED);
+
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_text(layout, "Fix item: ", 15, WHITE);
+        item_slot_ui(assets, layout, fix_item);
+      }
+      ui_element_end(
+        layout,
+        {.child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER}}
+      );
+
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &fix_clicked});
+        {
+          ui_text(layout, "FIX", 15, BLACK);
+        }
+        ui_element_end(layout, {.padding = ui_padding_all(4), .bg_color = LIGHTGRAY});
+      }
+      ui_element_end(
+        layout,
+        {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+         .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
+      );
+    }
+    ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .child_gap = 4});
+
+    if (fix_clicked) {
+      if (player.hand.type == fix_item.type && player.hand.count >= fix_item.count) {
+        auto* minigame_open = maintenance_is_minigame_open(maintenance);
+        if (minigame_open) {
+          *minigame_open = true;
+        } else {
+          maintenance = std::monostate{};
+        }
+      } else {
+        // TODO: notify the user they dont have the item
+      }
+    }
+  }
+}
+
 void system_message_sender_ui(
   UI_System& ui_system,
   const Input& input,
@@ -416,11 +475,15 @@ void system_message_sender_ui(
   auto* player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
   auto* msg_sender = get_data<ResourceMessageSender>(store, player->open_gui);
+  if (!msg_sender) {
+    return;
+  }
 
-  if (msg_sender) {
-    auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
-
-    ui_element_begin(layout, UI_AUTO_ID);
+  auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
+  if (msg_sender->maintenance.index() != 0) {
+    maintenance_ui(layout, assets, *player, msg_sender->maintenance);
+  } else {
     switch (msg_sender->page) {
       case ResourceMessageSenderPage::DISPLAY: {
         bool switch_page_clicked = message_header_ui<ResourceMessageSender>(layout, "+");
@@ -567,16 +630,15 @@ void system_message_sender_ui(
         }
       } break;
     }
-    ui_element_end(
-      layout,
-      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-       .padding          = ui_padding_all(4),
-       .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
-       .bg_color         = BLACK}
-    );
-
-    ui_layout_end(layout);
   }
+  ui_element_end(
+    layout,
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+     .padding          = ui_padding_all(4),
+     .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+     .bg_color         = BLACK}
+  );
+  ui_layout_end(layout);
 }
 
 ItemSlotIdx system_message_receiver_ui(
@@ -590,62 +652,64 @@ ItemSlotIdx system_message_receiver_ui(
   auto player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
   auto* msg_receiver = get_data<ResourceMessageReceiver>(store, player->open_gui);
+  if (!msg_receiver) {
+    return {};
+  }
   ItemSlotIdx hovered_slot{};
 
-  if (msg_receiver) {
-    auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
+  auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
+  if (msg_receiver->maintenance.index() != 0) {
+    maintenance_ui(layout, assets, *player, msg_receiver->maintenance);
+  } else {
+    message_header_ui<ResourceMessageReceiver>(layout);
 
     ui_element_begin(layout, UI_AUTO_ID);
-    {
-      message_header_ui<ResourceMessageReceiver>(layout);
-
-      ui_element_begin(layout, UI_AUTO_ID);
-      if (resource_message_receiver_empty(*msg_receiver)) {
-        if (msg_queue.msgs.empty()) {
-          ui_element_begin(layout, UI_AUTO_ID);
-          {
-            ui_text(layout, "no arriving messages", 20, WHITE);
-            ui_text(layout, "create messages in the Message Sender", 10, WHITE);
-          }
-          ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
-        } else {
-          ui_text(layout, "next arriving messages:", 20, WHITE);
-          auto first_batch = get_first_resource_message_batch(msg_queue);
-          for (u32 i = 0; i < first_batch.size(); ++i) {
-            auto& msg = first_batch[i];
-            message_ui(layout, assets, msg, i + 1);
-          }
-        }
-      } else {
-        ui_text(layout, "currently available items:", 20, WHITE);
+    if (resource_message_receiver_empty(*msg_receiver)) {
+      if (msg_queue.msgs.empty()) {
         ui_element_begin(layout, UI_AUTO_ID);
-        for (u32 i = 0; i < msg_receiver->inventory.size(); ++i) {
-          auto& slot   = msg_receiver->inventory[i];
-          bool hovered = item_slot_ui(assets, layout, slot);
-          if (hovered) {
-            hovered_slot.entity   = player->open_gui;
-            hovered_slot.slot_idx = i;
-          }
+        {
+          ui_text(layout, "no arriving messages", 20, WHITE);
+          ui_text(layout, "create messages in the Message Sender", 10, WHITE);
         }
-        ui_element_end(layout, {.child_gap = 2});
+        ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
+      } else {
+        ui_text(layout, "next arriving messages:", 20, WHITE);
+        auto first_batch = get_first_resource_message_batch(msg_queue);
+        for (u32 i = 0; i < first_batch.size(); ++i) {
+          auto& msg = first_batch[i];
+          message_ui(layout, assets, msg, i + 1);
+        }
       }
-      ui_element_end(
-        layout,
-        {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-         .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
-         .child_gap        = 8}
-      );
+    } else {
+      ui_text(layout, "currently available items:", 20, WHITE);
+      ui_element_begin(layout, UI_AUTO_ID);
+      for (u32 i = 0; i < msg_receiver->inventory.size(); ++i) {
+        auto& slot   = msg_receiver->inventory[i];
+        bool hovered = item_slot_ui(assets, layout, slot);
+        if (hovered) {
+          hovered_slot.entity   = player->open_gui;
+          hovered_slot.slot_idx = i;
+        }
+      }
+      ui_element_end(layout, {.child_gap = 2});
     }
     ui_element_end(
       layout,
       {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-       .padding          = ui_padding_all(4),
-       .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
-       .bg_color         = BLACK}
+       .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
+       .child_gap        = 8}
     );
-
-    ui_layout_end(layout);
   }
+  ui_element_end(
+    layout,
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+     .padding          = ui_padding_all(4),
+     .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+     .bg_color         = BLACK}
+  );
+  ui_layout_end(layout);
+
   return hovered_slot;
 }
 
@@ -754,7 +818,9 @@ ItemSlotIdx system_assembler_ui(
   ItemSlotIdx hovered{};
   auto layout = ui_layout_begin("assembler", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
-  {
+  if (assembler->maintenance.index() != 0) {
+    maintenance_ui(layout, assets, *player, assembler->maintenance);
+  } else {
     ui_element_begin(layout, UI_AUTO_ID);
     for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
       const auto& recipe = Assembler::RECIPES[i];
@@ -821,7 +887,7 @@ ItemSlotIdx system_assembler_ui(
        .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
     );
 
-    ui_text(layout, std::format("{:.2}/{}", assembler->t, selected_recipe.recipe_time), 20, WHITE);
+    ui_text(layout, std::format("{:.1f}/{}", assembler->t, selected_recipe.recipe_time), 20, WHITE);
   }
   ui_element_end(
     layout,
@@ -839,6 +905,10 @@ void system_progress_recipes(EntityStore& store, f32 dt) {
   for (auto& entity : store) {
     auto* assembler = get_data<Assembler>(entity);
     if (!assembler) {
+      continue;
+    }
+
+    if (assembler->maintenance.index() != 0) {
       continue;
     }
 
@@ -1141,30 +1211,36 @@ void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
 void system_apply_maintenance(EntityStore& store) {
   for (auto& entity : store) {
     auto [maintenance, possible_maintenance] = get_maintenance(entity);
-    if (!maintenance) {
+    if (!maintenance || maintenance->index() != 0) {
       continue;
     }
-    // TODO: possibly this needs a much much lower chance to happen
+
+    // TODO: this needs a much much lower chance to happen
     auto value = random_get<u32>(1, 1000);
     if (value != 1) {
       continue;
     }
-    auto maintenance_kind_idx = random_get<u32>(0, possible_maintenance->count());
-    u32 maintenance_kind{};
-    u32 count = 0;
-    for (u32 i = 0; i < MAINTENANCE_COUNT; ++i) {
-      if ((*possible_maintenance)[i]) {
-        ++count;
-      }
-      if (count == maintenance_kind_idx) {
-        maintenance_kind = i;
-        break;
-      }
-    }
-    maintenance->set(maintenance_kind);
+
+    auto maintenance_idx = random_get<u32>(0, possible_maintenance.size() - 1);
+    *maintenance         = possible_maintenance[maintenance_idx];
     std::println("Maintenance needs happened!");
-    std::println("Possible maintenance: {}", possible_maintenance->to_string());
-    std::println("Current maintenance: {}", maintenance->to_string());
+    std::println("Current maintenance: {}", maintenance_name(*maintenance));
+  }
+}
+
+void system_update_maintenance_minigames(EntityStore& store) {
+  for (auto& entity : store) {
+    auto [maintenance, _] = get_maintenance(entity);
+    if (!maintenance) {
+      continue;
+    }
+
+    auto* minigame_open = maintenance_is_minigame_open(*maintenance);
+    if (!minigame_open || !*minigame_open) {
+      continue;
+    }
+
+    maintenance_update_minigame(*maintenance);
   }
 }
 

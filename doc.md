@@ -23,7 +23,11 @@
 - [x] crafting system
 - [ ] machine fixing system
   - [ ] machine maintenance
-    - different machines can get different types of maintenance work
+    - [ ] maintenance fixing mini-games
+      - [ ] lubrication mini game
+      - [ ] cleaning mini game
+      - [ ] component replacement mini game
+      - [ ] calibration mini game
   - [ ] fixing robot
 - [ ] map editor
 - [ ] serialization
@@ -39,6 +43,7 @@
 - [ ] better movement system
 - [ ] containers that can output only from a single side
 - [ ] power
+- [ ] in game documentation for all blocks/items
 
 ## rendering/art:
 
@@ -47,6 +52,7 @@
   - [ ] justify-content: space-between from css
   - [ ] better element api (the UI_Scope thing probably)
   - [ ] child layouts (?)
+  - [ ] components (?)
 - [ ] better textures and animations
 
 ## other:
@@ -90,7 +96,7 @@ machines have recipes that you can choose from, you choose one and then the mach
 
 machines over time will need to have some maintenance performed on them, until its done their work will be paused.
 
-there are different types of maintenance work and for these different types you need do perform different tasks, these tasks will work as really really simple mini games.
+there are different types of maintenance work and for these different types you need do perform different tasks, these tasks will work as really really simple mini games. different machines need different types of maintenance work.
 kind of like greg tech maintenance combined with amogus tasks (but simpler)
 
 there is a way to automate this maintenance work, in the form of robots which will look around in a certain radius around their station and if a machine that needs maintenance is within reach (and there is a possible walking path from the station to the machine) and the proper items are in the robots station inventory it will approach that machine and fix the issues. \

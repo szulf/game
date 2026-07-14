@@ -176,3 +176,6 @@ template <typename T>
 inline T random_get(T min, T max) {
   return std::uniform_int_distribution<T>{min, max}(g_random_mt);
 }
+
+template <typename T, typename... Ts>
+inline constexpr bool is_any_of = (std::is_same_v<T, Ts> || ...);

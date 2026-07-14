@@ -79,15 +79,152 @@ struct WorldTunnel {
   };
 };
 
-// TODO: give them actual names
-enum MaintenanceFlag {
-  MAINTENANCE_ONE,
-  MAINTENANCE_TWO,
-  MAINTENANCE_THREE,
-  MAINTENANCE_COUNT,
+struct MaintenanceLubrication {
+  static constexpr std::string_view NAME = "lubrication";
+  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 1};
+  bool open{};
 };
 
-using Maintenance = std::bitset<MAINTENANCE_COUNT>;
+void maintenance_update_minigame(MaintenanceLubrication& state) {
+  (void) state;
+}
+
+void maintenance_render_minigame(const MaintenanceLubrication& state) {
+  (void) state;
+}
+
+struct MaintenanceCleaning {
+  static constexpr std::string_view NAME = "cleaning";
+  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_STORAGE, .count = 1};
+  bool open{};
+};
+
+void maintenance_update_minigame(MaintenanceCleaning& state) {
+  (void) state;
+}
+
+void maintenance_render_minigame(const MaintenanceCleaning& state) {
+  (void) state;
+}
+
+struct MaintenanceComponentReplacement {
+  static constexpr std::string_view NAME = "component replacement";
+  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_CONVEYOR, .count = 1};
+  bool open{};
+};
+
+void maintenance_update_minigame(MaintenanceComponentReplacement& state) {
+  (void) state;
+}
+
+void maintenance_render_minigame(const MaintenanceComponentReplacement& state) {
+  (void) state;
+}
+
+struct MaintenanceCalibration {
+  static constexpr std::string_view NAME = "calibration";
+  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 3};
+  bool open{};
+};
+
+void maintenance_update_minigame(MaintenanceCalibration& state) {
+  (void) state;
+}
+
+void maintenance_render_minigame(const MaintenanceCalibration& state) {
+  (void) state;
+}
+
+struct MaintenanceMessageSender {
+  static constexpr std::string_view NAME = "";
+  static constexpr ItemSlot FIX_ITEM     = {};
+};
+
+struct MaintenanceMessageReceiver {
+  static constexpr std::string_view NAME = "";
+  static constexpr ItemSlot FIX_ITEM     = {};
+};
+
+using Maintenance = std::variant<
+  std::monostate,
+  MaintenanceLubrication,
+  MaintenanceCleaning,
+  MaintenanceComponentReplacement,
+  MaintenanceCalibration,
+  MaintenanceMessageSender,
+  MaintenanceMessageReceiver>;
+
+std::string_view maintenance_name(const Maintenance& maintenance) {
+  return std::visit(
+    [](const auto& value) -> const std::string_view& {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (std::is_same_v<T, std::monostate>) {
+        ASSERT(false, "null maintenance has no name");
+      } else {
+        return value.NAME;
+      }
+    },
+    maintenance
+  );
+}
+
+const ItemSlot& maintenance_fix_item(const Maintenance& maintenance) {
+  return std::visit(
+    [](const auto& value) -> const ItemSlot& {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (std::is_same_v<T, std::monostate>) {
+        ASSERT(false, "null maintenance has no fix item");
+      } else {
+        return value.FIX_ITEM;
+      }
+    },
+    maintenance
+  );
+}
+
+template <typename T>
+concept MaintenanceHasMiniGame = requires(T& t) {
+  t.open;
+  maintenance_update_minigame(t);
+  maintenance_render_minigame(t);
+};
+
+bool* maintenance_is_minigame_open(Maintenance& maintenance) {
+  return std::visit(
+    [](auto& value) -> bool* {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (MaintenanceHasMiniGame<T>) {
+        return &value.open;
+      }
+      return nullptr;
+    },
+    maintenance
+  );
+}
+
+void maintenance_update_minigame(Maintenance& maintenance) {
+  std::visit(
+    [](auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (MaintenanceHasMiniGame<T>) {
+        maintenance_update_minigame(value);
+      }
+    },
+    maintenance
+  );
+}
+
+void maintenance_render_minigame(const Maintenance& maintenance) {
+  std::visit(
+    [](const auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (MaintenanceHasMiniGame<T>) {
+        maintenance_render_minigame(value);
+      }
+    },
+    maintenance
+  );
+}
 
 static constexpr u32 MAX_REQUESTED_ITEMS      = ITEM_MAX_COUNT;
 static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
@@ -194,15 +331,26 @@ enum class ResourceMessageSenderPage {
 };
 
 struct ResourceMessageSender {
-  static constexpr Maintenance POSSIBLE_MAINTENANCE = (1 << MAINTENANCE_ONE) | (1 << MAINTENANCE_THREE);
+  static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
+    MaintenanceLubrication{},
+    MaintenanceCleaning{},
+    MaintenanceComponentReplacement{},
+    MaintenanceCalibration{},
+    MaintenanceMessageSender{},
+  });
   Maintenance maintenance{};
   ResourceMessageSenderPage page{};
   ResourceMessage msg_in_create{};
 };
 
 struct ResourceMessageReceiver {
-  static constexpr Maintenance POSSIBLE_MAINTENANCE =
-    (1 << MAINTENANCE_ONE) | (1 << MAINTENANCE_TWO);
+  static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
+    MaintenanceLubrication{},
+    MaintenanceCleaning{},
+    MaintenanceComponentReplacement{},
+    MaintenanceCalibration{},
+    MaintenanceMessageReceiver{},
+  });
   Maintenance maintenance{};
   // NOTE: this effectively means that max batch size is a max stack of each item type
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(ITEM_COUNT);
@@ -236,7 +384,12 @@ struct Recipe {
 };
 
 struct Assembler {
-  static constexpr Maintenance POSSIBLE_MAINTENANCE = (1 << MAINTENANCE_ONE) | (1 << MAINTENANCE_TWO) | (1 << MAINTENANCE_THREE);
+  static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
+    MaintenanceLubrication{},
+    MaintenanceCleaning{},
+    MaintenanceComponentReplacement{},
+    MaintenanceCalibration{},
+  });
   Maintenance maintenance{};
   u32 selected_recipe_idx{};
   std::vector<ItemSlot> inventory =
@@ -555,14 +708,18 @@ bool rotatable(ItemType type) {
 }
 
 bool solid(const Entity& entity) {
-#define t(type) std::is_same_v<T, type>
   return std::visit(
     [](auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (t(Block) || t(Storage) || t(ResourceMessageSender) ||
-                    t(ResourceMessageReceiver) || t(Assembler)) {
+      if constexpr (is_any_of<
+                      T,
+                      Block,
+                      Storage,
+                      ResourceMessageSender,
+                      ResourceMessageReceiver,
+                      Assembler>) {
         return true;
-      } else if constexpr (t(Player) || t(Conveyor) || t(Item) || t(WorldTunnel)) {
+      } else if constexpr (is_any_of<T, Player, Conveyor, Item, WorldTunnel>) {
         return false;
       } else {
         static_assert(false);
@@ -570,18 +727,21 @@ bool solid(const Entity& entity) {
     },
     entity.data
   );
-#undef t
 }
 
 bool breakable(const Entity& entity) {
-#define t(type) std::is_same_v<T, type>
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (t(Block) || t(Storage) || t(Conveyor) || t(Assembler)) {
+      if constexpr (is_any_of<T, Block, Storage, Conveyor, Assembler>) {
         return true;
-      } else if constexpr (t(Player) || t(Item) || t(WorldTunnel) || t(ResourceMessageSender) ||
-                           t(ResourceMessageReceiver)) {
+      } else if constexpr (is_any_of<
+                             T,
+                             Player,
+                             Item,
+                             WorldTunnel,
+                             ResourceMessageSender,
+                             ResourceMessageReceiver>) {
         return false;
       } else {
         static_assert(false);
@@ -589,18 +749,21 @@ bool breakable(const Entity& entity) {
     },
     entity.data
   );
-#undef t
 }
 
 bool has_gui(const Entity& entity) {
-#define t(type) std::is_same_v<T, type>
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (t(Storage) || t(WorldTunnel) || t(ResourceMessageSender) ||
-                    t(ResourceMessageReceiver) || t(Assembler)) {
+      if constexpr (is_any_of<
+                      T,
+                      Storage,
+                      WorldTunnel,
+                      ResourceMessageSender,
+                      ResourceMessageReceiver,
+                      Assembler>) {
         return true;
-      } else if constexpr (t(Block) || t(Player) || t(Conveyor) || t(Item)) {
+      } else if constexpr (is_any_of<T, Block, Player, Conveyor, Item>) {
         return false;
       } else {
         static_assert(false);
@@ -608,7 +771,6 @@ bool has_gui(const Entity& entity) {
     },
     entity.data
   );
-#undef t
 }
 
 bool has_inventory(const Entity& entity) {
@@ -803,26 +965,27 @@ std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id) {
   return nullptr;
 }
 
-std::tuple<Maintenance*, const Maintenance*> get_maintenance(Entity& entity) {
+std::tuple<Maintenance*, std::span<const Maintenance>> get_maintenance(Entity& entity) {
   return std::visit(
-    [](auto& value) -> std::tuple<Maintenance*, const Maintenance*> {
+    [](auto& value) -> std::tuple<Maintenance*, std::span<const Maintenance>> {
       using T = std::decay_t<decltype(value)>;
       if constexpr (HasMaintenance<T>) {
-        return {&value.maintenance, &value.POSSIBLE_MAINTENANCE};
+        return {&value.maintenance, value.POSSIBLE_MAINTENANCE};
       } else {
-        return {nullptr, nullptr};
+        return {nullptr, {}};
       }
     },
     entity.data
   );
 }
 
-std::tuple<Maintenance*, const Maintenance*> get_maintenance(EntityStore& store, EntityId id) {
+std::tuple<Maintenance*, std::span<const Maintenance>>
+get_maintenance(EntityStore& store, EntityId id) {
   auto* entity = get_entity(store, id);
   if (entity) {
     return get_maintenance(*entity);
   }
-  return {nullptr, nullptr};
+  return {nullptr, {}};
 }
 
 // TODO: think about what is the real purpose of this function

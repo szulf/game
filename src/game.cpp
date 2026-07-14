@@ -198,6 +198,7 @@ void update_tick(State& state, f32 dt) {
   );
   system_progress_recipes(state.store, dt);
   system_apply_maintenance(state.store);
+  system_update_maintenance_minigames(state.store);
 
   flush(state.store);
   clear_event_bus(state.store);

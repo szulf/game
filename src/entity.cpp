@@ -254,6 +254,7 @@ void maintenance_render_minigame(
 struct MaintenanceCleaning {
   static constexpr std::string_view NAME = "cleaning";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_STORAGE, .count = 1};
+  vec2 window_offset{};
   bool open{};
 };
 
@@ -399,30 +400,114 @@ void maintenance_render_minigame(
 struct MaintenanceCalibration {
   static constexpr std::string_view NAME = "calibration";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 3};
+  vec2 window_offset{};
   bool open{};
+
+  f32 range_low{};
+  f32 range_high{};
+  f32 value{};
+  // NOTE: once you get the value into the range you have to wait a little bit, that is this t value
+  f32 t{};
+
+  Rectangle add_rect{};
+  Rectangle remove_rect{};
 };
 
 void maintenance_init_minigame(MaintenanceCalibration& state) {
-  (void) state;
+  state.range_low  = random_get<f32>(30.0f, 50.0f);
+  state.range_low  = std::round(state.range_low * 10.0f) / 10.0f;
+  state.range_high = state.range_low + random_get<f32>(1.0f, 50.0f);
+  state.range_high = std::round(state.range_high * 10.0f) / 10.0f;
+  // TODO: not sure if i want for it to be possible for the value to start in the range
+  state.value = random_get<f32>(0.0f, 100.0f);
+  state.value = std::round(state.value * 10.0f) / 10.0f;
+
+  state.add_rect    = rect_from_vec2x2({196, 128}, {64, 64});
+  state.remove_rect = rect_from_vec2x2({64, 128}, {64, 64});
 }
 
 bool maintenance_update_minigame(MaintenanceCalibration& state, const Input& input, f32 dt) {
-  (void) state;
-  (void) input;
-  (void) dt;
-  return false;
+  ASSERT_NO_MSG(
+    state.add_rect.width == state.remove_rect.width &&
+    state.add_rect.height == state.remove_rect.height
+  );
+  vec2 origin = vec2{state.add_rect.width, state.add_rect.height} / 2.0f;
+
+  auto check_add_rect = rect_from_vec2x2(
+    vec2{state.add_rect.x, state.add_rect.y} + state.window_offset - origin,
+    {state.add_rect.width, state.add_rect.height}
+  );
+  if (input.lmb_down &&
+      CheckCollisionRecs(check_add_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
+    state.value += 0.1f;
+  }
+  auto check_remove_rect = rect_from_vec2x2(
+    vec2{state.remove_rect.x, state.remove_rect.y} + state.window_offset - origin,
+    {state.remove_rect.width, state.remove_rect.height}
+  );
+  if (input.lmb_down &&
+      CheckCollisionRecs(check_remove_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
+    state.value -= 0.1f;
+  }
+  state.value = std::round(state.value * 10.0f) / 10.0f;
+
+  if (state.range_low <= state.value && state.value <= state.range_high) {
+    state.t += dt;
+  } else {
+    state.t = 0;
+  }
+
+  return state.t >= 0.5f;
 }
 
+// TODO: display the range and the value as a wave
+// the middle of the range would be one displayed wavelength
+// and the value would be the other displayed wavelength
+// amplitude would be constant???
+// and you have to get the value wavelength near the range wavelength
 void maintenance_render_minigame(
   MaintenanceCalibration& state,
   const AssetManager& assets,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
-  (void) state;
+  state.window_offset = window_offset;
+
+  ASSERT_NO_MSG(
+    state.add_rect.width == state.remove_rect.width &&
+    state.add_rect.height == state.remove_rect.height
+  );
+  vec2 origin     = vec2{state.add_rect.width, state.add_rect.height} / 2.0f;
+  auto value_text = std::format("{}", state.value);
+  auto range_text = std::format("Expected range:\n[{};{}]", state.range_low, state.range_high);
+
+  BeginTextureMode(render_texture);
+  ClearBackground(BLACK);
+  DrawTextPro(
+    GetFontDefault(),
+    range_text.c_str(),
+    {128, 64},
+    MeasureTextEx(GetFontDefault(), range_text.c_str(), 20, 2) / 2.0f,
+    0,
+    20,
+    2,
+    WHITE
+  );
+  DrawTextPro(
+    GetFontDefault(),
+    value_text.c_str(),
+    {128, 128},
+    MeasureTextEx(GetFontDefault(), value_text.c_str(), 20, 2) / 2.0f,
+    0,
+    20,
+    2,
+    WHITE
+  );
+  DrawRectanglePro(state.add_rect, vector2_from_vec2(origin), 0, GREEN);
+  DrawRectanglePro(state.remove_rect, vector2_from_vec2(origin), 0, RED);
+  EndTextureMode();
+
   (void) assets;
-  (void) render_texture;
-  (void) window_offset;
 }
 
 struct MaintenanceMessageSender {
@@ -704,8 +789,8 @@ struct Assembler {
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
     // MaintenanceLubrication{},
     // MaintenanceCleaning{},
-    MaintenanceComponentReplacement{},
-    // MaintenanceCalibration{},
+    // MaintenanceComponentReplacement{},
+    MaintenanceCalibration{},
   });
   Maintenance maintenance{};
   u32 selected_recipe_idx{};

@@ -29,7 +29,8 @@
       - [ ] cleaning mini game
       - [x] component replacement mini game
         - remove the broken component and insert the fixed one into the machine slot
-      - [ ] calibration mini game
+      - [x] calibration mini game
+        - get a random range and a random value and adjust the value so it fits into that range
   - [ ] fixing robot
 - [ ] map editor
 - [ ] serialization

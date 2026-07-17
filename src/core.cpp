@@ -11,7 +11,10 @@
 #include "raylib.h"
 #include "raymath.h"
 
+using i8  = int8_t;
+using i16 = int16_t;
 using i32 = int32_t;
+using i64 = int64_t;
 
 using u8  = uint8_t;
 using u16 = uint16_t;
@@ -155,6 +158,9 @@ static constexpr vec2 GRID_DIMS   = {32, 32};
 static constexpr i32 TPS = 60;
 static constexpr f32 DT  = 1.0f / TPS;
 
+template <typename T, typename... Ts>
+inline constexpr bool is_any_of = (std::is_same_v<T, Ts> || ...);
+
 // TODO: seed it always in the same way in debug builds?
 inline std::mt19937 random_generate() {
   std::random_device rd{};
@@ -166,8 +172,11 @@ inline std::mt19937 g_random_mt = random_generate();
 
 template <typename T>
 inline T random_get(T min, T max) {
-  return std::uniform_int_distribution<T>{min, max}(g_random_mt);
+  if constexpr (is_any_of<T, u8, u16, u32, u64, i8, i16, i32, i64>) {
+    return std::uniform_int_distribution<T>{min, max}(g_random_mt);
+  } else if constexpr (is_any_of<T, f32, f64>) {
+    return std::uniform_real_distribution<>{min, max}(g_random_mt);
+  } else {
+    static_assert(false, "invalid random number type");
+  }
 }
-
-template <typename T, typename... Ts>
-inline constexpr bool is_any_of = (std::is_same_v<T, Ts> || ...);

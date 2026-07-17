@@ -407,7 +407,6 @@ static bool message_header_ui(UI_Layout& layout, std::string_view switch_page_te
 void maintenance_ui(
   UI_Layout& layout,
   AssetManager& assets,
-  const Input& input,
   Player& player,
   Maintenance& maintenance
 ) {
@@ -418,7 +417,7 @@ void maintenance_ui(
     auto& render = player.maintenance_minigame_texture;
     ASSERT(IsRenderTextureValid(render), "minigame render texture needs to be valid");
     vec2 window_offset = ui_element_get_pos(layout, "maintenance minigame window");
-    maintenance_render_minigame(maintenance, render, window_offset);
+    maintenance_render_minigame(maintenance, assets, render, window_offset);
     ui_element_begin(layout, "maintenance minigame window");
     ui_element_end(
       layout,
@@ -464,7 +463,7 @@ void maintenance_ui(
         if (minigame_open) {
           *minigame_open = true;
           // TODO: maybe check if inited in update and init there?
-          maintenance_init_minigame(maintenance, input);
+          maintenance_init_minigame(maintenance);
         } else {
           maintenance = std::monostate{};
         }
@@ -495,7 +494,7 @@ void system_message_sender_ui(
   auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_sender->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, input, *player, msg_sender->maintenance);
+    maintenance_ui(layout, assets, *player, msg_sender->maintenance);
   } else {
     switch (msg_sender->page) {
       case ResourceMessageSenderPage::DISPLAY: {
@@ -673,7 +672,7 @@ ItemSlotIdx system_message_receiver_ui(
   auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_receiver->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, input, *player, msg_receiver->maintenance);
+    maintenance_ui(layout, assets, *player, msg_receiver->maintenance);
   } else {
     message_header_ui<ResourceMessageReceiver>(layout);
 
@@ -832,7 +831,7 @@ ItemSlotIdx system_assembler_ui(
   auto layout = ui_layout_begin("assembler", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (assembler->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, input, *player, assembler->maintenance);
+    maintenance_ui(layout, assets, *player, assembler->maintenance);
   } else {
     ui_element_begin(layout, UI_AUTO_ID);
     for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
@@ -1241,7 +1240,7 @@ void system_apply_maintenance(EntityStore& store) {
   }
 }
 
-void system_update_maintenance_minigames(EntityStore& store, f32 dt) {
+void system_update_maintenance_minigames(EntityStore& store, const Input& input, f32 dt) {
   for (auto& entity : store) {
     auto [maintenance, _] = get_maintenance(entity);
     if (!maintenance) {
@@ -1253,7 +1252,8 @@ void system_update_maintenance_minigames(EntityStore& store, f32 dt) {
       continue;
     }
 
-    bool done = maintenance_update_minigame(*maintenance, dt);
+    // TODO: should only apply mouse inputs if the player hand is empty
+    bool done = maintenance_update_minigame(*maintenance, input, dt);
     if (done) {
       *maintenance = std::monostate{};
     }
@@ -1279,8 +1279,7 @@ void system_render(EntityStore& store, EntityId player_id, const AssetManager& a
     }
     vec2 dims = dims_from_texture(*texture);
 
-    Rectangle source_rect = rect_from_vec2x2({}, dims);
-
+    auto source_rect    = rect_from_vec2x2({}, dims);
     Rectangle dest_rect = {
       .x      = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - dims.x) / 2.0f) + (dims.x * 0.5f),
       .y      = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - dims.y) / 2.0f) + (dims.y * 0.5f),

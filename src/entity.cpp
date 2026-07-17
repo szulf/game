@@ -105,7 +105,6 @@ struct LubricationPoint {
 struct MaintenanceLubrication {
   static constexpr std::string_view NAME = "lubrication";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 1};
-  const Input* input{};
   vec2 window_offset{};
   bool open{};
 
@@ -131,9 +130,7 @@ f32 closer_y_intercept_of_tangent_line(const Cogwheel& cog_a, const Cogwheel& co
   return b_2;
 }
 
-void maintenance_init_minigame(MaintenanceLubrication& state, const Input& input) {
-  state.input = &input;
-
+void maintenance_init_minigame(MaintenanceLubrication& state) {
   // TODO: randomize these in the future
   state.cogwheels.push_back({{64, 64}, 64.0f, WHITE});
   state.cogwheels.push_back({{156, 128}, 48.0f, GRAY});
@@ -205,15 +202,14 @@ void maintenance_init_minigame(MaintenanceLubrication& state, const Input& input
   }
 }
 
-bool maintenance_update_minigame(MaintenanceLubrication& state, f32 dt) {
+bool maintenance_update_minigame(MaintenanceLubrication& state, const Input& input, f32 dt) {
   bool done = true;
   for (auto& point : state.points) {
     vec2 origin = point.dims / 2.0f;
-    if (state.input->lmb_down &&
-        CheckCollisionRecs(
-          rect_from_vec2x2(point.pos + state.window_offset - origin, point.dims),
-          rect_from_vec2x2(state.input->mouse_pos, {1, 1})
-        )) {
+    if (input.lmb_down && CheckCollisionRecs(
+                            rect_from_vec2x2(point.pos + state.window_offset - origin, point.dims),
+                            rect_from_vec2x2(input.mouse_pos, {1, 1})
+                          )) {
       if (point.progress < 1.0f) {
         point.progress += dt * (1.0f / LubricationPoint::TIME_TO_LUBRICATE);
       }
@@ -228,6 +224,7 @@ bool maintenance_update_minigame(MaintenanceLubrication& state, f32 dt) {
 
 void maintenance_render_minigame(
   MaintenanceLubrication& state,
+  const AssetManager&,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
@@ -235,6 +232,7 @@ void maintenance_render_minigame(
   state.window_offset = window_offset;
 
   BeginTextureMode(render_texture);
+  ClearBackground(BLACK);
   for (const auto& cog : state.cogwheels) {
     DrawCircleV(vector2_from_vec2(cog.pos), cog.radius, cog.color);
   }
@@ -259,52 +257,143 @@ struct MaintenanceCleaning {
   bool open{};
 };
 
-void maintenance_init_minigame(MaintenanceCleaning& state, const Input& input) {
+void maintenance_init_minigame(MaintenanceCleaning& state) {
   (void) state;
-  (void) input;
 }
 
-bool maintenance_update_minigame(MaintenanceCleaning& state, f32 dt) {
+bool maintenance_update_minigame(MaintenanceCleaning& state, const Input& input, f32 dt) {
   (void) state;
+  (void) input;
   (void) dt;
   return false;
 }
 
 void maintenance_render_minigame(
   MaintenanceCleaning& state,
+  const AssetManager& assets,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
   (void) state;
-  (void) render_texture;
+  (void) assets, (void) render_texture;
   (void) window_offset;
 }
+
+enum ComponentSlotType {
+  COMPONENT_SLOT_BROKEN,
+  COMPONENT_SLOT_FIXED,
+  COMPONENT_SLOT_MACHINE,
+  COMPONENT_SLOT_COUNT,
+};
+
+struct Component {
+  static constexpr vec2 DIMS = {64, 64};
+
+  ComponentSlotType slot{};
+  vec2 pos{};
+  bool dragging{};
+};
+
+struct ComponentSlot {
+  static constexpr vec2 DIMS = Component::DIMS + vec2{8, 8};
+  vec2 pos{};
+};
 
 struct MaintenanceComponentReplacement {
   static constexpr std::string_view NAME = "component replacement";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_CONVEYOR, .count = 1};
+  vec2 window_offset{};
   bool open{};
+
+  std::array<ComponentSlot, COMPONENT_SLOT_COUNT> slots{};
+  Component broken{};
+  Component fixed{};
 };
 
-void maintenance_init_minigame(MaintenanceComponentReplacement& state, const Input& input) {
-  (void) state;
-  (void) input;
+void maintenance_init_minigame(MaintenanceComponentReplacement& state) {
+  state.slots[COMPONENT_SLOT_BROKEN]  = {.pos = {64, 196}};
+  state.slots[COMPONENT_SLOT_FIXED]   = {.pos = {196, 196}};
+  state.slots[COMPONENT_SLOT_MACHINE] = {.pos = {128, 64}};
+
+  state.broken = {
+    .slot = COMPONENT_SLOT_MACHINE,
+    .pos  = state.slots[COMPONENT_SLOT_MACHINE].pos,
+  };
+  state.fixed = {
+    .slot = COMPONENT_SLOT_FIXED,
+    .pos  = state.slots[COMPONENT_SLOT_FIXED].pos,
+  };
 }
 
-bool maintenance_update_minigame(MaintenanceComponentReplacement& state, f32 dt) {
-  (void) state;
-  (void) dt;
-  return false;
+void update_component(
+  Component& comp,
+  const Component& other,
+  std::span<ComponentSlot> slots,
+  const Input& input,
+  const vec2& window_offset
+) {
+  auto origin = comp.DIMS * 0.5f;
+  if (input.lmb_pressed && CheckCollisionRecs(
+                             rect_from_vec2x2(comp.pos + window_offset - origin, comp.DIMS),
+                             rect_from_vec2x2(input.mouse_pos, {1, 1})
+                           )) {
+    comp.dragging = true;
+  }
+  if (comp.dragging) {
+    comp.pos = input.mouse_pos - window_offset;
+
+    if (!input.lmb_down) {
+      comp.dragging = false;
+      for (u32 slot_idx = 0; slot_idx < slots.size(); ++slot_idx) {
+        auto& slot       = slots[slot_idx];
+        auto slot_origin = slot.DIMS * 0.5f;
+        if (other.slot != slot_idx &&
+            CheckCollisionRecs(
+              rect_from_vec2x2(slot.pos + window_offset - slot_origin, slot.DIMS),
+              rect_from_vec2x2(input.mouse_pos, {1, 1})
+            )) {
+          comp.slot = ComponentSlotType(slot_idx);
+        }
+      }
+      comp.pos = slots[comp.slot].pos;
+    }
+  }
+}
+
+bool maintenance_update_minigame(MaintenanceComponentReplacement& state, const Input& input, f32) {
+  update_component(state.broken, state.fixed, state.slots, input, state.window_offset);
+  update_component(state.fixed, state.broken, state.slots, input, state.window_offset);
+
+  return state.fixed.slot == COMPONENT_SLOT_MACHINE;
+}
+
+void render_component(Component& comp, const AssetManager& assets, TextureType texture_type) {
+  auto& texture     = assets.textures[texture_type];
+  auto texture_dims = dims_from_texture(texture);
+  auto source_rect  = rect_from_vec2x2({}, texture_dims);
+  auto dest_rect    = rect_from_vec2x2(comp.pos, comp.DIMS);
+  auto origin       = comp.DIMS * 0.5f;
+  DrawTexturePro(texture, source_rect, dest_rect, vector2_from_vec2(origin), 0, WHITE);
 }
 
 void maintenance_render_minigame(
   MaintenanceComponentReplacement& state,
+  const AssetManager& assets,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
-  (void) state;
-  (void) render_texture;
-  (void) window_offset;
+  state.window_offset = window_offset;
+
+  BeginTextureMode(render_texture);
+  ClearBackground(BLACK);
+  for (const auto& slot : state.slots) {
+    auto rect   = rect_from_vec2x2(slot.pos, slot.DIMS);
+    auto origin = slot.DIMS * 0.5f;
+    DrawRectanglePro(rect, vector2_from_vec2(origin), 0, LIGHTGRAY);
+  }
+  render_component(state.broken, assets, get_texture_type(state.FIX_ITEM.type));
+  render_component(state.fixed, assets, get_texture_type(state.FIX_ITEM.type));
+  EndTextureMode();
 }
 
 struct MaintenanceCalibration {
@@ -313,23 +402,25 @@ struct MaintenanceCalibration {
   bool open{};
 };
 
-void maintenance_init_minigame(MaintenanceCalibration& state, const Input& input) {
+void maintenance_init_minigame(MaintenanceCalibration& state) {
   (void) state;
-  (void) input;
 }
 
-bool maintenance_update_minigame(MaintenanceCalibration& state, f32 dt) {
+bool maintenance_update_minigame(MaintenanceCalibration& state, const Input& input, f32 dt) {
   (void) state;
+  (void) input;
   (void) dt;
   return false;
 }
 
 void maintenance_render_minigame(
   MaintenanceCalibration& state,
+  const AssetManager& assets,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
   (void) state;
+  (void) assets;
   (void) render_texture;
   (void) window_offset;
 }
@@ -387,13 +478,14 @@ concept MaintenanceHasMiniGame = requires(
   T& t,
   const Input& input,
   f32 dt,
+  const AssetManager& assets,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
   t.open;
-  maintenance_init_minigame(t, input);
-  maintenance_update_minigame(t, dt);
-  maintenance_render_minigame(t, render_texture, window_offset);
+  maintenance_init_minigame(t);
+  maintenance_update_minigame(t, input, dt);
+  maintenance_render_minigame(t, assets, render_texture, window_offset);
 };
 
 bool* maintenance_is_minigame_open(Maintenance& maintenance) {
@@ -409,24 +501,24 @@ bool* maintenance_is_minigame_open(Maintenance& maintenance) {
   );
 }
 
-void maintenance_init_minigame(Maintenance& maintenance, const Input& input) {
+void maintenance_init_minigame(Maintenance& maintenance) {
   std::visit(
-    [&](auto& value) {
+    [](auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (MaintenanceHasMiniGame<T>) {
-        maintenance_init_minigame(value, input);
+        maintenance_init_minigame(value);
       }
     },
     maintenance
   );
 }
 
-bool maintenance_update_minigame(Maintenance& maintenance, f32 dt) {
+bool maintenance_update_minigame(Maintenance& maintenance, const Input& input, f32 dt) {
   return std::visit(
     [&](auto& value) -> bool {
       using T = std::decay_t<decltype(value)>;
       if constexpr (MaintenanceHasMiniGame<T>) {
-        return maintenance_update_minigame(value, dt);
+        return maintenance_update_minigame(value, input, dt);
       }
       return false;
     },
@@ -436,6 +528,7 @@ bool maintenance_update_minigame(Maintenance& maintenance, f32 dt) {
 
 void maintenance_render_minigame(
   Maintenance& maintenance,
+  const AssetManager& assets,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
@@ -443,7 +536,7 @@ void maintenance_render_minigame(
     [&](auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (MaintenanceHasMiniGame<T>) {
-        maintenance_render_minigame(value, render_texture, window_offset);
+        maintenance_render_minigame(value, assets, render_texture, window_offset);
       }
     },
     maintenance
@@ -609,9 +702,9 @@ struct Recipe {
 
 struct Assembler {
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
-    MaintenanceLubrication{},
+    // MaintenanceLubrication{},
     // MaintenanceCleaning{},
-    // MaintenanceComponentReplacement{},
+    MaintenanceComponentReplacement{},
     // MaintenanceCalibration{},
   });
   Maintenance maintenance{};

@@ -27,7 +27,8 @@
       - [x] lubrication mini game
         - hold mouse with lmb down along a couple of points on intersections of cogwheels
       - [ ] cleaning mini game
-      - [ ] component replacement mini game
+      - [x] component replacement mini game
+        - remove the broken component and insert the fixed one into the machine slot
       - [ ] calibration mini game
   - [ ] fixing robot
 - [ ] map editor

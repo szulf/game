@@ -151,6 +151,7 @@ void gather_input(State& state) {
   state.tick_input.mouse_pos = state.frame_input.mouse_pos;
   state.tick_input.mouse_scroll += state.frame_input.mouse_scroll;
   state.tick_input.lmb_pressed = state.tick_input.lmb_pressed || state.frame_input.lmb_pressed;
+  state.tick_input.lmb_down    = state.tick_input.lmb_down || state.frame_input.lmb_down;
   state.tick_input.rmb_pressed = state.tick_input.rmb_pressed || state.frame_input.rmb_pressed;
   state.tick_input.move.x =
     std::clamp(state.tick_input.move.x + state.frame_input.move.x, -1.0f, 1.0f);
@@ -192,7 +193,7 @@ void update_tick(State& state, f32 dt) {
   );
   system_progress_recipes(state.store, dt);
   system_apply_maintenance(state.store);
-  system_update_maintenance_minigames(state.store, dt);
+  system_update_maintenance_minigames(state.store, state.tick_input, dt);
 
   flush(state.store);
   clear_event_bus(state.store);

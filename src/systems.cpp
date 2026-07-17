@@ -407,15 +407,25 @@ static bool message_header_ui(UI_Layout& layout, std::string_view switch_page_te
 void maintenance_ui(
   UI_Layout& layout,
   AssetManager& assets,
-  const Player& player,
+  const Input& input,
+  Player& player,
   Maintenance& maintenance
 ) {
   auto fix_item       = maintenance_fix_item(maintenance);
   auto* minigame_open = maintenance_is_minigame_open(maintenance);
 
   if (minigame_open && *minigame_open) {
-    // TODO: render the minigames into a texture here and then display the texture as part of the ui
-    maintenance_render_minigame(maintenance);
+    auto& render = player.maintenance_minigame_texture;
+    ASSERT(IsRenderTextureValid(render), "minigame render texture needs to be valid");
+    vec2 window_offset = ui_element_get_pos(layout, "maintenance minigame window");
+    maintenance_render_minigame(maintenance, render, window_offset);
+    ui_element_begin(layout, "maintenance minigame window");
+    ui_element_end(
+      layout,
+      {.sizing  = {ui_sizing_fixed(render.texture.width), ui_sizing_fixed(render.texture.height)},
+       .texture = &render.texture,
+       .flip_texture_vertically = true}
+    );
   } else {
     bool fix_clicked{};
     ui_element_begin(layout, UI_AUTO_ID);
@@ -453,9 +463,12 @@ void maintenance_ui(
         auto* minigame_open = maintenance_is_minigame_open(maintenance);
         if (minigame_open) {
           *minigame_open = true;
+          // TODO: maybe check if inited in update and init there?
+          maintenance_init_minigame(maintenance, input);
         } else {
           maintenance = std::monostate{};
         }
+        player.hand.count -= fix_item.count;
       } else {
         // TODO: notify the user they dont have the item
       }
@@ -482,7 +495,7 @@ void system_message_sender_ui(
   auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_sender->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, *player, msg_sender->maintenance);
+    maintenance_ui(layout, assets, input, *player, msg_sender->maintenance);
   } else {
     switch (msg_sender->page) {
       case ResourceMessageSenderPage::DISPLAY: {
@@ -660,7 +673,7 @@ ItemSlotIdx system_message_receiver_ui(
   auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_receiver->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, *player, msg_receiver->maintenance);
+    maintenance_ui(layout, assets, input, *player, msg_receiver->maintenance);
   } else {
     message_header_ui<ResourceMessageReceiver>(layout);
 
@@ -819,7 +832,7 @@ ItemSlotIdx system_assembler_ui(
   auto layout = ui_layout_begin("assembler", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (assembler->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, *player, assembler->maintenance);
+    maintenance_ui(layout, assets, input, *player, assembler->maintenance);
   } else {
     ui_element_begin(layout, UI_AUTO_ID);
     for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
@@ -1216,7 +1229,7 @@ void system_apply_maintenance(EntityStore& store) {
     }
 
     // TODO: this needs a much much lower chance to happen
-    auto value = random_get<u32>(1, 1000);
+    auto value = random_get<u32>(1, 100);
     if (value != 1) {
       continue;
     }
@@ -1228,7 +1241,7 @@ void system_apply_maintenance(EntityStore& store) {
   }
 }
 
-void system_update_maintenance_minigames(EntityStore& store) {
+void system_update_maintenance_minigames(EntityStore& store, f32 dt) {
   for (auto& entity : store) {
     auto [maintenance, _] = get_maintenance(entity);
     if (!maintenance) {
@@ -1240,7 +1253,10 @@ void system_update_maintenance_minigames(EntityStore& store) {
       continue;
     }
 
-    maintenance_update_minigame(*maintenance);
+    bool done = maintenance_update_minigame(*maintenance, dt);
+    if (done) {
+      *maintenance = std::monostate{};
+    }
   }
 }
 

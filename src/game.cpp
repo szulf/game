@@ -4,6 +4,7 @@ struct Input {
   vec2 mouse_pos{};
   i32 mouse_scroll{};
   bool lmb_pressed{};
+  bool lmb_down{};
   bool rmb_pressed{};
 
   vec2 move{};
@@ -76,6 +77,8 @@ void init(State& state) {
   };
   auto* player = get_data<Player>(player_entity);
   ASSERT_NO_MSG(player);
+  player->maintenance_minigame_texture = LoadRenderTexture(256, 256);
+
   player->inventory[0]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 85};
   player->inventory[14] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
   player->inventory[13] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
@@ -116,13 +119,10 @@ void init(State& state) {
 void gather_input(State& state) {
   clear(state.frame_input);
 
-  state.frame_input.mouse_pos = vec2_from_vector2(GetMousePosition());
-  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-    state.frame_input.lmb_pressed = true;
-  }
-  if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-    state.frame_input.rmb_pressed = true;
-  }
+  state.frame_input.mouse_pos   = vec2_from_vector2(GetMousePosition());
+  state.frame_input.lmb_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+  state.frame_input.lmb_down    = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+  state.frame_input.rmb_pressed = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
 
   if (IsKeyPressed(KEY_W)) {
     --state.frame_input.move.y;
@@ -139,16 +139,10 @@ void gather_input(State& state) {
   state.frame_input.move.x = std::clamp(state.frame_input.move.x, -1.0f, 1.0f);
   state.frame_input.move.y = std::clamp(state.frame_input.move.y, -1.0f, 1.0f);
 
-  if (IsKeyPressed(KEY_E)) {
-    state.frame_input.interact = true;
-  }
-  if (IsKeyPressed(KEY_ESCAPE)) {
-    state.frame_input.close_inv = true;
-  }
+  state.frame_input.interact  = IsKeyPressed(KEY_E);
+  state.frame_input.close_inv = IsKeyPressed(KEY_ESCAPE);
 
-  if (IsKeyPressed(KEY_R)) {
-    state.frame_input.rotate = true;
-  }
+  state.frame_input.rotate = IsKeyPressed(KEY_R);
 
   if (IsKeyPressed(KEY_F1)) {
     state.debug = !state.debug;
@@ -198,7 +192,7 @@ void update_tick(State& state, f32 dt) {
   );
   system_progress_recipes(state.store, dt);
   system_apply_maintenance(state.store);
-  system_update_maintenance_minigames(state.store);
+  system_update_maintenance_minigames(state.store, dt);
 
   flush(state.store);
   clear_event_bus(state.store);

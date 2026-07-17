@@ -21,6 +21,12 @@ struct Player {
   i32 interaction_radius          = 4;
   EntityId open_gui{};
   ItemSlot hand{};
+
+  // TODO: i dont know if i like having this on the player
+  // but it does kind of make sense, because:
+  // - i only render to it when the player has the minigame open
+  // - i can reuse the same render texture for all minigames
+  RenderTexture2D maintenance_minigame_texture{};
 };
 
 struct Block {};
@@ -79,18 +85,172 @@ struct WorldTunnel {
   };
 };
 
+struct Cogwheel {
+  vec2 pos{};
+  f32 radius{};
+  Color color{};
+};
+
+struct LubricationPoint {
+  vec2 dims{};
+  vec2 pos{};
+  Color color{};
+  static constexpr f32 TIME_TO_LUBRICATE = 0.15f;
+  // NOTE: value in range [0; 1]
+  // 0 -> no lubrication applied
+  // 1 -> fully lubricated
+  f32 progress{};
+};
+
 struct MaintenanceLubrication {
   static constexpr std::string_view NAME = "lubrication";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 1};
+  const Input* input{};
+  vec2 window_offset{};
   bool open{};
+
+  std::vector<Cogwheel> cogwheels{};
+  std::vector<LubricationPoint> points{};
 };
 
-void maintenance_update_minigame(MaintenanceLubrication& state) {
-  (void) state;
+// NOTE: find the y-intercept of a tangent line to a cog_a that is closer to cog_b
+// takes an equation like this
+// y * y_multipler = a * x + _
+// the y_multiplier exists to account for equations in the form of x = ...
+// (you just pass y_multiplier = 0, a = -1)
+f32 closer_y_intercept_of_tangent_line(const Cogwheel& cog_a, const Cogwheel& cog_b, f32 a) {
+  f32 b_1 = (cog_a.radius * std::sqrt((a * a) + 1)) - (a * cog_a.pos.x) + cog_a.pos.y;
+  f32 b_2 = -(cog_a.radius * std::sqrt((a * a) + 1)) - (a * cog_a.pos.x) + cog_a.pos.y;
+
+  f32 d_1 = std::abs((a * cog_b.pos.x) - cog_b.pos.y + (b_1)) / std::sqrt((a * a) + 1);
+  f32 d_2 = std::abs((a * cog_b.pos.x) - cog_b.pos.y + (b_2)) / std::sqrt((a * a) + 1);
+
+  if (d_1 < d_2) {
+    return b_1;
+  }
+  return b_2;
 }
 
-void maintenance_render_minigame(const MaintenanceLubrication& state) {
-  (void) state;
+void maintenance_init_minigame(MaintenanceLubrication& state, const Input& input) {
+  state.input = &input;
+
+  // TODO: randomize these in the future
+  state.cogwheels.push_back({{64, 64}, 64.0f, WHITE});
+  state.cogwheels.push_back({{156, 128}, 48.0f, GRAY});
+  state.cogwheels.push_back({{64, 192}, 64.0f, LIGHTGRAY});
+  state.cogwheels.push_back({{208, 208}, 48.0f, DARKGRAY});
+  state.cogwheels.push_back({{145, 192}, 16.0f, {245, 244, 227, 255}});
+  state.cogwheels.push_back({{164, 40}, 40.0f, {106, 86, 92, 255}});
+
+  // NOTE: find the intersection point between every two cogs (treated as circles)
+  // only exists if two circles are close enough to each other
+  for (u32 i = 0; i < state.cogwheels.size(); ++i) {
+    auto& cog_a = state.cogwheels[i];
+    for (u32 j = i + 1; j < state.cogwheels.size(); ++j) {
+      auto& cog_b = state.cogwheels[j];
+
+      f32 dist_between_circles = length(cog_b.pos - cog_a.pos) - (cog_b.radius + cog_a.radius);
+      if (dist_between_circles > 3.0f) {
+        continue;
+      }
+
+      vec2 tangency_a{};
+      vec2 tangency_b{};
+      if (cog_a.pos.y == cog_b.pos.y) {
+        ASSERT(cog_a.pos.x != cog_b.pos.x, "two circles cannot have the same position");
+        tangency_a = cog_a.pos;
+        tangency_b = cog_b.pos;
+        if (cog_a.pos.x > cog_b.pos.x) {
+          tangency_a.x -= cog_a.radius;
+          tangency_b.x += cog_b.radius;
+        } else {
+          tangency_a.x += cog_a.radius;
+          tangency_b.x -= cog_b.radius;
+        }
+      } else if (cog_a.pos.x == cog_b.pos.x) {
+        tangency_a = cog_a.pos;
+        tangency_b = cog_b.pos;
+        if (cog_a.pos.y > cog_b.pos.y) {
+          tangency_a.y -= cog_a.radius;
+          tangency_b.y += cog_b.radius;
+        } else {
+          tangency_a.y += cog_a.radius;
+          tangency_b.y -= cog_b.radius;
+        }
+      } else {
+        // NOTE: line connecting the centers of the two circles
+        // f(x) = a * x + b
+        f32 a = (cog_b.pos.y - cog_a.pos.y) / (cog_b.pos.x - cog_a.pos.x);
+        f32 b = cog_a.pos.y - a * cog_a.pos.x;
+
+        // NOTE: line equations for tangent lines to the circles
+        // g_a(x) = a_parallel * x + b_a
+        // g_b(x) = a_parallel * x + b_b
+        f32 a_parallel = -1.0f / a;
+        f32 b_a        = closer_y_intercept_of_tangent_line(cog_a, cog_b, a_parallel);
+        f32 b_b        = closer_y_intercept_of_tangent_line(cog_b, cog_a, a_parallel);
+
+        // NOTE: tangency points
+        // calculated as the intersection points of the line connecting the cirle centers
+        // and the tangent line
+        tangency_a.x = (a * (b_a - b)) / ((a * a) + 1);
+        tangency_a.y = a * tangency_a.x + b;
+        tangency_b.x = (a * (b_b - b)) / ((a * a) + 1);
+        tangency_b.y = a * tangency_b.x + b;
+      }
+
+      vec2 intersection{(tangency_a + tangency_b) / 2.0f};
+      state.points.push_back({{16, 16}, intersection, BROWN});
+    }
+  }
+}
+
+bool maintenance_update_minigame(MaintenanceLubrication& state, f32 dt) {
+  bool done = true;
+  for (auto& point : state.points) {
+    vec2 origin = point.dims / 2.0f;
+    if (state.input->lmb_down &&
+        CheckCollisionRecs(
+          rect_from_vec2x2(point.pos + state.window_offset - origin, point.dims),
+          rect_from_vec2x2(state.input->mouse_pos, {1, 1})
+        )) {
+      if (point.progress < 1.0f) {
+        point.progress += dt * (1.0f / LubricationPoint::TIME_TO_LUBRICATE);
+      }
+    }
+
+    if (point.progress < 1.0f) {
+      done = false;
+    }
+  }
+  return done;
+}
+
+void maintenance_render_minigame(
+  MaintenanceLubrication& state,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
+  // TODO: i really really dont like this, dont know how else to do it tho
+  state.window_offset = window_offset;
+
+  BeginTextureMode(render_texture);
+  for (const auto& cog : state.cogwheels) {
+    DrawCircleV(vector2_from_vec2(cog.pos), cog.radius, cog.color);
+  }
+  for (const auto& point : state.points) {
+    Color color = point.color;
+    if (point.progress >= 1.0f) {
+      color = YELLOW;
+    }
+    DrawRectanglePro(
+      rect_from_vec2x2(point.pos, point.dims),
+      vector2_from_vec2(point.dims / 2.0f),
+      0,
+      color
+    );
+  }
+  EndTextureMode();
 }
 
 struct MaintenanceCleaning {
@@ -99,12 +259,25 @@ struct MaintenanceCleaning {
   bool open{};
 };
 
-void maintenance_update_minigame(MaintenanceCleaning& state) {
+void maintenance_init_minigame(MaintenanceCleaning& state, const Input& input) {
   (void) state;
+  (void) input;
 }
 
-void maintenance_render_minigame(const MaintenanceCleaning& state) {
+bool maintenance_update_minigame(MaintenanceCleaning& state, f32 dt) {
   (void) state;
+  (void) dt;
+  return false;
+}
+
+void maintenance_render_minigame(
+  MaintenanceCleaning& state,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
+  (void) state;
+  (void) render_texture;
+  (void) window_offset;
 }
 
 struct MaintenanceComponentReplacement {
@@ -113,12 +286,25 @@ struct MaintenanceComponentReplacement {
   bool open{};
 };
 
-void maintenance_update_minigame(MaintenanceComponentReplacement& state) {
+void maintenance_init_minigame(MaintenanceComponentReplacement& state, const Input& input) {
   (void) state;
+  (void) input;
 }
 
-void maintenance_render_minigame(const MaintenanceComponentReplacement& state) {
+bool maintenance_update_minigame(MaintenanceComponentReplacement& state, f32 dt) {
   (void) state;
+  (void) dt;
+  return false;
+}
+
+void maintenance_render_minigame(
+  MaintenanceComponentReplacement& state,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
+  (void) state;
+  (void) render_texture;
+  (void) window_offset;
 }
 
 struct MaintenanceCalibration {
@@ -127,12 +313,25 @@ struct MaintenanceCalibration {
   bool open{};
 };
 
-void maintenance_update_minigame(MaintenanceCalibration& state) {
+void maintenance_init_minigame(MaintenanceCalibration& state, const Input& input) {
   (void) state;
+  (void) input;
 }
 
-void maintenance_render_minigame(const MaintenanceCalibration& state) {
+bool maintenance_update_minigame(MaintenanceCalibration& state, f32 dt) {
   (void) state;
+  (void) dt;
+  return false;
+}
+
+void maintenance_render_minigame(
+  MaintenanceCalibration& state,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
+  (void) state;
+  (void) render_texture;
+  (void) window_offset;
 }
 
 struct MaintenanceMessageSender {
@@ -175,6 +374,7 @@ const ItemSlot& maintenance_fix_item(const Maintenance& maintenance) {
       if constexpr (std::is_same_v<T, std::monostate>) {
         ASSERT(false, "null maintenance has no fix item");
       } else {
+        ASSERT(value.FIX_ITEM, "every maintenance needs a valid fix item");
         return value.FIX_ITEM;
       }
     },
@@ -183,10 +383,17 @@ const ItemSlot& maintenance_fix_item(const Maintenance& maintenance) {
 }
 
 template <typename T>
-concept MaintenanceHasMiniGame = requires(T& t) {
+concept MaintenanceHasMiniGame = requires(
+  T& t,
+  const Input& input,
+  f32 dt,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
   t.open;
-  maintenance_update_minigame(t);
-  maintenance_render_minigame(t);
+  maintenance_init_minigame(t, input);
+  maintenance_update_minigame(t, dt);
+  maintenance_render_minigame(t, render_texture, window_offset);
 };
 
 bool* maintenance_is_minigame_open(Maintenance& maintenance) {
@@ -202,24 +409,41 @@ bool* maintenance_is_minigame_open(Maintenance& maintenance) {
   );
 }
 
-void maintenance_update_minigame(Maintenance& maintenance) {
+void maintenance_init_minigame(Maintenance& maintenance, const Input& input) {
   std::visit(
-    [](auto& value) {
+    [&](auto& value) {
       using T = std::decay_t<decltype(value)>;
       if constexpr (MaintenanceHasMiniGame<T>) {
-        maintenance_update_minigame(value);
+        maintenance_init_minigame(value, input);
       }
     },
     maintenance
   );
 }
 
-void maintenance_render_minigame(const Maintenance& maintenance) {
-  std::visit(
-    [](const auto& value) {
+bool maintenance_update_minigame(Maintenance& maintenance, f32 dt) {
+  return std::visit(
+    [&](auto& value) -> bool {
       using T = std::decay_t<decltype(value)>;
       if constexpr (MaintenanceHasMiniGame<T>) {
-        maintenance_render_minigame(value);
+        return maintenance_update_minigame(value, dt);
+      }
+      return false;
+    },
+    maintenance
+  );
+}
+
+void maintenance_render_minigame(
+  Maintenance& maintenance,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
+  std::visit(
+    [&](auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (MaintenanceHasMiniGame<T>) {
+        maintenance_render_minigame(value, render_texture, window_offset);
       }
     },
     maintenance
@@ -386,9 +610,9 @@ struct Recipe {
 struct Assembler {
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
     MaintenanceLubrication{},
-    MaintenanceCleaning{},
-    MaintenanceComponentReplacement{},
-    MaintenanceCalibration{},
+    // MaintenanceCleaning{},
+    // MaintenanceComponentReplacement{},
+    // MaintenanceCalibration{},
   });
   Maintenance maintenance{};
   u32 selected_recipe_idx{};
@@ -843,11 +1067,6 @@ Entity entity_from_item(ItemType item) {
   }
   ASSERT(false, "invalid item type: %d\n", i32(item));
 }
-
-struct RenderRect {
-  Color color{};
-  ivec2 dims{};
-};
 
 TextureType get_texture_type(const Entity& entity) {
   return std::visit(

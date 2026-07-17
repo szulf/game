@@ -61,14 +61,6 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 #include "math.cpp"
 
-ivec2 ivec2_from_vector2(const Vector2& vec) {
-  return {i32(vec.x), i32(vec.y)};
-}
-
-Vector2 vector2_from_ivec2(const ivec2& vec) {
-  return {f32(vec.x), f32(vec.y)};
-}
-
 vec2 vec2_from_vector2(const Vector2& vec) {
   return {vec.x, vec.y};
 }

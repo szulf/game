@@ -24,7 +24,8 @@
 - [ ] machine fixing system
   - [ ] machine maintenance
     - [ ] maintenance fixing mini-games
-      - [ ] lubrication mini game
+      - [x] lubrication mini game
+        - hold mouse with lmb down along a couple of points on intersections of cogwheels
       - [ ] cleaning mini game
       - [ ] component replacement mini game
       - [ ] calibration mini game
@@ -53,6 +54,7 @@
   - [ ] better element api (the UI_Scope thing probably)
   - [ ] child layouts (?)
   - [ ] components (?)
+  - [ ] animations
 - [ ] better textures and animations
 
 ## other:

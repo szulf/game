@@ -73,7 +73,11 @@ struct UI_ElementConfigNormal {
   u16 child_gap{};
   UI_ChildAlignment child_alignment{};
   Color bg_color{};
+
+  // TODO: could pull these two into their own struct UI_Texture or smth
   Texture2D* texture{};
+  bool flip_texture_vertically{};
+
   // TODO: should i have a separate corner_radius for each of the corners? (probably yes)
   f32 corner_radius{};
   i32* scroll_value{};
@@ -133,6 +137,7 @@ struct UI_TextureCommand {
   vec2 pos{};
   vec2 dims{};
   Texture2D* texture{};
+  bool flip_vertically{};
   Color tint{};
   std::optional<Rectangle> clip_rectangle{};
 };
@@ -570,15 +575,14 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0) {
           // what if someone really wants to render a fully transparent texture?
           // (good enough for now tho)
           auto bg = config.bg_color != Color{} ? config.bg_color : WHITE;
-          // TODO: this assert is wayyy too late, but whatever for now
-          ASSERT(config.corner_radius == 0.0f, "textured thing cannot have corner radius");
 
           layout.system->ui_cmds.push_back(UI_TextureCommand{
-            .pos            = child.pos,
-            .dims           = child.dimensions,
-            .texture        = config.texture,
-            .tint           = bg,
-            .clip_rectangle = {child.clip_rectangle},
+            .pos             = child.pos,
+            .dims            = child.dimensions,
+            .texture         = config.texture,
+            .flip_vertically = config.flip_texture_vertically,
+            .tint            = bg,
+            .clip_rectangle  = {child.clip_rectangle},
           });
         } else {
           layout.system->ui_cmds.push_back(UI_QuadCommand{
@@ -657,10 +661,28 @@ void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_
   layout._active_parent = layout.elements.size() - 1;
 }
 
+// NOTE: returns the position of the element from the last frame can be called whenever really
+vec2 ui_element_get_pos(UI_Layout& layout, UI_Id id) {
+  ASSERT(id != UI_AUTO_ID, "have to use a proper element id to get its last position");
+  UI_IdInternal id_internal = std::hash<std::string_view>{}(std::string_view{id});
+  if (layout.system->last_frame_data[layout.id].id_map.contains(id_internal)) {
+    auto& idx  = layout.system->last_frame_data[layout.id].id_map[id_internal];
+    auto& elem = layout.system->last_frame_data[layout.id].elements[idx];
+    return elem.pos;
+  }
+  // TODO: do i want to assert here? or maybe return an optional?
+  return {};
+}
+
 // TODO: separate ui_element_set_style() function?
 void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config) {
   auto& elem = layout.elements[layout._active_parent];
   ASSERT(elem.config.type == UI_ELEMENT_NORMAL, "Cannot close a not normal element");
+  // TODO: there has to be a way to write this assert without the outer if statement
+  if (config.flip_texture_vertically) {
+    ASSERT(config.texture, "cannot set flip_texture_vertically with no texture");
+  }
+  ASSERT(config.corner_radius == 0.0f, "textured thing cannot have corner radius");
   elem.config.normal    = config;
   layout._active_parent = layout.elements[layout._active_parent].parent;
 }
@@ -736,7 +758,8 @@ void ui_render(UI_System& system) {
         },
         [](const UI_TextureCommand& texture) {
           auto source_rect = rect_from_vec2x2({}, dims_from_texture(*texture.texture));
-          auto dest_rect   = rect_from_vec2x2(texture.pos, texture.dims);
+          source_rect.height *= -1;
+          auto dest_rect = rect_from_vec2x2(texture.pos, texture.dims);
 
           if (texture.clip_rectangle) {
             BeginScissorMode(

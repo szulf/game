@@ -22,11 +22,12 @@
   - [ ] automation
 - [x] crafting system
 - [ ] machine fixing system
-  - [ ] machine maintenance
-    - [ ] maintenance fixing mini-games
+  - [x] machine maintenance
+    - [x] maintenance fixing mini-games
       - [x] lubrication mini game
         - hold mouse with lmb down along a couple of points on intersections of cogwheels
-      - [ ] cleaning mini game
+      - [x] cleaning mini game
+        - move your mouse while holding lmb to remove dust from fans
       - [x] component replacement mini game
         - remove the broken component and insert the fixed one into the machine slot
       - [x] calibration mini game

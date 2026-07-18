@@ -64,15 +64,15 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 #include "math.cpp"
 
-vec2 vec2_from_vector2(const Vector2& vec) {
+constexpr vec2 vec2_from_vector2(const Vector2& vec) {
   return {vec.x, vec.y};
 }
 
-Vector2 vector2_from_vec2(const vec2& vec) {
+constexpr Vector2 vector2_from_vec2(const vec2& vec) {
   return {vec.x, vec.y};
 }
 
-Rectangle rect_from_vec2x2(const vec2& pos, const vec2& dims) {
+constexpr Rectangle rect_from_vec2x2(const vec2& pos, const vec2& dims) {
   return {
     .x      = pos.x,
     .y      = pos.y,

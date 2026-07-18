@@ -251,33 +251,90 @@ void maintenance_render_minigame(
   EndTextureMode();
 }
 
+struct DirtyRect {
+  Rectangle area{};
+  // NOTE: value in range [0; 1] that indicates how clean it is
+  // 0 -> dirty
+  // 1 -> clean
+  f32 progress{};
+};
+
 struct MaintenanceCleaning {
   static constexpr std::string_view NAME = "cleaning";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_STORAGE, .count = 1};
   vec2 window_offset{};
   bool open{};
+
+  static constexpr vec2 DIMS            = {224, 224};
+  static constexpr Rectangle OUTER_RECT = rect_from_vec2x2(vec2{128, 128} - (DIMS * 0.5f), DIMS);
+  std::vector<DirtyRect> dirty_rects{};
+  vec2 last_mouse_pos{};
 };
 
 void maintenance_init_minigame(MaintenanceCleaning& state) {
-  (void) state;
+  static constexpr vec2 MAX_DIMS = {96, 96};
+  for (i32 i = 0; i < 3; ++i) {
+    Rectangle area{};
+    area.x =
+      random_get<f32>(state.OUTER_RECT.x, state.OUTER_RECT.x + state.OUTER_RECT.width - MAX_DIMS.x);
+    area.y = random_get<f32>(
+      state.OUTER_RECT.y,
+      state.OUTER_RECT.y + state.OUTER_RECT.height - MAX_DIMS.y
+    );
+    area.width  = random_get<f32>(32, MAX_DIMS.x);
+    area.height = random_get<f32>(32, MAX_DIMS.y);
+
+    state.dirty_rects.push_back({area});
+  }
 }
 
-bool maintenance_update_minigame(MaintenanceCleaning& state, const Input& input, f32 dt) {
-  (void) state;
-  (void) input;
-  (void) dt;
-  return false;
+bool maintenance_update_minigame(MaintenanceCleaning& state, const Input& input, f32) {
+  bool done = true;
+
+  for (auto& dirty_rect : state.dirty_rects) {
+    if (dirty_rect.progress >= 1.0f) {
+      continue;
+    }
+    done = false;
+
+    auto dirty_rect_check = dirty_rect.area;
+    dirty_rect_check.x += state.window_offset.x;
+    dirty_rect_check.y += state.window_offset.y;
+
+    if (input.lmb_down &&
+        CheckCollisionRecs(dirty_rect_check, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
+      auto moved_dist = length(state.last_mouse_pos - input.mouse_pos);
+      dirty_rect.progress += moved_dist * 0.003f;
+      // NOTE: clamping to 1.0f to avoid weird rendering glitches with the opacity
+      dirty_rect.progress = std::clamp(dirty_rect.progress, 0.0f, 1.0f);
+      break;
+    }
+  }
+
+  state.last_mouse_pos = input.mouse_pos;
+  return done;
 }
 
 void maintenance_render_minigame(
   MaintenanceCleaning& state,
-  const AssetManager& assets,
+  const AssetManager&,
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 ) {
-  (void) state;
-  (void) assets, (void) render_texture;
-  (void) window_offset;
+
+  state.window_offset = window_offset;
+
+  BeginTextureMode(render_texture);
+  ClearBackground(BLACK);
+  DrawRectangleLinesEx(state.OUTER_RECT, 5, GRAY);
+  DrawCircleV({128, 128}, 20, GRAY);
+  DrawCircleLinesV({128, 128}, 112, GRAY);
+  for (const auto& dirty_rect : state.dirty_rects) {
+    Color color = BROWN;
+    color.a *= (1.0f - dirty_rect.progress);
+    DrawRectanglePro(dirty_rect.area, {}, 0, color);
+  }
+  EndTextureMode();
 }
 
 enum ComponentSlotType {
@@ -312,8 +369,8 @@ struct MaintenanceComponentReplacement {
 };
 
 void maintenance_init_minigame(MaintenanceComponentReplacement& state) {
-  state.slots[COMPONENT_SLOT_BROKEN]  = {.pos = {64, 196}};
-  state.slots[COMPONENT_SLOT_FIXED]   = {.pos = {196, 196}};
+  state.slots[COMPONENT_SLOT_BROKEN]  = {.pos = {64, 192}};
+  state.slots[COMPONENT_SLOT_FIXED]   = {.pos = {192, 192}};
   state.slots[COMPONENT_SLOT_MACHINE] = {.pos = {128, 64}};
 
   state.broken = {
@@ -422,7 +479,7 @@ void maintenance_init_minigame(MaintenanceCalibration& state) {
   state.value = random_get<f32>(0.0f, 100.0f);
   state.value = std::round(state.value * 10.0f) / 10.0f;
 
-  state.add_rect    = rect_from_vec2x2({196, 128}, {64, 64});
+  state.add_rect    = rect_from_vec2x2({192, 128}, {64, 64});
   state.remove_rect = rect_from_vec2x2({64, 128}, {64, 64});
 }
 
@@ -787,9 +844,9 @@ struct Recipe {
 
 struct Assembler {
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
-    // MaintenanceLubrication{},
-    // MaintenanceCleaning{},
-    // MaintenanceComponentReplacement{},
+    MaintenanceLubrication{},
+    MaintenanceCleaning{},
+    MaintenanceComponentReplacement{},
     MaintenanceCalibration{},
   });
   Maintenance maintenance{};

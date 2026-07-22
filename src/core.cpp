@@ -7,9 +7,13 @@
 #include <limits>
 #include <algorithm>
 #include <bitset>
+#include <fstream>
+#include <filesystem>
 
 #include "raylib.h"
 #include "raymath.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 using i8  = int8_t;
 using i16 = int16_t;

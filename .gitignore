@@ -1,5 +1,6 @@
 vendor/
 main
+save_file.json
 
 # TODO: remove after moving to my own assets
 assets/

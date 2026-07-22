@@ -358,7 +358,7 @@ struct ComponentSlot {
 };
 
 struct MaintenanceComponentReplacement {
-  static constexpr std::string_view NAME = "component replacement";
+  static constexpr std::string_view NAME = "component_replacement";
   static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_CONVEYOR, .count = 1};
   vec2 window_offset{};
   bool open{};
@@ -460,14 +460,13 @@ struct MaintenanceCalibration {
   vec2 window_offset{};
   bool open{};
 
+  static constexpr Rectangle add_rect    = rect_from_vec2x2({192, 128}, {64, 64});
+  static constexpr Rectangle remove_rect = rect_from_vec2x2({64, 128}, {64, 64});
   f32 range_low{};
   f32 range_high{};
   f32 value{};
   // NOTE: once you get the value into the range you have to wait a little bit, that is this t value
   f32 t{};
-
-  Rectangle add_rect{};
-  Rectangle remove_rect{};
 };
 
 void maintenance_init_minigame(MaintenanceCalibration& state) {
@@ -478,9 +477,6 @@ void maintenance_init_minigame(MaintenanceCalibration& state) {
   // TODO: not sure if i want for it to be possible for the value to start in the range
   state.value = random_get<f32>(0.0f, 100.0f);
   state.value = std::round(state.value * 10.0f) / 10.0f;
-
-  state.add_rect    = rect_from_vec2x2({192, 128}, {64, 64});
-  state.remove_rect = rect_from_vec2x2({64, 128}, {64, 64});
 }
 
 bool maintenance_update_minigame(MaintenanceCalibration& state, const Input& input, f32 dt) {
@@ -568,12 +564,12 @@ void maintenance_render_minigame(
 }
 
 struct MaintenanceMessageSender {
-  static constexpr std::string_view NAME = "";
+  static constexpr std::string_view NAME = "message_sender";
   static constexpr ItemSlot FIX_ITEM     = {};
 };
 
 struct MaintenanceMessageReceiver {
-  static constexpr std::string_view NAME = "";
+  static constexpr std::string_view NAME = "message_receiver";
   static constexpr ItemSlot FIX_ITEM     = {};
 };
 

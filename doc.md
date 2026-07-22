@@ -34,7 +34,9 @@
         - get a random range and a random value and adjust the value so it fits into that range
   - [ ] fixing robot
 - [ ] map editor
-- [ ] serialization
+- [x] serialization
+  - [ ] custom json library
+    - currently using an external one just to speed up development
 - [ ] flashlight and basic lighting system
 
 ### after alpha demo:
@@ -48,9 +50,7 @@
 - [ ] containers that can output only from a single side
 - [ ] power
 - [ ] in game documentation for all blocks/items
-
-## rendering/art:
-
+- [ ] dev console
 - [x] UI library
   - [ ] borders
   - [ ] justify-content: space-between from css
@@ -59,9 +59,6 @@
   - [ ] components (?)
   - [ ] animations
 - [ ] better textures and animations
-
-## other:
-
 - [ ] sounds
 - [ ] resizable window
 - [ ] proper positions for ui

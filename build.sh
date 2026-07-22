@@ -10,4 +10,4 @@ clang++ \
     src/main.cpp \
     -g3 -Wall -Wextra -Werror \
     -Wno-missing-designated-field-initializers \
-    -lraylib -Lvendor/raylib/src -isystem vendor/raylib/src -lX11
+    -lraylib -Lvendor/raylib/src -isystem vendor/raylib/src -lX11 -isystem vendor/json

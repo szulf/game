@@ -11,6 +11,9 @@ struct Input {
   bool interact{};
   bool close_inv{};
   bool rotate{};
+
+  bool serialize{};
+  bool deserialize{};
 };
 
 void clear(Input& input) {
@@ -33,12 +36,12 @@ struct FrameData {
   ItemSlotIdx hovered_slot{};
 };
 
-void clear(FrameData& frame) {
-  frame.hovered_slot = {};
-}
-
 struct State {
+  static constexpr u32 SERIALIZATION_VERSION = 1;
+
+  // TODO: put into FrameData?
   Input frame_input{};
+  // TODO: create a struct TickData?
   Input tick_input{};
 
   FrameData frame{};
@@ -61,6 +64,257 @@ struct State {
 
   bool debug{};
 };
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(vec2, x, y);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Rectangle, x, y, width, height);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ItemSlot, flags, type, count);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EntityId, idx, gen);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConveyorItem, slot, t);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Cogwheel, pos, radius, color);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LubricationPoint, dims, pos, color, progress);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(DirtyRect, area, progress);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Component, slot, pos);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ComponentSlot, pos);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ResourceMessage, requested_items, arrival_time, batch_number);
+
+void to_json(json& j, const Maintenance& m) {
+  std::visit(
+    overloaded{
+      [&](const std::monostate&) {
+        j = nullptr;
+      },
+      [&](const MaintenanceLubrication& v) {
+        j = json{
+          {"type", v.NAME},
+          {"cogwheels", v.cogwheels},
+          {"points", v.points},
+        };
+      },
+      [&](const MaintenanceCleaning& v) {
+        j = json{
+          {"type", v.NAME},
+          {"dirty_rects", v.dirty_rects},
+        };
+      },
+      [&](const MaintenanceComponentReplacement& v) {
+        j = json{
+          {"type", v.NAME},
+          {"slots", v.slots},
+          {"broken", v.broken},
+          {"fixed", v.fixed},
+        };
+      },
+      [&](const MaintenanceCalibration& v) {
+        j = json{
+          {"type", v.NAME},
+          {"range_low", v.range_low},
+          {"range_high", v.range_high},
+          {"value", v.value},
+          {"t", v.t},
+        };
+      },
+      [&](const MaintenanceMessageSender& v) {
+        j = json{
+          {"type", v.NAME},
+        };
+      },
+      [&](const MaintenanceMessageReceiver& v) {
+        j = json{
+          {"type", v.NAME},
+        };
+      },
+    },
+    m
+  );
+}
+
+void from_json(const json& j, Maintenance& m) {
+  if (j.is_null()) {
+    m = std::monostate{};
+    return;
+  }
+
+  auto type = j.at("type").get<std::string>();
+  if (type == MaintenanceLubrication::NAME) {
+    MaintenanceLubrication v{};
+    j.at("cogwheels").get_to(v.cogwheels);
+    j.at("points").get_to(v.points);
+    m = v;
+  } else if (type == MaintenanceCleaning::NAME) {
+    MaintenanceCleaning v{};
+    j.at("dirty_rects").get_to(v.dirty_rects);
+    m = v;
+  } else if (type == MaintenanceComponentReplacement::NAME) {
+    MaintenanceComponentReplacement v{};
+    j.at("slots").get_to(v.slots);
+    j.at("broken").get_to(v.broken);
+    j.at("fixed").get_to(v.fixed);
+    m = v;
+  } else if (type == MaintenanceCalibration::NAME) {
+    MaintenanceCalibration v{};
+    j.at("range_low").get_to(v.range_low);
+    j.at("range_high").get_to(v.range_high);
+    j.at("value").get_to(v.value);
+    j.at("t").get_to(v.t);
+    m = v;
+  } else if (type == MaintenanceMessageSender::NAME) {
+    MaintenanceMessageSender v{};
+    m = v;
+  } else if (type == MaintenanceMessageReceiver::NAME) {
+    MaintenanceMessageReceiver v{};
+    m = v;
+  }
+}
+
+void to_json(json& j, const EntityData& data) {
+  std::visit(
+    overloaded{
+      [&](const Block&) {
+        j = json{
+          {"type", "block"},
+        };
+      },
+      [&](const Player& v) {
+        j = json{
+          {"type", "player"},
+          {"inventory", v.inventory},
+          {"interaction_radius", v.interaction_radius},
+          {"open_gui", v.open_gui},
+          {"hand", v.hand},
+        };
+      },
+      [&](const Storage& v) {
+        j = json{
+          {"type", "storage"},
+          {"inventory", v.inventory},
+        };
+      },
+      [&](const Conveyor& v) {
+        j = json{
+          {"type", "conveyor"},
+          {"rotation", v.rotation},
+          {"items", v.items},
+        };
+      },
+      [&](const Item& v) {
+        j = json{
+          {"type", "item"},
+          {"slot", v.slot},
+        };
+      },
+      [&](const WorldTunnel& v) {
+        j = json{
+          {"type", "world_tunnel"},
+          {"to", v.to},
+          {"inventory", v.inventory},
+        };
+      },
+      [&](const ResourceMessageSender& v) {
+        j = json{
+          {"type", "resource_message_sender"},
+          {"maintenance", v.maintenance},
+          {"page", v.page},
+          {"msg_in_create", v.msg_in_create},
+        };
+      },
+      [&](const ResourceMessageReceiver& v) {
+        j = json{
+          {"type", "resource_message_receiver"},
+          {"maintenance", v.maintenance},
+          {"inventory", v.inventory},
+        };
+      },
+      [&](const Assembler& v) {
+        j = json{
+          {"type", "assembler"},
+          {"maintenance", v.maintenance},
+          {"selected_recipe_idx", v.selected_recipe_idx},
+          {"inventory", v.inventory},
+          {"t", v.t},
+        };
+      },
+    },
+    data
+  );
+}
+
+void from_json(const json& j, EntityData& d) {
+  auto type = j.at("type").get<std::string>();
+  if (type == "block") {
+    d = Block{};
+  } else if (type == "player") {
+    Player v{};
+    j.at("inventory").get_to(v.inventory);
+    j.at("interaction_radius").get_to(v.interaction_radius);
+    j.at("open_gui").get_to(v.open_gui);
+    j.at("hand").get_to(v.hand);
+    d = v;
+  } else if (type == "storage") {
+    Storage v{};
+    j.at("inventory").get_to(v.inventory);
+    d = v;
+  } else if (type == "conveyor") {
+    Conveyor v{};
+    j.at("rotation").get_to(v.rotation);
+    j.at("items").get_to(v.items);
+    d = v;
+  } else if (type == "item") {
+    Item v{};
+    j.at("slot").get_to(v.slot);
+    d = v;
+  } else if (type == "world_tunnel") {
+    WorldTunnel v{};
+    j.at("to").get_to(v.to);
+    j.at("inventory").get_to(v.inventory);
+    d = v;
+  } else if (type == "resource_message_sender") {
+    ResourceMessageSender v{};
+    j.at("maintenance").get_to(v.maintenance);
+    j.at("page").get_to(v.page);
+    j.at("msg_in_create").get_to(v.msg_in_create);
+    d = v;
+  } else if (type == "resource_message_receiver") {
+    ResourceMessageReceiver v{};
+    j.at("maintenance").get_to(v.maintenance);
+    j.at("inventory").get_to(v.inventory);
+    d = v;
+  } else if (type == "assembler") {
+    Assembler v{};
+    j.at("maintenance").get_to(v.maintenance);
+    j.at("selected_recipe_idx").get_to(v.selected_recipe_idx);
+    j.at("inventory").get_to(v.inventory);
+    j.at("t").get_to(v.t);
+    d = v;
+  } else {
+    ASSERT(false, "invalid entity data type");
+  }
+}
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Entity, id, pos, world, data);
+// TODO: could probably only serialize the entities vector
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EntityStore, free_slots, next_entity_idx, entities);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ResourceMessageQueue, msgs);
+
+void to_json(json& j, const State& s) {
+  j = json{
+    {"version", s.SERIALIZATION_VERSION},
+    {"minutes", s.minutes},
+    {"resource_message_queue", s.resource_message_queue},
+    {"player_id", s.player_id},
+    {"resource_message_receiver_id", s.resource_message_receiver_id},
+    {"store", s.store},
+  };
+}
+
+void from_json(const json& j, State& s) {
+  ASSERT(j.at("version") == s.SERIALIZATION_VERSION, "invalid serialization version");
+  j.at("minutes").get_to(s.minutes);
+  j.at("resource_message_queue").get_to(s.resource_message_queue);
+  j.at("player_id").get_to(s.player_id);
+  j.at("resource_message_receiver_id").get_to(s.resource_message_receiver_id);
+  j.at("store").get_to(s.store);
+}
 
 #include "systems.cpp"
 
@@ -141,8 +395,10 @@ void gather_input(State& state) {
 
   state.frame_input.interact  = IsKeyPressed(KEY_E);
   state.frame_input.close_inv = IsKeyPressed(KEY_ESCAPE);
+  state.frame_input.rotate    = IsKeyPressed(KEY_R);
 
-  state.frame_input.rotate = IsKeyPressed(KEY_R);
+  state.frame_input.serialize   = IsKeyPressed(KEY_F2);
+  state.frame_input.deserialize = IsKeyPressed(KEY_F3);
 
   if (IsKeyPressed(KEY_F1)) {
     state.debug = !state.debug;
@@ -157,9 +413,11 @@ void gather_input(State& state) {
     std::clamp(state.tick_input.move.x + state.frame_input.move.x, -1.0f, 1.0f);
   state.tick_input.move.y =
     std::clamp(state.tick_input.move.y + state.frame_input.move.y, -1.0f, 1.0f);
-  state.tick_input.interact  = state.tick_input.interact || state.frame_input.interact;
-  state.tick_input.close_inv = state.tick_input.close_inv || state.frame_input.close_inv;
-  state.tick_input.rotate    = state.tick_input.rotate || state.frame_input.rotate;
+  state.tick_input.interact    = state.tick_input.interact || state.frame_input.interact;
+  state.tick_input.close_inv   = state.tick_input.close_inv || state.frame_input.close_inv;
+  state.tick_input.rotate      = state.tick_input.rotate || state.frame_input.rotate;
+  state.tick_input.serialize   = state.tick_input.serialize || state.frame_input.serialize;
+  state.tick_input.deserialize = state.tick_input.deserialize || state.frame_input.deserialize;
 }
 
 void update_tick(State& state, f32 dt) {
@@ -194,6 +452,7 @@ void update_tick(State& state, f32 dt) {
   system_progress_recipes(state.store, dt);
   system_apply_maintenance(state.store);
   system_update_maintenance_minigames(state.store, state.tick_input, dt);
+  system_serialization(state, "save_file.json");
 
   flush(state.store);
   clear_event_bus(state.store);
@@ -201,7 +460,7 @@ void update_tick(State& state, f32 dt) {
 }
 
 void update_frame(State& state) {
-  clear(state.frame);
+  state.frame = {};
   ui_system_update(state.ui_system);
 
   state.frame.hovered_slot = system_inventory_uis(

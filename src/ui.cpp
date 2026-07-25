@@ -75,7 +75,7 @@ struct UI_ElementConfigNormal {
   Color bg_color{};
 
   // TODO: could pull these two into their own struct UI_Texture or smth
-  Texture2D* texture{};
+  const Texture2D* texture{};
   bool flip_texture_vertically{};
 
   // TODO: should i have a separate corner_radius for each of the corners? (probably yes)
@@ -136,7 +136,7 @@ struct UI_QuadCommand {
 struct UI_TextureCommand {
   vec2 pos{};
   vec2 dims{};
-  Texture2D* texture{};
+  const Texture2D* texture{};
   bool flip_vertically{};
   Color tint{};
   std::optional<Rectangle> clip_rectangle{};
@@ -648,7 +648,7 @@ void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_
         *state_options.hovered = hovered;
       }
       if (state_options.clicked) {
-        *state_options.clicked = hovered && layout.input->lmb_pressed;
+        *state_options.clicked = hovered && layout.input->lmb.pressed();
       }
     }
   }

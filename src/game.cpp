@@ -1,25 +1,140 @@
 #include "core.cpp"
 
+enum class Key {
+  A,
+  B,
+  C,
+  D,
+  E,
+  F,
+  G,
+  H,
+  I,
+  J,
+  K,
+  L,
+  M,
+  N,
+  O,
+  P,
+  Q,
+  R,
+  S,
+  T,
+  U,
+  V,
+  W,
+  X,
+  Y,
+  Z,
+  ZERO,
+  ONE,
+  TWO,
+  THREE,
+  FOUR,
+  FIVE,
+  SIX,
+  SEVEN,
+  EIGHT,
+  NINE,
+  F1,
+  F2,
+  F3,
+  F4,
+  F5,
+  F6,
+  F7,
+  F8,
+  F9,
+  F10,
+  F11,
+  F12,
+  SPACE,
+  LSHIFT,
+  TAB,
+  ESCAPE,
+  COUNT,
+};
+
+struct KeyState {
+  u32 transition_count{};
+  bool down{};
+
+  bool pressed() const {
+    return down && transition_count != 0;
+  }
+};
+
 struct Input {
+  EnumArray<KeyState, Key> keys{};
+
   vec2 mouse_pos{};
+  KeyState lmb{};
+  KeyState rmb{};
   i32 mouse_scroll{};
-  bool lmb_pressed{};
-  bool lmb_down{};
-  bool rmb_pressed{};
-
-  vec2 move{};
-  bool interact{};
-  bool close_inv{};
-  bool rotate{};
-
-  bool serialize{};
-  bool deserialize{};
 };
 
 void clear(Input& input) {
   auto mouse_pos  = input.mouse_pos;
   input           = {};
   input.mouse_pos = mouse_pos;
+}
+
+enum class Action {
+  MOVE_UP,
+  MOVE_LEFT,
+  MOVE_DOWN,
+  MOVE_RIGHT,
+  INTERACT,
+  CLOSE_INV,
+  ROTATE,
+
+  SERIALIZE,
+  DESERIALIZE,
+
+  TOGGLE_DEBUG_RENDERING,
+  TOGGLE_EDITOR_MODE,
+
+  COUNT,
+};
+
+static constexpr EnumArray<Key, Action> KEYMAP = []() {
+  EnumArray<Key, Action> map{};
+  map[Action::MOVE_UP]    = Key::W;
+  map[Action::MOVE_LEFT]  = Key::A;
+  map[Action::MOVE_DOWN]  = Key::S;
+  map[Action::MOVE_RIGHT] = Key::D;
+  map[Action::INTERACT]   = Key::E;
+  map[Action::CLOSE_INV]  = Key::ESCAPE;
+  map[Action::ROTATE]     = Key::R;
+
+  map[Action::SERIALIZE]   = Key::F1;
+  map[Action::DESERIALIZE] = Key::F2;
+
+  map[Action::TOGGLE_DEBUG_RENDERING] = Key::F3;
+  map[Action::TOGGLE_EDITOR_MODE]     = Key::F4;
+  return map;
+}();
+
+const KeyState& action_state(const Input& input, Action action) {
+  return input.keys[KEYMAP[action]];
+}
+
+vec2 get_move_vector(const Input& input) {
+  vec2 out{};
+  if (action_state(input, Action::MOVE_UP).pressed()) {
+    out.y -= 1;
+  }
+  if (action_state(input, Action::MOVE_DOWN).pressed()) {
+    out.y += 1;
+  }
+  if (action_state(input, Action::MOVE_LEFT).pressed()) {
+    out.x -= 1;
+  }
+  if (action_state(input, Action::MOVE_RIGHT).pressed()) {
+    out.x += 1;
+  }
+  return out;
 }
 
 #include "assets.cpp"
@@ -36,8 +151,16 @@ struct FrameData {
   ItemSlotIdx hovered_slot{};
 };
 
+enum class Mode {
+  GAME,
+  EDITOR,
+};
+
+static constexpr vec2 MAINTENANCE_MINIGAME_DIMS = {256, 256};
+
 struct State {
   static constexpr u32 SERIALIZATION_VERSION = 1;
+  Mode mode{};
 
   // TODO: put into FrameData?
   Input frame_input{};
@@ -61,6 +184,8 @@ struct State {
   // NOTE: there is only one resource message receiver
   EntityId resource_message_receiver_id{};
   EntityStore store{};
+
+  RenderTexture maintenance_minigame_texture{};
 
   bool debug{};
 };
@@ -87,6 +212,7 @@ void to_json(json& j, const Maintenance& m) {
       [&](const MaintenanceLubrication& v) {
         j = json{
           {"type", v.NAME},
+          {"open", v.open},
           {"cogwheels", v.cogwheels},
           {"points", v.points},
         };
@@ -94,12 +220,14 @@ void to_json(json& j, const Maintenance& m) {
       [&](const MaintenanceCleaning& v) {
         j = json{
           {"type", v.NAME},
+          {"open", v.open},
           {"dirty_rects", v.dirty_rects},
         };
       },
       [&](const MaintenanceComponentReplacement& v) {
         j = json{
           {"type", v.NAME},
+          {"open", v.open},
           {"slots", v.slots},
           {"broken", v.broken},
           {"fixed", v.fixed},
@@ -108,6 +236,7 @@ void to_json(json& j, const Maintenance& m) {
       [&](const MaintenanceCalibration& v) {
         j = json{
           {"type", v.NAME},
+          {"open", v.open},
           {"range_low", v.range_low},
           {"range_high", v.range_high},
           {"value", v.value},
@@ -138,21 +267,25 @@ void from_json(const json& j, Maintenance& m) {
   auto type = j.at("type").get<std::string>();
   if (type == MaintenanceLubrication::NAME) {
     MaintenanceLubrication v{};
+    j.at("open").get_to(v.open);
     j.at("cogwheels").get_to(v.cogwheels);
     j.at("points").get_to(v.points);
     m = v;
   } else if (type == MaintenanceCleaning::NAME) {
     MaintenanceCleaning v{};
+    j.at("open").get_to(v.open);
     j.at("dirty_rects").get_to(v.dirty_rects);
     m = v;
   } else if (type == MaintenanceComponentReplacement::NAME) {
     MaintenanceComponentReplacement v{};
+    j.at("open").get_to(v.open);
     j.at("slots").get_to(v.slots);
     j.at("broken").get_to(v.broken);
     j.at("fixed").get_to(v.fixed);
     m = v;
   } else if (type == MaintenanceCalibration::NAME) {
     MaintenanceCalibration v{};
+    j.at("open").get_to(v.open);
     j.at("range_low").get_to(v.range_low);
     j.at("range_high").get_to(v.range_high);
     j.at("value").get_to(v.value);
@@ -325,14 +458,15 @@ void init(State& state) {
 
   load_textures(state.assets);
 
+  state.maintenance_minigame_texture =
+    LoadRenderTexture(MAINTENANCE_MINIGAME_DIMS.x, MAINTENANCE_MINIGAME_DIMS.y);
+
   auto player_entity = Entity{
     .pos  = {8, 4},
     .data = Player{},
   };
   auto* player = get_data<Player>(player_entity);
   ASSERT_NO_MSG(player);
-  player->maintenance_minigame_texture = LoadRenderTexture(256, 256);
-
   player->inventory[0]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 85};
   player->inventory[14] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
   player->inventory[13] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
@@ -370,59 +504,193 @@ void init(State& state) {
   flush(state.store);
 }
 
+i32 key_to_raylib_key(Key key) {
+  switch (key) {
+    case Key::A:
+      return KEY_A;
+      ;
+    case Key::B:
+      return KEY_B;
+    case Key::C:
+      return KEY_C;
+    case Key::D:
+      return KEY_D;
+    case Key::E:
+      return KEY_E;
+    case Key::F:
+      return KEY_F;
+    case Key::G:
+      return KEY_G;
+    case Key::H:
+      return KEY_H;
+    case Key::I:
+      return KEY_I;
+    case Key::J:
+      return KEY_J;
+    case Key::K:
+      return KEY_K;
+    case Key::L:
+      return KEY_L;
+    case Key::M:
+      return KEY_M;
+    case Key::N:
+      return KEY_N;
+    case Key::O:
+      return KEY_O;
+    case Key::P:
+      return KEY_P;
+    case Key::Q:
+      return KEY_Q;
+    case Key::R:
+      return KEY_R;
+    case Key::S:
+      return KEY_S;
+    case Key::T:
+      return KEY_T;
+    case Key::U:
+      return KEY_U;
+    case Key::V:
+      return KEY_V;
+    case Key::W:
+      return KEY_W;
+    case Key::X:
+      return KEY_X;
+    case Key::Y:
+      return KEY_Y;
+    case Key::Z:
+      return KEY_Z;
+    case Key::ZERO:
+      return KEY_ZERO;
+    case Key::ONE:
+      return KEY_ONE;
+    case Key::TWO:
+      return KEY_TWO;
+    case Key::THREE:
+      return KEY_THREE;
+    case Key::FOUR:
+      return KEY_FOUR;
+    case Key::FIVE:
+      return KEY_FIVE;
+    case Key::SIX:
+      return KEY_SIX;
+    case Key::SEVEN:
+      return KEY_SEVEN;
+    case Key::EIGHT:
+      return KEY_EIGHT;
+    case Key::NINE:
+      return KEY_NINE;
+    case Key::F1:
+      return KEY_F1;
+    case Key::F2:
+      return KEY_F2;
+    case Key::F3:
+      return KEY_F3;
+    case Key::F4:
+      return KEY_F4;
+    case Key::F5:
+      return KEY_F5;
+    case Key::F6:
+      return KEY_F6;
+    case Key::F7:
+      return KEY_F7;
+    case Key::F8:
+      return KEY_F8;
+    case Key::F9:
+      return KEY_F9;
+    case Key::F10:
+      return KEY_F10;
+    case Key::F11:
+      return KEY_F11;
+    case Key::F12:
+      return KEY_F12;
+    case Key::SPACE:
+      return KEY_SPACE;
+    case Key::LSHIFT:
+      return KEY_LEFT_SHIFT;
+    case Key::TAB:
+      return KEY_TAB;
+    case Key::ESCAPE:
+      return KEY_ESCAPE;
+    case Key::COUNT:
+      break;
+  }
+  ASSERT(false, "invalid key: %d", i32(key));
+}
+
+KeyState get_key_state(Key key) {
+  auto raylib_key = key_to_raylib_key(key);
+  KeyState state{};
+  state.down = IsKeyDown(raylib_key);
+  // TODO: this is kind of wrong
+  if (IsKeyPressed(raylib_key)) {
+    state.transition_count += 1;
+  }
+  if (IsKeyReleased(MOUSE_BUTTON_LEFT)) {
+    state.transition_count += 1;
+  }
+  return state;
+}
+
+// TODO: not sure whether the tick_input is fully correct
 void gather_input(State& state) {
-  clear(state.frame_input);
+  auto& input = state.frame_input;
+  clear(input);
 
-  state.frame_input.mouse_pos   = vec2_from_vector2(GetMousePosition());
-  state.frame_input.lmb_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-  state.frame_input.lmb_down    = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-  state.frame_input.rmb_pressed = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+  input.mouse_pos    = vec2_from_vector2(GetMousePosition());
+  input.mouse_scroll = GetMouseWheelMove();
 
-  if (IsKeyPressed(KEY_W)) {
-    --state.frame_input.move.y;
+  state.tick_input.mouse_pos = input.mouse_pos;
+  state.tick_input.mouse_scroll += input.mouse_scroll;
+
+  input.lmb.down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+  // TODO: this is kind of wrong
+  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    input.lmb.transition_count += 1;
   }
-  if (IsKeyPressed(KEY_S)) {
-    ++state.frame_input.move.y;
-  }
-  if (IsKeyPressed(KEY_A)) {
-    --state.frame_input.move.x;
-  }
-  if (IsKeyPressed(KEY_D)) {
-    ++state.frame_input.move.x;
-  }
-  state.frame_input.move.x = std::clamp(state.frame_input.move.x, -1.0f, 1.0f);
-  state.frame_input.move.y = std::clamp(state.frame_input.move.y, -1.0f, 1.0f);
-
-  state.frame_input.interact  = IsKeyPressed(KEY_E);
-  state.frame_input.close_inv = IsKeyPressed(KEY_ESCAPE);
-  state.frame_input.rotate    = IsKeyPressed(KEY_R);
-
-  state.frame_input.serialize   = IsKeyPressed(KEY_F2);
-  state.frame_input.deserialize = IsKeyPressed(KEY_F3);
-
-  if (IsKeyPressed(KEY_F1)) {
-    state.debug = !state.debug;
+  if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    input.lmb.transition_count += 1;
   }
 
-  state.tick_input.mouse_pos = state.frame_input.mouse_pos;
-  state.tick_input.mouse_scroll += state.frame_input.mouse_scroll;
-  state.tick_input.lmb_pressed = state.tick_input.lmb_pressed || state.frame_input.lmb_pressed;
-  state.tick_input.lmb_down    = state.tick_input.lmb_down || state.frame_input.lmb_down;
-  state.tick_input.rmb_pressed = state.tick_input.rmb_pressed || state.frame_input.rmb_pressed;
-  state.tick_input.move.x =
-    std::clamp(state.tick_input.move.x + state.frame_input.move.x, -1.0f, 1.0f);
-  state.tick_input.move.y =
-    std::clamp(state.tick_input.move.y + state.frame_input.move.y, -1.0f, 1.0f);
-  state.tick_input.interact    = state.tick_input.interact || state.frame_input.interact;
-  state.tick_input.close_inv   = state.tick_input.close_inv || state.frame_input.close_inv;
-  state.tick_input.rotate      = state.tick_input.rotate || state.frame_input.rotate;
-  state.tick_input.serialize   = state.tick_input.serialize || state.frame_input.serialize;
-  state.tick_input.deserialize = state.tick_input.deserialize || state.frame_input.deserialize;
+  state.tick_input.lmb.down = state.tick_input.lmb.down || input.lmb.down;
+  state.tick_input.lmb.transition_count += input.lmb.transition_count;
+  // NOTE: if i released the mouse button this tick set the ticks lmb down to false
+  if (!input.lmb.down && input.lmb.transition_count != 0) {
+    state.tick_input.lmb.down = false;
+  }
+
+  input.rmb.down = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
+  // TODO: this is kind of wrong
+  if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+    input.rmb.transition_count += 1;
+  }
+  if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+    input.rmb.transition_count += 1;
+  }
+
+  state.tick_input.rmb.down = state.tick_input.rmb.down || input.rmb.down;
+  state.tick_input.rmb.transition_count += input.rmb.transition_count;
+  // NOTE: if i released the mouse button this tick set the ticks rmb down to false
+  if (!input.rmb.down && input.rmb.transition_count != 0) {
+    state.tick_input.rmb.down = false;
+  }
+
+  for (u32 i = 0; i < input.keys.size(); ++i) {
+    auto key        = Key(i);
+    input.keys[key] = get_key_state(key);
+  }
+
+  for (u32 i = 0; i < input.keys.size(); ++i) {
+    auto key          = Key(i);
+    auto& tick_state  = state.tick_input.keys[key];
+    auto& frame_state = input.keys[key];
+    tick_state.down   = tick_state.down || frame_state.down;
+    tick_state.transition_count += frame_state.transition_count;
+  }
 }
 
 void update_tick(State& state, f32 dt) {
   // TODO: i dont think this belongs in a system, but maybe?
-  if (state.tick_input.rotate) {
+  if (action_state(state.tick_input, Action::ROTATE).pressed()) {
     state.current_place_rotation =
       Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
   }
@@ -473,6 +741,7 @@ void update_frame(State& state) {
 
   system_message_sender_ui(
     state.ui_system,
+    state.maintenance_minigame_texture,
     state.frame_input,
     state.assets,
     state.store,
@@ -482,6 +751,7 @@ void update_frame(State& state) {
   );
   auto receiver_hovered_slot = system_message_receiver_ui(
     state.ui_system,
+    state.maintenance_minigame_texture,
     state.frame_input,
     state.assets,
     state.store,
@@ -494,6 +764,7 @@ void update_frame(State& state) {
 
   auto assembler_hovered_slot = system_assembler_ui(
     state.ui_system,
+    state.maintenance_minigame_texture,
     state.frame_input,
     state.assets,
     state.store,

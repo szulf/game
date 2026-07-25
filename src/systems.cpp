@@ -99,13 +99,15 @@ void system_update_time(u64& min, f32& min_accumulator, f32 dt) {
 }
 
 void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
-  if (input.move == vec2{0, 0}) {
+  auto move_vector = get_move_vector(input);
+  if (move_vector == vec2{0, 0}) {
     return;
   }
 
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);
-  auto collided = get_entities_at_pos(store, player_entity->pos + input.move, player_entity->world);
+  auto collided =
+    get_entities_at_pos(store, player_entity->pos + move_vector, player_entity->world);
   bool can_move = true;
 
   for (auto& collision : collided) {
@@ -115,7 +117,7 @@ void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
     }
   }
   if (can_move) {
-    player_entity->pos += input.move;
+    player_entity->pos += move_vector;
   }
 }
 
@@ -123,7 +125,7 @@ void system_open_gui(EntityStore& store, EntityId player_id, const Input& input)
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (input.interact &&
+  if (action_state(input, Action::INTERACT).pressed() &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && has_gui(*hovered)) {
@@ -138,7 +140,7 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
-    if (input.close_inv ||
+    if (action_state(input, Action::CLOSE_INV).pressed() ||
         (gui_entity &&
          !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
         (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
@@ -156,7 +158,7 @@ void system_hand_slot_interactions(
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (hovered_slot.entity && input.lmb_pressed) {
+  if (hovered_slot.entity && input.lmb.pressed()) {
     auto* hovered_inv = get_inventory(store, hovered_slot.entity);
     if (hovered_inv) {
       auto& slot = (*hovered_inv)[hovered_slot.slot_idx];
@@ -189,7 +191,7 @@ void system_drop_items(EntityStore& store, EntityId player_id, const Input& inpu
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: not sure if lmb_pressed is the right keybind
-  if (input.lmb_pressed && player->hand &&
+  if (input.lmb.pressed() && player->hand &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
@@ -406,6 +408,7 @@ static bool message_header_ui(UI_Layout& layout, std::string_view switch_page_te
 
 void maintenance_ui(
   UI_Layout& layout,
+  const RenderTexture& render_texture,
   AssetManager& assets,
   Player& player,
   Maintenance& maintenance
@@ -414,15 +417,16 @@ void maintenance_ui(
   auto* minigame_open = maintenance_is_minigame_open(maintenance);
 
   if (minigame_open && *minigame_open) {
-    auto& render = player.maintenance_minigame_texture;
-    ASSERT(IsRenderTextureValid(render), "minigame render texture needs to be valid");
+    ASSERT(IsRenderTextureValid(render_texture), "minigame render texture needs to be valid");
     vec2 window_offset = ui_element_get_pos(layout, "maintenance minigame window");
-    maintenance_render_minigame(maintenance, assets, render, window_offset);
+    maintenance_render_minigame(maintenance, assets, render_texture, window_offset);
     ui_element_begin(layout, "maintenance minigame window");
     ui_element_end(
       layout,
-      {.sizing  = {ui_sizing_fixed(render.texture.width), ui_sizing_fixed(render.texture.height)},
-       .texture = &render.texture,
+      {.sizing =
+         {ui_sizing_fixed(render_texture.texture.width),
+          ui_sizing_fixed(render_texture.texture.height)},
+       .texture                 = &render_texture.texture,
        .flip_texture_vertically = true}
     );
   } else {
@@ -477,6 +481,7 @@ void maintenance_ui(
 
 void system_message_sender_ui(
   UI_System& ui_system,
+  const RenderTexture& render_texture,
   const Input& input,
   AssetManager& assets,
   EntityStore& store,
@@ -494,7 +499,7 @@ void system_message_sender_ui(
   auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_sender->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, *player, msg_sender->maintenance);
+    maintenance_ui(layout, render_texture, assets, *player, msg_sender->maintenance);
   } else {
     switch (msg_sender->page) {
       case ResourceMessageSenderPage::DISPLAY: {
@@ -655,6 +660,7 @@ void system_message_sender_ui(
 
 ItemSlotIdx system_message_receiver_ui(
   UI_System& ui_system,
+  const RenderTexture& render_texture,
   const Input& input,
   AssetManager& assets,
   EntityStore& store,
@@ -672,7 +678,7 @@ ItemSlotIdx system_message_receiver_ui(
   auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_receiver->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, *player, msg_receiver->maintenance);
+    maintenance_ui(layout, render_texture, assets, *player, msg_receiver->maintenance);
   } else {
     message_header_ui<ResourceMessageReceiver>(layout);
 
@@ -811,6 +817,7 @@ bool recipe_button_ui(UI_Layout& layout, std::string_view recipe_name, bool sele
 
 ItemSlotIdx system_assembler_ui(
   UI_System& ui_system,
+  const RenderTexture& render_texture,
   const Input& input,
   AssetManager& assets,
   EntityStore& store,
@@ -831,7 +838,7 @@ ItemSlotIdx system_assembler_ui(
   auto layout = ui_layout_begin("assembler", ui_system, input, {10, 200}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   if (assembler->maintenance.index() != 0) {
-    maintenance_ui(layout, assets, *player, assembler->maintenance);
+    maintenance_ui(layout, render_texture, assets, *player, assembler->maintenance);
   } else {
     ui_element_begin(layout, UI_AUTO_ID);
     for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
@@ -1000,7 +1007,7 @@ void system_place_entity(
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: should check if im not hovering over an item slot
-  if (input.rmb_pressed && player->hand &&
+  if (input.rmb.pressed() && player->hand &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
       !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)) {
     auto entity  = entity_from_item(player->hand.type);
@@ -1018,7 +1025,7 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (input.lmb_pressed &&
+  if (input.lmb.pressed() &&
       pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && breakable(*hovered)) {
@@ -1228,7 +1235,7 @@ void system_apply_maintenance(EntityStore& store) {
     }
 
     // TODO: this needs a much much lower chance to happen
-    auto value = random_get<u32>(1, 100);
+    auto value = random_get<u32>(1, 1000);
     if (value != 1) {
       continue;
     }
@@ -1263,13 +1270,13 @@ void system_update_maintenance_minigames(EntityStore& store, const Input& input,
 // TODO: not sure if this is a system
 void system_serialization(State& state, const std::filesystem::path& filepath) {
   auto& input = state.tick_input;
-  if (input.serialize) {
+  if (action_state(input, Action::SERIALIZE).pressed()) {
     json j(state);
     std::ofstream file{filepath};
     file << std::setw(4) << j << '\n';
   }
 
-  if (input.deserialize) {
+  if (action_state(input, Action::DESERIALIZE).pressed()) {
     std::ifstream file{filepath};
     json j         = json::parse(file);
     auto new_state = j.get<State>();
@@ -1289,6 +1296,11 @@ void system_serialization(State& state, const std::filesystem::path& filepath) {
     state.resource_message_receiver_id = new_state.resource_message_receiver_id;
     state.store                        = new_state.store;
   }
+}
+
+// TODO: not sure if this is a system
+void system_editor_ui(UI_System& ui_system) {
+  (void) ui_system;
 }
 
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {

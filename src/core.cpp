@@ -184,3 +184,23 @@ inline T random_get(T min, T max) {
     static_assert(false, "invalid random number type");
   }
 }
+
+template <typename T, typename E>
+struct EnumArray {
+  static_assert(std::is_enum_v<E>);
+
+  inline constexpr u32 size() const {
+    return u32(E::COUNT);
+  }
+
+  constexpr T& operator[](E idx) {
+    ASSERT(idx < E::COUNT, "index out of bounds");
+    return data[u32(idx)];
+  }
+  constexpr const T& operator[](E idx) const {
+    ASSERT(idx < E::COUNT, "index out of bounds");
+    return data[u32(idx)];
+  }
+
+  std::array<T, u32(E::COUNT)> data{};
+};

@@ -21,12 +21,6 @@ struct Player {
   i32 interaction_radius          = 4;
   EntityId open_gui{};
   ItemSlot hand{};
-
-  // TODO: i dont know if i like having this on the player
-  // but it does kind of make sense, because:
-  // - i only render to it when the player has the minigame open
-  // - i can reuse the same render texture for all minigames
-  RenderTexture2D maintenance_minigame_texture{};
 };
 
 struct Block {};
@@ -206,7 +200,7 @@ bool maintenance_update_minigame(MaintenanceLubrication& state, const Input& inp
   bool done = true;
   for (auto& point : state.points) {
     vec2 origin = point.dims / 2.0f;
-    if (input.lmb_down && CheckCollisionRecs(
+    if (input.lmb.down && CheckCollisionRecs(
                             rect_from_vec2x2(point.pos + state.window_offset - origin, point.dims),
                             rect_from_vec2x2(input.mouse_pos, {1, 1})
                           )) {
@@ -301,7 +295,7 @@ bool maintenance_update_minigame(MaintenanceCleaning& state, const Input& input,
     dirty_rect_check.x += state.window_offset.x;
     dirty_rect_check.y += state.window_offset.y;
 
-    if (input.lmb_down &&
+    if (input.lmb.down &&
         CheckCollisionRecs(dirty_rect_check, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
       auto moved_dist = length(state.last_mouse_pos - input.mouse_pos);
       dirty_rect.progress += moved_dist * 0.003f;
@@ -391,16 +385,16 @@ void update_component(
   const vec2& window_offset
 ) {
   auto origin = comp.DIMS * 0.5f;
-  if (input.lmb_pressed && CheckCollisionRecs(
-                             rect_from_vec2x2(comp.pos + window_offset - origin, comp.DIMS),
-                             rect_from_vec2x2(input.mouse_pos, {1, 1})
-                           )) {
+  if (input.lmb.pressed() && CheckCollisionRecs(
+                               rect_from_vec2x2(comp.pos + window_offset - origin, comp.DIMS),
+                               rect_from_vec2x2(input.mouse_pos, {1, 1})
+                             )) {
     comp.dragging = true;
   }
   if (comp.dragging) {
     comp.pos = input.mouse_pos - window_offset;
 
-    if (!input.lmb_down) {
+    if (!input.lmb.down) {
       comp.dragging = false;
       for (u32 slot_idx = 0; slot_idx < slots.size(); ++slot_idx) {
         auto& slot       = slots[slot_idx];
@@ -490,7 +484,7 @@ bool maintenance_update_minigame(MaintenanceCalibration& state, const Input& inp
     vec2{state.add_rect.x, state.add_rect.y} + state.window_offset - origin,
     {state.add_rect.width, state.add_rect.height}
   );
-  if (input.lmb_down &&
+  if (input.lmb.down &&
       CheckCollisionRecs(check_add_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
     state.value += 0.1f;
   }
@@ -498,7 +492,7 @@ bool maintenance_update_minigame(MaintenanceCalibration& state, const Input& inp
     vec2{state.remove_rect.x, state.remove_rect.y} + state.window_offset - origin,
     {state.remove_rect.width, state.remove_rect.height}
   );
-  if (input.lmb_down &&
+  if (input.lmb.down &&
       CheckCollisionRecs(check_remove_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
     state.value -= 0.1f;
   }

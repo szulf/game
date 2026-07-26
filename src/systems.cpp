@@ -1311,68 +1311,6 @@ void system_serialization(State& state, const std::filesystem::path& filepath) {
   }
 }
 
-// TODO: not sure if this is a system
-void system_editor_mode(EditorData& editor, EntityStore& store, const Input& input) {
-  const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
-  if (
-    input.rmb.pressed() &&
-    !get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world)
-  ) {
-    Entity entity = placeable;
-    entity.pos    = grid_pos(input.mouse_pos);
-    entity.world  = editor.current_world;
-    add_entity(store, entity);
-  }
-}
-
-// TODO: not sure if this is a system
-void system_editor_ui(
-  EditorData& editor,
-  UI_System& ui_system,
-  const Input& input,
-  const AssetManager& assets
-) {
-  auto layout = ui_layout_begin("editor ui", ui_system, input, {500, 500}, WINDOW_DIMS);
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "placeables:", 15, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
-      for (u32 i = 0; i < PLACEABLE.size(); ++i) {
-        const auto& placeable = PLACEABLE[i];
-        bool clicked{};
-        Color color = LIGHTGRAY;
-        if (i == editor.selected_placeable_idx) {
-          color = GRAY;
-        }
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-        {
-          const auto& texture = assets.textures[get_texture_type(placeable)];
-          ui_element_begin(layout, UI_AUTO_ID);
-          ui_element_end(
-            layout,
-            {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
-             .texture = &texture}
-          );
-        }
-        ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
-
-        if (clicked) {
-          editor.selected_placeable_idx = i;
-        }
-      }
-    }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .child_gap = 2});
-  }
-  ui_element_end(
-    layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .padding          = ui_padding_all(4),
-     .bg_color         = BLACK}
-  );
-  ui_layout_end(layout);
-}
-
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
   static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
 

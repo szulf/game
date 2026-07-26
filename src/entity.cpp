@@ -63,7 +63,20 @@ struct Item {
 enum class World {
   OVERWORLD,
   OTHER,
+  COUNT,
 };
+
+std::string_view world_to_string(World world) {
+  switch (world) {
+    case World::OVERWORLD:
+      return "overworld";
+    case World::OTHER:
+      return "other";
+    case World::COUNT:
+      break;
+  }
+  ASSERT(false, "invalid world: %d", i32(world));
+}
 
 struct WorldTunnel {
   World to{};
@@ -589,10 +602,10 @@ using Maintenance = std::variant<
 
 std::string_view maintenance_name(const Maintenance& maintenance) {
   return std::visit(
-    [](const auto& value) -> const std::string_view& {
+    [](const auto& value) -> std::string_view {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, std::monostate>) {
-        ASSERT(false, "null maintenance has no name");
+        return "null";
       } else {
         return value.NAME;
       }
@@ -915,6 +928,8 @@ struct Entity {
 
 static const std::array PLACEABLE = std::to_array<Entity>({
   {.data = Block{}},
+  // TODO: do i want to keep this?
+  // {.data = Player{}},
   {.data = Storage{}},
   {.data = Conveyor{}},
   {.data = WorldTunnel{}},

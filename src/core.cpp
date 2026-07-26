@@ -137,6 +137,22 @@ vec2 direction_to_vec2(Direction direction) {
   ASSERT(false, "invalid direction: %d\n", i32(direction));
 }
 
+std::string_view direction_to_string(Direction direction) {
+  switch (direction) {
+    case Direction::UP:
+      return "up";
+    case Direction::DOWN:
+      return "down";
+    case Direction::RIGHT:
+      return "right";
+    case Direction::LEFT:
+      return "left";
+    case Direction::COUNT:
+      break;
+  }
+  ASSERT(false, "invalid direction: %d\n", i32(direction));
+}
+
 using Rotation = Direction;
 
 // TODO: not sure if right and left degrees are correct

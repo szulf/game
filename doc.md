@@ -38,17 +38,17 @@
     - currently using an external one just to speed up development
 - [ ] map editor
   - [x] placing
-  - [ ] destroying
-  - [ ] editing data
-  - [ ] copying
+  - [x] destroying
+  - [x] editing data
   - [ ] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
   - [ ] switch between worlds
-  - [ ] undo/redo (???)
+  - [ ] copying
   - [ ] validation of the current save
     - one player
     - one resource message receiver
     - world tunnels go both ways
+  - [ ] undo/redo (???)
 - [ ] flashlight and basic lighting system
 
 ### after alpha demo:
@@ -60,10 +60,11 @@
         (add them here after fixing to say what issues i encountered)
 - [ ] better movement system
 - [ ] containers that can output only from a single side
+- [ ] bigger machines
 - [ ] power
 - [ ] in game documentation for all blocks/items
 - [ ] dev console
-- [x] UI library
+- [ ] UI library
   - [ ] borders
   - [ ] justify-content: space-between from css
   - [ ] better element api (the UI_Scope thing probably)

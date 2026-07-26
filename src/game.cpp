@@ -161,6 +161,7 @@ static constexpr vec2 MAINTENANCE_MINIGAME_DIMS = {256, 256};
 struct EditorData {
   World current_world{};
   u32 selected_placeable_idx{};
+  EntityId selected_entity_id{};
 };
 
 struct State {
@@ -457,6 +458,7 @@ void from_json(const json& j, State& s) {
 }
 
 #include "systems.cpp"
+#include "editor.cpp"
 
 void init(State& state) {
   InitWindow(WINDOW_DIMS.x, WINDOW_DIMS.y, "test");
@@ -747,7 +749,7 @@ void update_tick(State& state, f32 dt) {
       system_serialization(state, "save_file.json");
     } break;
     case Mode::EDITOR: {
-      system_editor_mode(state.editor, state.store, state.tick_input);
+      editor::update(state.editor, state.store, state.tick_input);
     } break;
   }
 
@@ -806,7 +808,7 @@ void update_frame(State& state) {
       }
     } break;
     case Mode::EDITOR: {
-      system_editor_ui(state.editor, state.ui_system, state.frame_input, state.assets);
+      editor::ui(state.editor, state.store, state.ui_system, state.frame_input, state.assets);
     } break;
   }
 }

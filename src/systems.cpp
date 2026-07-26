@@ -1292,76 +1292,8 @@ void system_serialization(State& state, const std::filesystem::path& filepath) {
 }
 
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
-  static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
-
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);
 
-  for (auto& entity : store) {
-    if (entity.world != player_entity->world) {
-      continue;
-    }
-
-    const Texture2D* texture{};
-    if (auto* item = get_data<Item>(entity)) {
-      texture = &assets.textures[get_texture_type(item->slot.type)];
-    } else {
-      texture = &assets.textures[get_texture_type(entity)];
-    }
-    vec2 dims = dims_from_texture(*texture);
-
-    auto source_rect    = rect_from_vec2x2({}, dims);
-    Rectangle dest_rect = {
-      .x      = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - dims.x) / 2.0f) + (dims.x * 0.5f),
-      .y      = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - dims.y) / 2.0f) + (dims.y * 0.5f),
-      .width  = dims.x,
-      .height = dims.y,
-    };
-
-    auto origin = vector2_from_vec2(dims * 0.5f);
-
-    f32 rotation = 0;
-    if (auto* rot = get_rotation(entity)) {
-      rotation = rotation_degrees(*rot);
-    }
-
-    DrawTexturePro(*texture, source_rect, dest_rect, origin, rotation, WHITE);
-
-    if (auto* conveyor = get_data<Conveyor>(entity)) {
-      for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-        auto& item = conveyor->items[i];
-        if (item.slot) {
-          auto& on_texture  = assets.textures[get_texture_type(item.slot.type)];
-          vec2 on_dims      = dims_from_texture(on_texture);
-          Vector2 on_origin = vector2_from_vec2(on_dims) * 0.5f * ON_CONVEYOR_SCALE;
-
-          auto on_source_rect = rect_from_vec2x2({}, on_dims);
-
-          Rectangle on_dest_rect = {
-            .x      = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - on_dims.x) / 2.0f) +
-                      (on_dims.x * 0.5f),
-            .y      = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - on_dims.y) / 2.0f) +
-                      (on_dims.y * 0.5f),
-            .width  = on_dims.x * ON_CONVEYOR_SCALE,
-            .height = on_dims.y * ON_CONVEYOR_SCALE,
-          };
-
-          on_dest_rect.x += (direction_to_vec2(conveyor_from(*conveyor)).x * 0.5f) * GRID_DIMS.x;
-          on_dest_rect.y += (direction_to_vec2(conveyor_from(*conveyor)).y * 0.5f) * GRID_DIMS.y;
-
-          on_dest_rect.x -=
-            (direction_to_vec2(conveyor_from(*conveyor)).x * 0.5f * item.t) * GRID_DIMS.x;
-          on_dest_rect.y -=
-            (direction_to_vec2(conveyor_from(*conveyor)).y * 0.5f * item.t) * GRID_DIMS.y;
-
-          on_dest_rect.x +=
-            (direction_to_vec2(conveyor_to(*conveyor)).x * 0.5f * item.t) * GRID_DIMS.x;
-          on_dest_rect.y +=
-            (direction_to_vec2(conveyor_to(*conveyor)).y * 0.5f * item.t) * GRID_DIMS.y;
-
-          DrawTexturePro(on_texture, on_source_rect, on_dest_rect, on_origin, 0, WHITE);
-        }
-      }
-    }
-  }
+  render_entities(store, player_entity->world, assets);
 }

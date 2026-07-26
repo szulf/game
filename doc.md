@@ -42,7 +42,7 @@
   - [x] editing data
   - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
-  - [ ] switch between worlds
+  - [x] switch between worlds
   - [ ] copying
   - [ ] validation of the current save
     - one player

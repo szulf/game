@@ -195,6 +195,21 @@ void ui(
     }
     ui_element_end(layout, {.padding = ui_padding_all(2), .child_gap = 2});
 
+    bool current_world_clicked{};
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_text(layout, "current world: ", 20, WHITE);
+      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &current_world_clicked});
+      {
+        ui_text(layout, world_to_string(editor.current_world), 20, BLACK);
+      }
+      ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
+    }
+    ui_element_end(layout, {});
+    if (current_world_clicked) {
+      editor.current_world = World((i32(editor.current_world) + 1) % i32(World::COUNT));
+    }
+
     if (editor.selected_entity_id) {
       auto* selected = get_entity(store, editor.selected_entity_id);
       ASSERT_NO_MSG(selected);
@@ -231,6 +246,10 @@ void ui(
     save_state_to_file(state, DEFAULT_MAP_FILEPATH);
     std::println("saved world file to '{}'", DEFAULT_MAP_FILEPATH);
   }
+}
+
+void render(EditorData& editor, EntityStore& store, const AssetManager& assets) {
+  render_entities(store, editor.current_world, assets);
 }
 
 }

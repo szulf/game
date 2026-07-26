@@ -1,5 +1,5 @@
 {
-    "minutes": 2,
+    "minutes": 4,
     "player_id": {
         "gen": 0,
         "idx": 1
@@ -1359,7 +1359,11 @@
                             "type": 0
                         }
                     ],
-                    "maintenance": null,
+                    "maintenance": {
+                        "dirty_rects": [],
+                        "open": false,
+                        "type": "cleaning"
+                    },
                     "selected_recipe_idx": 0,
                     "t": 0.0,
                     "type": "assembler"
@@ -1436,23 +1440,32 @@
                     "type": "block"
                 },
                 "id": {
-                    "gen": 0,
-                    "idx": 0
+                    "gen": 1,
+                    "idx": 17
                 },
                 "pos": {
-                    "x": 0.0,
-                    "y": 0.0
+                    "x": 22.0,
+                    "y": 5.0
                 },
-                "world": 0
-            }
-        ],
-        "free_slots": [
+                "world": 1
+            },
             {
-                "gen": 0,
-                "idx": 17
+                "data": {
+                    "type": "block"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 18
+                },
+                "pos": {
+                    "x": 22.0,
+                    "y": 4.0
+                },
+                "world": 1
             }
         ],
-        "next_entity_idx": 17
+        "free_slots": [],
+        "next_entity_idx": 18
     },
     "version": 1
 }

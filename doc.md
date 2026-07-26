@@ -40,7 +40,7 @@
   - [x] placing
   - [x] destroying
   - [x] editing data
-  - [ ] save to a file
+  - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
   - [ ] switch between worlds
   - [ ] copying

@@ -156,8 +156,13 @@ void ui(
   EntityStore& store,
   UI_System& ui_system,
   const Input& input,
-  const AssetManager& assets
+  const AssetManager& assets,
+  // TODO: i dont like passing the whole state here, but i do need it for serialization,
+  // and also passing references to objects inside of the state along side the state itself is icky
+  const State& state
 ) {
+  bool save_clicked{};
+
   auto layout = ui_layout_begin("editor ui", ui_system, input, {900, 100}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   {
@@ -200,14 +205,32 @@ void ui(
       }
       ui_element_end(layout, {});
     }
+
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &save_clicked});
+      ui_text(layout, "SAVE", 25, BLACK);
+      ui_element_end(layout, {.bg_color = LIGHTGRAY});
+    }
+    ui_element_end(
+      layout,
+      {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+       .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
+    );
   }
   ui_element_end(
     layout,
     {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
      .padding          = ui_padding_all(4),
+     .child_gap        = 4,
      .bg_color         = BLACK}
   );
   ui_layout_end(layout);
+
+  if (save_clicked) {
+    save_state_to_file(state, DEFAULT_MAP_FILEPATH);
+    std::println("saved world file to '{}'", DEFAULT_MAP_FILEPATH);
+  }
 }
 
 }

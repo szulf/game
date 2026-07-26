@@ -1280,34 +1280,14 @@ void system_update_maintenance_minigames(EntityStore& store, const Input& input,
   }
 }
 
-// TODO: not sure if this is a system
 void system_serialization(State& state, const std::filesystem::path& filepath) {
   auto& input = state.tick_input;
   if (action_state(input, Action::SERIALIZE).pressed()) {
-    json j(state);
-    std::ofstream file{filepath};
-    file << std::setw(4) << j << '\n';
+    save_state_to_file(state, filepath);
   }
 
   if (action_state(input, Action::DESERIALIZE).pressed()) {
-    std::ifstream file{filepath};
-    json j         = json::parse(file);
-    auto new_state = j.get<State>();
-
-    // TODO: pull this state assigning out to a separate function?
-    state.frame_input            = {};
-    state.tick_input             = {};
-    state.frame                  = {};
-    state.ui_system              = {};
-    state.minutes_accumulator    = {};
-    state.current_place_rotation = {};
-    state.debug                  = {};
-
-    state.minutes                      = new_state.minutes;
-    state.resource_message_queue       = new_state.resource_message_queue;
-    state.player_id                    = new_state.player_id;
-    state.resource_message_receiver_id = new_state.resource_message_receiver_id;
-    state.store                        = new_state.store;
+    load_state_from_file(state, filepath);
   }
 }
 

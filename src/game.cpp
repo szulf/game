@@ -164,6 +164,8 @@ struct EditorData {
   EntityId selected_entity_id{};
 };
 
+static constexpr std::string_view DEFAULT_MAP_FILEPATH = "default_map.json";
+
 struct State {
   static constexpr u32 SERIALIZATION_VERSION = 1;
   Mode mode{};
@@ -457,6 +459,33 @@ void from_json(const json& j, State& s) {
   j.at("store").get_to(s.store);
 }
 
+void save_state_to_file(const State& state, const std::filesystem::path& filepath) {
+  json j(state);
+  std::ofstream file{filepath};
+  file << std::setw(4) << j << '\n';
+}
+
+void load_state_from_file(State& state, const std::filesystem::path& filepath) {
+  std::ifstream file{filepath};
+  json j         = json::parse(file);
+  auto new_state = j.get<State>();
+
+  // TODO: pull this state assigning out to a separate function?
+  state.frame_input            = {};
+  state.tick_input             = {};
+  state.frame                  = {};
+  state.ui_system              = {};
+  state.minutes_accumulator    = {};
+  state.current_place_rotation = {};
+  state.debug                  = {};
+
+  state.minutes                      = new_state.minutes;
+  state.resource_message_queue       = new_state.resource_message_queue;
+  state.player_id                    = new_state.player_id;
+  state.resource_message_receiver_id = new_state.resource_message_receiver_id;
+  state.store                        = new_state.store;
+}
+
 #include "systems.cpp"
 #include "editor.cpp"
 
@@ -470,6 +499,10 @@ void init(State& state) {
   state.maintenance_minigame_texture =
     LoadRenderTexture(MAINTENANCE_MINIGAME_DIMS.x, MAINTENANCE_MINIGAME_DIMS.y);
 
+#if 1
+  load_state_from_file(state, DEFAULT_MAP_FILEPATH);
+  std::println("loaded world file from '{}'", DEFAULT_MAP_FILEPATH);
+#elif
   auto player_entity = Entity{
     .pos  = {8, 4},
     .data = Player{},
@@ -509,6 +542,7 @@ void init(State& state) {
     add_entity(state.store, Entity{.pos = {14, 11}, .data = ResourceMessageReceiver{}});
 
   add_entity(state.store, Entity{.pos = {10, 5}, .data = Assembler{}});
+#endif
 
   flush(state.store);
 }
@@ -808,7 +842,14 @@ void update_frame(State& state) {
       }
     } break;
     case Mode::EDITOR: {
-      editor::ui(state.editor, state.store, state.ui_system, state.frame_input, state.assets);
+      editor::ui(
+        state.editor,
+        state.store,
+        state.ui_system,
+        state.frame_input,
+        state.assets,
+        state
+      );
     } break;
   }
 }

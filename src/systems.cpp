@@ -125,8 +125,10 @@ void system_open_gui(EntityStore& store, EntityId player_id, const Input& input)
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (action_state(input, Action::INTERACT).pressed() &&
-      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
+  if (
+    action_state(input, Action::INTERACT).pressed() &&
+    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
+  ) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
@@ -140,10 +142,12 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
-    if (action_state(input, Action::CLOSE_INV).pressed() ||
-        (gui_entity &&
-         !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
-        (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
+    if (
+      action_state(input, Action::CLOSE_INV).pressed() ||
+      (gui_entity &&
+       !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
+      (gui_entity && gui_entity->world != player_entity->world) || !gui_entity
+    ) {
       player->open_gui = NULL_ENTITY;
     }
   }
@@ -174,8 +178,9 @@ void system_hand_slot_interactions(
           slot.count += hand.count;
           hand = {};
         }
-      } else if (slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) &&
-                 hand) {
+      } else if (
+        slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) && hand
+      ) {
         swap_slots(slot, hand);
       } else if (slot && (slot.flags & ITEM_SLOT_OUTPUT) && !hand) {
         swap_slots(slot, hand);
@@ -191,8 +196,10 @@ void system_drop_items(EntityStore& store, EntityId player_id, const Input& inpu
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: not sure if lmb_pressed is the right keybind
-  if (input.lmb.pressed() && player->hand &&
-      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
+  if (
+    input.lmb.pressed() && player->hand &&
+    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
+  ) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
@@ -230,8 +237,10 @@ ItemSlotIdx system_inventory_uis(
   // different systems will handle them too
   // currently just have a different guis for
   // message receiver, storage/world_tunnel, assembler
-  if (player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
-      !is<Assembler>(store, player->open_gui)) {
+  if (
+    player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
+    !is<Assembler>(store, player->open_gui)
+  ) {
     auto* open_inv = get_inventory(store, player->open_gui);
     if (open_inv) {
       auto open_inv_hovered_slot = inventory_ui(
@@ -360,8 +369,8 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .sizing = {ui_sizing_fill(), ui_sizing_fit()}
-    }
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+     .sizing           = {ui_sizing_fill(), ui_sizing_fit()}}
   );
 
   return cancel_clicked;
@@ -1007,9 +1016,11 @@ void system_place_entity(
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: should check if im not hovering over an item slot
-  if (input.rmb.pressed() && player->hand &&
-      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
-      !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)) {
+  if (
+    input.rmb.pressed() && player->hand &&
+    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
+    !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)
+  ) {
     auto entity  = entity_from_item(player->hand.type);
     entity.pos   = grid_pos(input.mouse_pos);
     entity.world = player_entity->world;
@@ -1025,8 +1036,10 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (input.lmb.pressed() &&
-      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
+  if (
+    input.lmb.pressed() &&
+    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
+  ) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
@@ -1299,8 +1312,65 @@ void system_serialization(State& state, const std::filesystem::path& filepath) {
 }
 
 // TODO: not sure if this is a system
-void system_editor_ui(UI_System& ui_system) {
-  (void) ui_system;
+void system_editor_mode(EditorData& editor, EntityStore& store, const Input& input) {
+  const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
+  if (
+    input.rmb.pressed() &&
+    !get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world)
+  ) {
+    Entity entity = placeable;
+    entity.pos    = grid_pos(input.mouse_pos);
+    entity.world  = editor.current_world;
+    add_entity(store, entity);
+  }
+}
+
+// TODO: not sure if this is a system
+void system_editor_ui(
+  EditorData& editor,
+  UI_System& ui_system,
+  const Input& input,
+  const AssetManager& assets
+) {
+  auto layout = ui_layout_begin("editor ui", ui_system, input, {500, 500}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
+  {
+    ui_text(layout, "placeables:", 15, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      for (u32 i = 0; i < PLACEABLE.size(); ++i) {
+        const auto& placeable = PLACEABLE[i];
+        bool clicked{};
+        Color color = LIGHTGRAY;
+        if (i == editor.selected_placeable_idx) {
+          color = GRAY;
+        }
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+        {
+          const auto& texture = assets.textures[get_texture_type(placeable)];
+          ui_element_begin(layout, UI_AUTO_ID);
+          ui_element_end(
+            layout,
+            {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+             .texture = &texture}
+          );
+        }
+        ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+
+        if (clicked) {
+          editor.selected_placeable_idx = i;
+        }
+      }
+    }
+    ui_element_end(layout, {.padding = ui_padding_all(2), .child_gap = 2});
+  }
+  ui_element_end(
+    layout,
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+     .padding          = ui_padding_all(4),
+     .bg_color         = BLACK}
+  );
+  ui_layout_end(layout);
 }
 
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
@@ -1350,10 +1420,10 @@ void system_render(EntityStore& store, EntityId player_id, const AssetManager& a
           auto on_source_rect = rect_from_vec2x2({}, on_dims);
 
           Rectangle on_dest_rect = {
-            .x = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - on_dims.x) / 2.0f) +
-                 (on_dims.x * 0.5f),
-            .y = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - on_dims.y) / 2.0f) +
-                 (on_dims.y * 0.5f),
+            .x      = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - on_dims.x) / 2.0f) +
+                      (on_dims.x * 0.5f),
+            .y      = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - on_dims.y) / 2.0f) +
+                      (on_dims.y * 0.5f),
             .width  = on_dims.x * ON_CONVEYOR_SCALE,
             .height = on_dims.y * ON_CONVEYOR_SCALE,
           };

@@ -433,8 +433,10 @@ static void
 ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space, UI_Axis axis) {
   auto& elem   = layout.elements[idx];
   auto& config = elem.config.normal;
-  if (config.layout_direction == layout_direction_from_axis[axis] &&
-      ui_child_alignment_from_axis(config, axis) == UI_CHILD_ALIGNMENT_CENTER) {
+  if (
+    config.layout_direction == layout_direction_from_axis[axis] &&
+    ui_child_alignment_from_axis(config, axis) == UI_CHILD_ALIGNMENT_CENTER
+  ) {
     f32 adjust_value =
       (ui_dimension_from_axis(elem, axis) - ui_start_padding_from_axis(config, axis) -
        ui_end_padding_from_axis(config, axis) - used_space) *
@@ -576,33 +578,39 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0) {
           // (good enough for now tho)
           auto bg = config.bg_color != Color{} ? config.bg_color : WHITE;
 
-          layout.system->ui_cmds.push_back(UI_TextureCommand{
-            .pos             = child.pos,
-            .dims            = child.dimensions,
-            .texture         = config.texture,
-            .flip_vertically = config.flip_texture_vertically,
-            .tint            = bg,
-            .clip_rectangle  = {child.clip_rectangle},
-          });
+          layout.system->ui_cmds.push_back(
+            UI_TextureCommand{
+              .pos             = child.pos,
+              .dims            = child.dimensions,
+              .texture         = config.texture,
+              .flip_vertically = config.flip_texture_vertically,
+              .tint            = bg,
+              .clip_rectangle  = {child.clip_rectangle},
+            }
+          );
         } else {
-          layout.system->ui_cmds.push_back(UI_QuadCommand{
-            .pos            = child.pos,
-            .dims           = child.dimensions,
-            .corner_radius  = config.corner_radius,
-            .tint           = config.bg_color,
-            .clip_rectangle = {child.clip_rectangle},
-          });
+          layout.system->ui_cmds.push_back(
+            UI_QuadCommand{
+              .pos            = child.pos,
+              .dims           = child.dimensions,
+              .corner_radius  = config.corner_radius,
+              .tint           = config.bg_color,
+              .clip_rectangle = {child.clip_rectangle},
+            }
+          );
         }
       } break;
       case UI_ELEMENT_TEXT: {
         auto& config = child.config.text;
         auto& str    = layout.strings[config.string_idx];
-        layout.system->ui_cmds.push_back(UI_TextCommand{
-          .pos    = child.pos,
-          .string = str,
-          .size   = config.size,
-          .tint   = config.color,
-        });
+        layout.system->ui_cmds.push_back(
+          UI_TextCommand{
+            .pos    = child.pos,
+            .string = str,
+            .size   = config.size,
+            .tint   = config.color,
+          }
+        );
       } break;
     }
     ui_generate_render_cmds(layout, child_idx);
@@ -691,9 +699,10 @@ void ui_text(UI_Layout& layout, std::string_view text, f32 size, Color color = B
   layout.strings.push_back(std::string{text});
   layout.elements.push_back({
     .parent = layout._active_parent,
-    .config =
-      {.type = UI_ELEMENT_TEXT,
-       .text = {.string_idx = u32(layout.strings.size() - 1), .size = size, .color = color}},
+    .config = {
+      .type = UI_ELEMENT_TEXT,
+      .text = {.string_idx = u32(layout.strings.size() - 1), .size = size, .color = color}
+    },
   });
   set_first_child_or_next_sibling(layout);
 }
@@ -709,11 +718,11 @@ UI_Layout ui_layout_begin(
   ASSERT(id, "layouts cannot have auto ids");
   UI_IdInternal id_internal = std::hash<std::string_view>{}(std::string_view{id});
   UI_Layout layout          = {
-             .id             = id_internal,
-             .system         = &system,
-             .input          = &input,
-             .pos            = pos,
-             .max_dimensions = max_dimensions,
+    .id             = id_internal,
+    .system         = &system,
+    .input          = &input,
+    .pos            = pos,
+    .max_dimensions = max_dimensions,
   };
   ui_element_begin(layout, nullptr, {});
   return layout;
@@ -722,9 +731,10 @@ UI_Layout ui_layout_begin(
 void ui_layout_end(UI_Layout& layout) {
   ui_element_end(
     layout,
-    {.sizing =
-       {ui_sizing_fixed((u16) layout.max_dimensions.x),
-        ui_sizing_fixed((u16) layout.max_dimensions.y)}}
+    {.sizing = {
+       ui_sizing_fixed((u16) layout.max_dimensions.x),
+       ui_sizing_fixed((u16) layout.max_dimensions.y)
+     }}
   );
   ui_calculate_text_fit_fixed_sizing(layout);
   ui_calculate_fill_sizing(layout);
@@ -758,7 +768,9 @@ void ui_render(UI_System& system) {
         },
         [](const UI_TextureCommand& texture) {
           auto source_rect = rect_from_vec2x2({}, dims_from_texture(*texture.texture));
-          source_rect.height *= -1;
+          if (texture.flip_vertically) {
+            source_rect.height *= -1;
+          }
           auto dest_rect = rect_from_vec2x2(texture.pos, texture.dims);
 
           if (texture.clip_rectangle) {

@@ -158,6 +158,11 @@ enum class Mode {
 
 static constexpr vec2 MAINTENANCE_MINIGAME_DIMS = {256, 256};
 
+struct EditorData {
+  World current_world{};
+  u32 selected_placeable_idx{};
+};
+
 struct State {
   static constexpr u32 SERIALIZATION_VERSION = 1;
   Mode mode{};
@@ -188,6 +193,8 @@ struct State {
   RenderTexture maintenance_minigame_texture{};
 
   bool debug{};
+
+  EditorData editor{};
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(vec2, x, y);
@@ -621,16 +628,16 @@ KeyState get_key_state(Key key) {
   auto raylib_key = key_to_raylib_key(key);
   KeyState state{};
   state.down = IsKeyDown(raylib_key);
-  // TODO: this is kind of wrong
   if (IsKeyPressed(raylib_key)) {
     state.transition_count += 1;
   }
-  if (IsKeyReleased(MOUSE_BUTTON_LEFT)) {
-    state.transition_count += 1;
-  }
+  // if (IsKeyReleased(raylib_key)) {
+  //   state.transition_count += 1;
+  // }
   return state;
 }
 
+// TODO: not accounting for key release in transition_count
 // TODO: not sure whether the tick_input is fully correct
 void gather_input(State& state) {
   auto& input = state.frame_input;
@@ -643,36 +650,34 @@ void gather_input(State& state) {
   state.tick_input.mouse_scroll += input.mouse_scroll;
 
   input.lmb.down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-  // TODO: this is kind of wrong
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     input.lmb.transition_count += 1;
   }
-  if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-    input.lmb.transition_count += 1;
-  }
+  // if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+  //   input.lmb.transition_count += 1;
+  // }
 
   state.tick_input.lmb.down = state.tick_input.lmb.down || input.lmb.down;
   state.tick_input.lmb.transition_count += input.lmb.transition_count;
-  // NOTE: if i released the mouse button this tick set the ticks lmb down to false
-  if (!input.lmb.down && input.lmb.transition_count != 0) {
-    state.tick_input.lmb.down = false;
-  }
+  // NOTE: if i released the mouse button this tick set the ticks lmb.down to false
+  // if (!input.lmb.down && input.lmb.transition_count == 1) {
+  //   state.tick_input.lmb.down = false;
+  // }
 
   input.rmb.down = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
-  // TODO: this is kind of wrong
   if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
     input.rmb.transition_count += 1;
   }
-  if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
-    input.rmb.transition_count += 1;
-  }
+  // if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+  //   input.rmb.transition_count += 1;
+  // }
 
   state.tick_input.rmb.down = state.tick_input.rmb.down || input.rmb.down;
   state.tick_input.rmb.transition_count += input.rmb.transition_count;
-  // NOTE: if i released the mouse button this tick set the ticks rmb down to false
-  if (!input.rmb.down && input.rmb.transition_count != 0) {
-    state.tick_input.rmb.down = false;
-  }
+  // NOTE: if i released the mouse button this tick set the ticks rmb.down to false
+  // if (!input.rmb.down && input.rmb.transition_count == 1) {
+  //   state.tick_input.rmb.down = false;
+  // }
 
   for (u32 i = 0; i < input.keys.size(); ++i) {
     auto key        = Key(i);
@@ -685,42 +690,66 @@ void gather_input(State& state) {
     auto& frame_state = input.keys[key];
     tick_state.down   = tick_state.down || frame_state.down;
     tick_state.transition_count += frame_state.transition_count;
+    // NOTE: if i released the key this tick set the ticks key.down to false
+    // if (!frame_state.down || frame_state.transition_count == 1) {
+    //   tick_state.down = false;
+    // }
   }
 }
 
 void update_tick(State& state, f32 dt) {
-  // TODO: i dont think this belongs in a system, but maybe?
-  if (action_state(state.tick_input, Action::ROTATE).pressed()) {
-    state.current_place_rotation =
-      Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
+  if (action_state(state.tick_input, Action::TOGGLE_EDITOR_MODE).pressed()) {
+    if (state.mode == Mode::EDITOR) {
+      state.mode = Mode::GAME;
+    } else {
+      state.mode = Mode::EDITOR;
+    }
   }
 
-  system_update_time(state.minutes, state.minutes_accumulator, dt);
-  system_move_player(state.store, state.player_id, state.tick_input);
-  system_open_gui(state.store, state.player_id, state.tick_input);
-  system_close_gui(state.store, state.player_id, state.tick_input);
-  system_hand_slot_interactions(
-    state.store,
-    state.player_id,
-    state.frame.hovered_slot,
-    state.tick_input
-  );
-  system_drop_items(state.store, state.player_id, state.tick_input);
-  system_place_entity(state.store, state.player_id, state.tick_input, state.current_place_rotation);
-  system_remove_entity(state.store, state.player_id, state.tick_input);
-  system_pickup_item(state.store, state.player_id);
-  system_move_items(state.store, dt);
-  system_tunnel_through_worlds(state.store, state.player_id);
-  system_transfer_resource_messages(
-    state.store,
-    state.resource_message_receiver_id,
-    state.resource_message_queue,
-    state.minutes
-  );
-  system_progress_recipes(state.store, dt);
-  system_apply_maintenance(state.store);
-  system_update_maintenance_minigames(state.store, state.tick_input, dt);
-  system_serialization(state, "save_file.json");
+  switch (state.mode) {
+    case Mode::GAME: {
+      // TODO: i dont think this belongs in a system, but maybe?
+      if (action_state(state.tick_input, Action::ROTATE).pressed()) {
+        state.current_place_rotation =
+          Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
+      }
+
+      system_update_time(state.minutes, state.minutes_accumulator, dt);
+      system_move_player(state.store, state.player_id, state.tick_input);
+      system_open_gui(state.store, state.player_id, state.tick_input);
+      system_close_gui(state.store, state.player_id, state.tick_input);
+      system_hand_slot_interactions(
+        state.store,
+        state.player_id,
+        state.frame.hovered_slot,
+        state.tick_input
+      );
+      system_drop_items(state.store, state.player_id, state.tick_input);
+      system_place_entity(
+        state.store,
+        state.player_id,
+        state.tick_input,
+        state.current_place_rotation
+      );
+      system_remove_entity(state.store, state.player_id, state.tick_input);
+      system_pickup_item(state.store, state.player_id);
+      system_move_items(state.store, dt);
+      system_tunnel_through_worlds(state.store, state.player_id);
+      system_transfer_resource_messages(
+        state.store,
+        state.resource_message_receiver_id,
+        state.resource_message_queue,
+        state.minutes
+      );
+      system_progress_recipes(state.store, dt);
+      system_apply_maintenance(state.store);
+      system_update_maintenance_minigames(state.store, state.tick_input, dt);
+      system_serialization(state, "save_file.json");
+    } break;
+    case Mode::EDITOR: {
+      system_editor_mode(state.editor, state.store, state.tick_input);
+    } break;
+  }
 
   flush(state.store);
   clear_event_bus(state.store);
@@ -731,47 +760,54 @@ void update_frame(State& state) {
   state.frame = {};
   ui_system_update(state.ui_system);
 
-  state.frame.hovered_slot = system_inventory_uis(
-    state.ui_system,
-    state.assets,
-    state.frame_input,
-    state.store,
-    state.player_id
-  );
+  switch (state.mode) {
+    case Mode::GAME: {
+      state.frame.hovered_slot = system_inventory_uis(
+        state.ui_system,
+        state.assets,
+        state.frame_input,
+        state.store,
+        state.player_id
+      );
 
-  system_message_sender_ui(
-    state.ui_system,
-    state.maintenance_minigame_texture,
-    state.frame_input,
-    state.assets,
-    state.store,
-    state.player_id,
-    state.resource_message_queue,
-    state.minutes
-  );
-  auto receiver_hovered_slot = system_message_receiver_ui(
-    state.ui_system,
-    state.maintenance_minigame_texture,
-    state.frame_input,
-    state.assets,
-    state.store,
-    state.player_id,
-    state.resource_message_queue
-  );
-  if (receiver_hovered_slot.entity) {
-    state.frame.hovered_slot = receiver_hovered_slot;
-  }
+      system_message_sender_ui(
+        state.ui_system,
+        state.maintenance_minigame_texture,
+        state.frame_input,
+        state.assets,
+        state.store,
+        state.player_id,
+        state.resource_message_queue,
+        state.minutes
+      );
+      auto receiver_hovered_slot = system_message_receiver_ui(
+        state.ui_system,
+        state.maintenance_minigame_texture,
+        state.frame_input,
+        state.assets,
+        state.store,
+        state.player_id,
+        state.resource_message_queue
+      );
+      if (receiver_hovered_slot.entity) {
+        state.frame.hovered_slot = receiver_hovered_slot;
+      }
 
-  auto assembler_hovered_slot = system_assembler_ui(
-    state.ui_system,
-    state.maintenance_minigame_texture,
-    state.frame_input,
-    state.assets,
-    state.store,
-    state.player_id
-  );
-  if (assembler_hovered_slot.entity) {
-    state.frame.hovered_slot = assembler_hovered_slot;
+      auto assembler_hovered_slot = system_assembler_ui(
+        state.ui_system,
+        state.maintenance_minigame_texture,
+        state.frame_input,
+        state.assets,
+        state.store,
+        state.player_id
+      );
+      if (assembler_hovered_slot.entity) {
+        state.frame.hovered_slot = assembler_hovered_slot;
+      }
+    } break;
+    case Mode::EDITOR: {
+      system_editor_ui(state.editor, state.ui_system, state.frame_input, state.assets);
+    } break;
   }
 }
 

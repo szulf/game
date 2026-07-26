@@ -33,10 +33,22 @@
       - [x] calibration mini game
         - get a random range and a random value and adjust the value so it fits into that range
   - [ ] fixing robot
-- [ ] map editor
 - [x] serialization
   - [ ] custom json library
     - currently using an external one just to speed up development
+- [ ] map editor
+  - [x] placing
+  - [ ] destroying
+  - [ ] editing data
+  - [ ] copying
+  - [ ] save to a file
+    - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
+  - [ ] switch between worlds
+  - [ ] undo/redo (???)
+  - [ ] validation of the current save
+    - one player
+    - one resource message receiver
+    - world tunnels go both ways
 - [ ] flashlight and basic lighting system
 
 ### after alpha demo:
@@ -62,6 +74,8 @@
 - [ ] sounds
 - [ ] resizable window
 - [ ] proper positions for ui
+- [ ] proper game camera
+  - game world should not always take up one screen
 - [ ] code cleanup (?)
 
 # game design:

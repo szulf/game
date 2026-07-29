@@ -11,6 +11,13 @@ enum TextureType {
   TEXTURE_MESSAGE_RECEIVER,
   TEXTURE_ASSEMBLER,
   TEXTURE_ASSEMBLER_ITEM,
+  TEXTURE_COPPER_ITEM,
+  TEXTURE_PLASTIC_ITEM,
+  TEXTURE_ALUMINIUM_ITEM,
+  TEXTURE_COPPER_WIRE_ITEM,
+  TEXTURE_BASIC_CIRCUIT_BOARD_ITEM,
+  TEXTURE_ANTENNA_ITEM,
+  TEXTURE_COMMUNICATION_COMPONENT_ITEM,
 
   TEXTURE_COUNT,
 };
@@ -41,6 +48,20 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/assembler.png";
     case TEXTURE_ASSEMBLER_ITEM:
       return "assets/assembler_item.png";
+    case TEXTURE_COPPER_ITEM:
+      return "assets/copper_item.png";
+    case TEXTURE_PLASTIC_ITEM:
+      return "assets/plastic_item.png";
+    case TEXTURE_ALUMINIUM_ITEM:
+      return "assets/aluminium_item.png";
+    case TEXTURE_COPPER_WIRE_ITEM:
+      return "assets/copper_wire_item.png";
+    case TEXTURE_BASIC_CIRCUIT_BOARD_ITEM:
+      return "assets/basic_circuit_board_item.png";
+    case TEXTURE_ANTENNA_ITEM:
+      return "assets/antenna_item.png";
+    case TEXTURE_COMMUNICATION_COMPONENT_ITEM:
+      return "assets/communication_component_item.png";
     case TEXTURE_COUNT:
       break;
   }

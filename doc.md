@@ -47,7 +47,7 @@
   - [ ] validation of the current save
     - one player
     - one resource message receiver
-    - world tunnels go both ways
+    - 1-1 world tunnels ratio
   - [ ] undo/redo (???)
 - [ ] flashlight and basic lighting system
 
@@ -78,6 +78,8 @@
 - [ ] proper game camera
   - game world should not always take up one screen
 - [ ] code cleanup (?)
+- [ ] different textures when maintenance is needed (?)
+- [ ] texture atlas
 
 # game design:
 
@@ -124,6 +126,8 @@ or maybe the robots will use the same network as the message automation to look 
 the game really boils down to 6 parts
 
 1. fixing the message sending system
+   - fixing both the sender and the receiver takes the same type of item
+   - some kind of communication component?
 2. fixing the lights
 3. fixing the power
 4. fixing the point the space station is there at all (maybe some mining thingy?)

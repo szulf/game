@@ -5,6 +5,9 @@ void update(EditorData& editor, EntityStore& store, const Input& input) {
     get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world);
 
   if (input.lmb.pressed() && entity_at_mouse_pos) {
+    if (entity_at_mouse_pos->id == editor.selected_entity_id) {
+      editor.selected_entity_id = {};
+    }
     remove_entity(store, entity_at_mouse_pos->id);
   }
 

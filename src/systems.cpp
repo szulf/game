@@ -125,10 +125,8 @@ void system_open_gui(EntityStore& store, EntityId player_id, const Input& input)
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (
-    action_state(input, Action::INTERACT).pressed() &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
-  ) {
+  if (action_state(input, Action::INTERACT).pressed() &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
@@ -142,12 +140,10 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
-    if (
-      action_state(input, Action::CLOSE_INV).pressed() ||
-      (gui_entity &&
-       !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
-      (gui_entity && gui_entity->world != player_entity->world) || !gui_entity
-    ) {
+    if (action_state(input, Action::CLOSE_INV).pressed() ||
+        (gui_entity &&
+         !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
+        (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
       player->open_gui = NULL_ENTITY;
     }
   }
@@ -178,9 +174,8 @@ void system_hand_slot_interactions(
           slot.count += hand.count;
           hand = {};
         }
-      } else if (
-        slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) && hand
-      ) {
+      } else if (slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) &&
+                 hand) {
         swap_slots(slot, hand);
       } else if (slot && (slot.flags & ITEM_SLOT_OUTPUT) && !hand) {
         swap_slots(slot, hand);
@@ -196,10 +191,8 @@ void system_drop_items(EntityStore& store, EntityId player_id, const Input& inpu
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: not sure if lmb_pressed is the right keybind
-  if (
-    input.lmb.pressed() && player->hand &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
-  ) {
+  if (input.lmb.pressed() && player->hand &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
@@ -237,10 +230,8 @@ ItemSlotIdx system_inventory_uis(
   // different systems will handle them too
   // currently just have a different guis for
   // message receiver, storage/world_tunnel, assembler
-  if (
-    player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
-    !is<Assembler>(store, player->open_gui)
-  ) {
+  if (player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
+      !is<Assembler>(store, player->open_gui)) {
     auto* open_inv = get_inventory(store, player->open_gui);
     if (open_inv) {
       auto open_inv_hovered_slot = inventory_ui(
@@ -369,8 +360,8 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .sizing           = {ui_sizing_fill(), ui_sizing_fit()}}
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .sizing = {ui_sizing_fill(), ui_sizing_fit()}
+    }
   );
 
   return cancel_clicked;
@@ -1016,19 +1007,19 @@ void system_place_entity(
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: should check if im not hovering over an item slot
-  if (
-    input.rmb.pressed() && player->hand &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
-    !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)
-  ) {
-    auto entity  = entity_from_item(player->hand.type);
-    entity.pos   = grid_pos(input.mouse_pos);
-    entity.world = player_entity->world;
-    if (auto* rotation = get_rotation(entity)) {
-      *rotation = place_rotation;
+  if (input.rmb.pressed() && player->hand &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
+      !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)) {
+    auto entity = entity_from_item(player->hand.type);
+    if (entity) {
+      entity->pos   = grid_pos(input.mouse_pos);
+      entity->world = player_entity->world;
+      if (auto* rotation = get_rotation(*entity)) {
+        *rotation = place_rotation;
+      }
+      add_entity(store, *entity);
+      --player->hand.count;
     }
-    add_entity(store, entity);
-    --player->hand.count;
   }
 }
 
@@ -1036,10 +1027,8 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (
-    input.lmb.pressed() &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
-  ) {
+  if (input.lmb.pressed() &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);

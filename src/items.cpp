@@ -1,8 +1,20 @@
+// TODO: remove which items are requestable from here, after implementing that
+// TODO: custom serialization for this (to avoid ordering change bugs)
 enum ItemType {
   ITEM_BLOCK,
   ITEM_STORAGE,
   ITEM_CONVEYOR,
   ITEM_ASSEMBLER,
+
+  // NOTE: requestable
+  ITEM_COPPER,
+  ITEM_PLASTIC,
+  ITEM_ALUMINIUM,
+
+  ITEM_COPPER_WIRE,
+  ITEM_BASIC_CIRCUIT_BOARD,
+  ITEM_ANTENNA,
+  ITEM_COMMUNICATION_COMPONENT,
 
   ITEM_COUNT,
 };
@@ -53,6 +65,21 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_CONVEYOR_ITEM;
     case ITEM_ASSEMBLER:
       return TEXTURE_ASSEMBLER_ITEM;
+    case ITEM_COPPER:
+      return TEXTURE_COPPER_ITEM;
+    case ITEM_PLASTIC:
+      return TEXTURE_PLASTIC_ITEM;
+    case ITEM_ALUMINIUM:
+      return TEXTURE_ALUMINIUM_ITEM;
+    case ITEM_COPPER_WIRE:
+      return TEXTURE_COPPER_WIRE_ITEM;
+    case ITEM_BASIC_CIRCUIT_BOARD:
+      return TEXTURE_BASIC_CIRCUIT_BOARD_ITEM;
+    case ITEM_ANTENNA:
+      return TEXTURE_ANTENNA_ITEM;
+    case ITEM_COMMUNICATION_COMPONENT:
+      return TEXTURE_COMMUNICATION_COMPONENT_ITEM;
+
     case ITEM_COUNT:
       break;
   }
@@ -69,6 +96,20 @@ std::string_view get_item_name(ItemType item) {
       return "Conveyor";
     case ITEM_ASSEMBLER:
       return "Assembler";
+    case ITEM_COPPER:
+      return "Copper";
+    case ITEM_PLASTIC:
+      return "Plastic";
+    case ITEM_ALUMINIUM:
+      return "Aluminium";
+    case ITEM_COPPER_WIRE:
+      return "Copper Wire";
+    case ITEM_BASIC_CIRCUIT_BOARD:
+      return "Basic Circuit Board";
+    case ITEM_ANTENNA:
+      return "Antenna";
+    case ITEM_COMMUNICATION_COMPONENT:
+      return "Communication Component";
     case ITEM_COUNT:
       break;
   }

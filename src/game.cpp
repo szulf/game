@@ -880,76 +880,79 @@ void render(State& state) {
       {
         auto* player = get_data<Player>(state.store, state.player_id);
         ASSERT_NO_MSG(player);
-        if (player->hand && rotatable(player->hand.type)) {
-          static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
+        if (player->hand) {
+          auto rotates = rotatable(player->hand.type);
+          if (rotates && *rotates) {
+            static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
 
-          vec2 main_start_pos =
-            (grid_pos(state.frame_input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
-          vec2 main_end_pos = main_start_pos;
+            vec2 main_start_pos =
+              (grid_pos(state.frame_input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
+            vec2 main_end_pos = main_start_pos;
 
-          switch (state.current_place_rotation) {
-            case Rotation::UP:
-              main_start_pos.y -= GRID_DIMS.y / 3.0f;
-              main_end_pos.y += GRID_DIMS.y / 3.0f;
-              break;
-            case Rotation::DOWN:
-              main_start_pos.y += GRID_DIMS.y / 3.0f;
-              main_end_pos.y -= GRID_DIMS.y / 3.0f;
-              break;
-            case Rotation::RIGHT:
-              main_start_pos.x += GRID_DIMS.x / 3.0f;
-              main_end_pos.x -= GRID_DIMS.x / 3.0f;
-              break;
-            case Rotation::LEFT:
-              main_start_pos.x -= GRID_DIMS.x / 3.0f;
-              main_end_pos.x += GRID_DIMS.x / 3.0f;
-              break;
-            case Rotation::COUNT:
-              ASSERT(false, "invalid rotation: Rotation::COUNT");
-              break;
+            switch (state.current_place_rotation) {
+              case Rotation::UP:
+                main_start_pos.y -= GRID_DIMS.y / 3.0f;
+                main_end_pos.y += GRID_DIMS.y / 3.0f;
+                break;
+              case Rotation::DOWN:
+                main_start_pos.y += GRID_DIMS.y / 3.0f;
+                main_end_pos.y -= GRID_DIMS.y / 3.0f;
+                break;
+              case Rotation::RIGHT:
+                main_start_pos.x += GRID_DIMS.x / 3.0f;
+                main_end_pos.x -= GRID_DIMS.x / 3.0f;
+                break;
+              case Rotation::LEFT:
+                main_start_pos.x -= GRID_DIMS.x / 3.0f;
+                main_end_pos.x += GRID_DIMS.x / 3.0f;
+                break;
+              case Rotation::COUNT:
+                ASSERT(false, "invalid rotation: Rotation::COUNT");
+                break;
+            }
+
+            auto& hands_start_pos = main_start_pos;
+            vec2 left_end_pos     = hands_start_pos;
+            vec2 right_end_pos    = hands_start_pos;
+
+            switch (state.current_place_rotation) {
+              case Rotation::UP:
+                right_end_pos += vec2{-(GRID_DIMS.x / 4.0f), GRID_DIMS.y / 4.0f};
+                left_end_pos += vec2{GRID_DIMS.x / 4.0f, GRID_DIMS.y / 4.0f};
+                break;
+              case Rotation::DOWN:
+                right_end_pos += vec2{GRID_DIMS.x / 4.0f, -(GRID_DIMS.y / 4.0f)};
+                left_end_pos += vec2{-(GRID_DIMS.x / 4.0f), -(GRID_DIMS.y / 4.0f)};
+                break;
+              case Rotation::RIGHT:
+                right_end_pos += vec2{-(GRID_DIMS.y / 4.0f), GRID_DIMS.x / 4.0f};
+                left_end_pos += vec2{-(GRID_DIMS.y / 4.0f), -(GRID_DIMS.x / 4.0f)};
+                break;
+              case Rotation::LEFT:
+                right_end_pos += vec2{GRID_DIMS.y / 4.0f, -(GRID_DIMS.x / 4.0f)};
+                left_end_pos += vec2{GRID_DIMS.y / 4.0f, GRID_DIMS.x / 4.0f};
+                break;
+              case Rotation::COUNT:
+                ASSERT(false, "invalid rotation: Rotation::COUNT");
+                break;
+            }
+
+            DrawLineV(
+              vector2_from_vec2(main_start_pos),
+              vector2_from_vec2(main_end_pos),
+              ARROW_COLOR
+            );
+            DrawLineV(
+              vector2_from_vec2(hands_start_pos),
+              vector2_from_vec2(right_end_pos),
+              ARROW_COLOR
+            );
+            DrawLineV(
+              vector2_from_vec2(hands_start_pos),
+              vector2_from_vec2(left_end_pos),
+              ARROW_COLOR
+            );
           }
-
-          auto& hands_start_pos = main_start_pos;
-          vec2 left_end_pos     = hands_start_pos;
-          vec2 right_end_pos    = hands_start_pos;
-
-          switch (state.current_place_rotation) {
-            case Rotation::UP:
-              right_end_pos += vec2{-(GRID_DIMS.x / 4.0f), GRID_DIMS.y / 4.0f};
-              left_end_pos += vec2{GRID_DIMS.x / 4.0f, GRID_DIMS.y / 4.0f};
-              break;
-            case Rotation::DOWN:
-              right_end_pos += vec2{GRID_DIMS.x / 4.0f, -(GRID_DIMS.y / 4.0f)};
-              left_end_pos += vec2{-(GRID_DIMS.x / 4.0f), -(GRID_DIMS.y / 4.0f)};
-              break;
-            case Rotation::RIGHT:
-              right_end_pos += vec2{-(GRID_DIMS.y / 4.0f), GRID_DIMS.x / 4.0f};
-              left_end_pos += vec2{-(GRID_DIMS.y / 4.0f), -(GRID_DIMS.x / 4.0f)};
-              break;
-            case Rotation::LEFT:
-              right_end_pos += vec2{GRID_DIMS.y / 4.0f, -(GRID_DIMS.x / 4.0f)};
-              left_end_pos += vec2{GRID_DIMS.y / 4.0f, GRID_DIMS.x / 4.0f};
-              break;
-            case Rotation::COUNT:
-              ASSERT(false, "invalid rotation: Rotation::COUNT");
-              break;
-          }
-
-          DrawLineV(
-            vector2_from_vec2(main_start_pos),
-            vector2_from_vec2(main_end_pos),
-            ARROW_COLOR
-          );
-          DrawLineV(
-            vector2_from_vec2(hands_start_pos),
-            vector2_from_vec2(right_end_pos),
-            ARROW_COLOR
-          );
-          DrawLineV(
-            vector2_from_vec2(hands_start_pos),
-            vector2_from_vec2(left_end_pos),
-            ARROW_COLOR
-          );
         }
       }
     } break;

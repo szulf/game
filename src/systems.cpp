@@ -10,7 +10,8 @@ static bool pos_in_radius(const vec2& pos, const vec2& start_pos, f32 radius) {
 // TODO: this is bad now, the text is rendered on top of the texture, starting at the textures top
 // left corner, it should start at the cells top left corner instead, idk if its a limitation of the
 // ui library, or i just dont know how to do it, but yeah
-static bool item_slot_icon_ui(AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
+static bool
+item_slot_icon_ui(const AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
   bool hovered = false;
   if (item_slot) {
     auto& texture = assets.textures[get_texture_type(item_slot.type)];
@@ -28,23 +29,12 @@ static bool item_slot_icon_ui(AssetManager& assets, UI_Layout& layout, const Ite
   return hovered;
 }
 
-static bool item_slot_ui(AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
+// TODO: render if the slot is input/output only
+static bool item_slot_ui(const AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
   bool hovered = false;
 
   ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
   {
-    // TODO: this is also bad, same reasoning as in item_slot_icon_ui()
-#if 0
-        bool in = inv[slot_idx].flags == ITEM_SLOT_INPUT;
-        if (in) {
-          ui_text(layout, "IN ", 10, BLUE);
-        }
-        bool out = inv[slot_idx].flags == ITEM_SLOT_OUTPUT;
-        if (out) {
-          ui_text(layout, "OUT ", 10, ORANGE);
-        }
-#endif
-
     item_slot_icon_ui(assets, layout, item_slot);
   }
   ui_element_end(
@@ -58,25 +48,24 @@ static bool item_slot_ui(AssetManager& assets, UI_Layout& layout, const ItemSlot
 }
 
 static ItemSlotIdx inventory_ui(
-  AssetManager& assets,
-  UI_Id layout_id,
-  UI_System& ui_system,
-  const Input& input,
-  const vec2& pos,
+  UI_Layout& layout,
+  const AssetManager& assets,
   EntityId entity_id,
-  const std::vector<ItemSlot>& inv
+  std::span<const ItemSlot> inv
 ) {
   static constexpr i32 ROW_SIZE = 4;
-
+  u32 row_count = inv.size() % 4 == 0 ? inv.size() / ROW_SIZE : (inv.size() / ROW_SIZE) + 1;
   ItemSlotIdx hovered_slot{};
-  auto layout = ui_layout_begin(layout_id, ui_system, input, pos, WINDOW_DIMS);
 
   ui_element_begin(layout, UI_AUTO_ID);
-  for (u32 i = 0; i < inv.size() / ROW_SIZE; ++i) {
+  for (u32 i = 0; i < row_count; ++i) {
     ui_element_begin(layout, UI_AUTO_ID);
     for (u32 j = 0; j < ROW_SIZE; ++j) {
       auto slot_idx = i * ROW_SIZE + j;
-      bool hovered  = item_slot_ui(assets, layout, inv[slot_idx]);
+      if (slot_idx >= inv.size()) {
+        break;
+      }
+      bool hovered = item_slot_ui(assets, layout, inv[slot_idx]);
       if (hovered) {
         hovered_slot.entity   = entity_id;
         hovered_slot.slot_idx = slot_idx;
@@ -86,7 +75,6 @@ static ItemSlotIdx inventory_ui(
   }
   ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .child_gap = 2});
 
-  ui_layout_end(layout);
   return hovered_slot;
 }
 
@@ -158,12 +146,13 @@ void system_hand_slot_interactions(
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (hovered_slot.entity && input.lmb.pressed()) {
+  if (hovered_slot && input.lmb.pressed()) {
     auto* hovered_inv = get_inventory(store, hovered_slot.entity);
     if (hovered_inv) {
       auto& slot = (*hovered_inv)[hovered_slot.slot_idx];
       // NOTE: im not checking the flags for the hand slot,
       // i dont see myself ever changing the flags on the player hand
+      // (could just assert that they are input & output)
       auto& hand = player->hand;
 
       if (slot && (slot.flags & ITEM_SLOT_INPUT) && hand && slot.type == hand.type) {
@@ -209,22 +198,17 @@ void system_drop_items(EntityStore& store, EntityId player_id, const Input& inpu
 // TODO: split into multiple systems
 ItemSlotIdx system_inventory_uis(
   UI_System& ui_system,
-  AssetManager& assets,
+  const AssetManager& assets,
   const Input& input,
   EntityStore& store,
   EntityId player_id
 ) {
   auto* player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
-  auto hovered_slot = inventory_ui(
-    assets,
-    "player inventory",
-    ui_system,
-    input,
-    {10, 580},
-    player_id,
-    player->inventory
-  );
+  auto player_inv_layout =
+    ui_layout_begin("player inventory", ui_system, input, {10, 580}, WINDOW_DIMS);
+  auto hovered_slot = inventory_ui(player_inv_layout, assets, player_id, player->inventory);
+  ui_layout_end(player_inv_layout);
 
   // TODO: will want a different gui for all gui types
   // different systems will handle them too
@@ -234,16 +218,12 @@ ItemSlotIdx system_inventory_uis(
       !is<Assembler>(store, player->open_gui)) {
     auto* open_inv = get_inventory(store, player->open_gui);
     if (open_inv) {
-      auto open_inv_hovered_slot = inventory_ui(
-        assets,
-        "open inventory",
-        ui_system,
-        input,
-        {10, 300},
-        player->open_gui,
-        *open_inv
-      );
-      if (open_inv_hovered_slot.entity) {
+      auto open_inv_layout =
+        ui_layout_begin("open inventory", ui_system, input, {10, 300}, WINDOW_DIMS);
+      auto open_inv_hovered_slot =
+        inventory_ui(open_inv_layout, assets, player->open_gui, *open_inv);
+      ui_layout_end(open_inv_layout);
+      if (open_inv_hovered_slot) {
         hovered_slot = open_inv_hovered_slot;
       }
     }

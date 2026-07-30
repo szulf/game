@@ -24,134 +24,232 @@ void update(EditorData& editor, EntityStore& store, const Input& input) {
   }
 }
 
-void entity_data_edit_ui(UI_Layout&, Block&) {}
-
-void entity_data_edit_ui(UI_Layout&, Player&) {}
-
-void entity_data_edit_ui(UI_Layout&, Storage&) {}
-
-void entity_data_edit_ui(UI_Layout& layout, Conveyor& conveyor) {
-  bool rotation_clicked{};
+void rotation_data_edit_ui(UI_Layout& layout, Entity& entity) {
+  auto* rotation = get_rotation(entity);
+  ASSERT(rotation, "entity has no rotation to edit");
+  bool clicked{};
 
   ui_element_begin(layout, UI_AUTO_ID);
   {
     ui_text(layout, "rotation: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &rotation_clicked});
+    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
     {
-      ui_text(layout, direction_to_string(conveyor.rotation), 20, BLACK);
+      ui_text(layout, direction_to_string(*rotation), 20, BLACK);
     }
     ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
   ui_element_end(layout, {});
 
-  if (rotation_clicked) {
-    conveyor.rotation = Rotation((i32(conveyor.rotation) + 1) % i32(Rotation::COUNT));
+  if (clicked) {
+    *rotation = Rotation((i32(*rotation) + 1) % i32(Rotation::COUNT));
   }
 }
 
-void entity_data_edit_ui(UI_Layout&, Item&) {}
-
-void entity_data_edit_ui(UI_Layout& layout, WorldTunnel& tunnel) {
-  bool destination_clicked{};
-
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "destination: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &destination_clicked});
-    {
-      ui_text(layout, world_to_string(tunnel.to), 20, BLACK);
-    }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
-  }
-  ui_element_end(layout, {});
-
-  if (destination_clicked) {
-    tunnel.to = World((i32(tunnel.to) + 1) % i32(World::COUNT));
-  }
-}
-
-template <typename T>
-void rotate_maintenace(Maintenance& maintenance) {
+void rotate_maintenace(
+  Maintenance& maintenance,
+  std::span<const Maintenance> possible_maintenances
+) {
   if (std::holds_alternative<std::monostate>(maintenance)) {
-    maintenance = T::POSSIBLE_MAINTENANCE[0];
+    maintenance = possible_maintenances[0];
   } else {
-    for (u32 i = 0; i < T::POSSIBLE_MAINTENANCE.size(); ++i) {
-      const auto& possible_maintenance = T::POSSIBLE_MAINTENANCE[i];
-      if (i == T::POSSIBLE_MAINTENANCE.size() - 1) {
+    for (u32 i = 0; i < possible_maintenances.size(); ++i) {
+      const auto& possible_maintenance = possible_maintenances[i];
+      if (i == possible_maintenances.size() - 1) {
         maintenance = std::monostate{};
         break;
       } else if (maintenance.index() == possible_maintenance.index()) {
-        maintenance = T::POSSIBLE_MAINTENANCE[i + 1];
+        maintenance = possible_maintenances[i + 1];
         break;
       }
     }
   }
 }
 
-void entity_data_edit_ui(UI_Layout& layout, ResourceMessageSender& sender) {
-  bool maintenance_clicked{};
+void maintenance_data_edit_ui(UI_Layout& layout, Entity& entity) {
+  auto [maintenance, possible_maintenance] = get_maintenance(entity);
+  ASSERT(maintenance, "entity has no maintenance to edit");
+  bool clicked{};
 
   ui_element_begin(layout, UI_AUTO_ID);
   {
     ui_text(layout, "maintenance: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &maintenance_clicked});
+    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
     {
-      ui_text(layout, maintenance_name(sender.maintenance), 20, BLACK);
+      ui_text(layout, maintenance_name(*maintenance), 20, BLACK);
     }
     ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
   ui_element_end(layout, {});
 
-  if (maintenance_clicked) {
-    rotate_maintenace<ResourceMessageSender>(sender.maintenance);
+  if (clicked) {
+    rotate_maintenace(*maintenance, possible_maintenance);
   }
 }
 
-void entity_data_edit_ui(UI_Layout& layout, ResourceMessageReceiver& receiver) {
-  bool maintenance_clicked{};
+void inventory_data_edit_ui(
+  EditorData& editor,
+  UI_Layout& layout,
+  const AssetManager& assets,
+  const Input& input,
+  Entity& entity
+) {
+  auto* inventory = get_inventory(entity);
+  ASSERT(inventory, "entity has no inventory to edit");
+
+  auto hovered_slot = inventory_ui(layout, assets, entity.id, *inventory);
+  // TODO: this is kind of bad, i should get the information about whether
+  // it was clicked or not from the inventory_ui function
+  // (and this is not the only place im doing it this way)
+  if (input.lmb.pressed() && hovered_slot) {
+    editor.selected_inventory_edit_slot = hovered_slot;
+  }
+
+  if (editor.selected_inventory_edit_slot.entity == entity.id) {
+    auto& selected_slot = (*inventory)[editor.selected_inventory_edit_slot.slot_idx];
+
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_text(layout, "selected inventory slot:", 20, WHITE);
+
+      ui_text(layout, "item type:", 15, WHITE);
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        for (u32 i = 0; i < ITEM_COUNT; ++i) {
+          auto item_type = ItemType(i);
+          bool clicked{};
+          Color color = LIGHTGRAY;
+          if (selected_slot.type == item_type) {
+            color = GRAY;
+          }
+
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+          {
+            const auto& texture = assets.textures[get_texture_type(item_type)];
+            ui_element_begin(layout, UI_AUTO_ID);
+            ui_element_end(
+              layout,
+              {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+               .texture = &texture}
+            );
+          }
+          ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+
+          if (clicked) {
+            selected_slot.type = item_type;
+          }
+        }
+      }
+      ui_element_end(layout, {.padding = ui_padding_all(2), .child_gap = 2});
+
+      ui_text(layout, "count:", 15, WHITE);
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        bool dec_clicked{};
+        bool inc_clicked{};
+
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &dec_clicked});
+        ui_text(layout, "-", 10, BLACK);
+        ui_element_end(
+          layout,
+          {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+           .bg_color        = LIGHTGRAY}
+        );
+
+        ui_text(layout, std::format("{}", selected_slot.count), 15, WHITE);
+
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &inc_clicked});
+        ui_text(layout, "+", 10, BLACK);
+        ui_element_end(
+          layout,
+          {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+           .bg_color        = LIGHTGRAY}
+        );
+
+        if (dec_clicked) {
+          --selected_slot.count;
+        }
+        if (inc_clicked) {
+          ++selected_slot.count;
+        }
+      }
+      ui_element_end(layout, {.child_gap = 4});
+
+      ui_text(layout, "flags:", 15, WHITE);
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        struct FlagsUiData {
+          std::string_view text{};
+          ItemSlotFlags flags{};
+        };
+        static constexpr std::array FLAGS_UI_DATA = std::to_array<FlagsUiData>({
+          {.text = "none", .flags = 0},
+          {.text = "in", .flags = ITEM_SLOT_INPUT},
+          {.text = "out", .flags = ITEM_SLOT_OUTPUT},
+          {.text = "in & out", .flags = ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT},
+        });
+
+        for (const auto& data : FLAGS_UI_DATA) {
+          bool clicked{};
+          Color color = selected_slot.flags == data.flags ? GRAY : LIGHTGRAY;
+
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+          ui_text(layout, data.text, 15, BLACK);
+          ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+
+          if (clicked) {
+            selected_slot.flags = data.flags;
+          }
+        }
+      }
+      ui_element_end(layout, {.child_gap = 4});
+    }
+    ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
+  }
+}
+
+void world_tunnel_destination_data_edit_ui(UI_Layout& layout, Entity& entity) {
+  auto* tunnel = get_data<WorldTunnel>(entity);
+  ASSERT(tunnel, "entity is not of type WorldTunnel");
+  bool clicked{};
 
   ui_element_begin(layout, UI_AUTO_ID);
   {
-    ui_text(layout, "maintenance: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &maintenance_clicked});
+    ui_text(layout, "destination: ", 20, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
     {
-      ui_text(layout, maintenance_name(receiver.maintenance), 20, BLACK);
+      ui_text(layout, world_to_string(tunnel->to), 20, BLACK);
     }
     ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
   ui_element_end(layout, {});
 
-  if (maintenance_clicked) {
-    rotate_maintenace<ResourceMessageReceiver>(receiver.maintenance);
+  if (clicked) {
+    tunnel->to = World((i32(tunnel->to) + 1) % i32(World::COUNT));
   }
 }
 
-void entity_data_edit_ui(UI_Layout& layout, Assembler& assembler) {
-  bool maintenance_clicked{};
-
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "maintenance: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &maintenance_clicked});
-    {
-      ui_text(layout, maintenance_name(assembler.maintenance), 20, BLACK);
-    }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
+// TODO: move the ifs into the functions?
+void entity_data_edit_ui(
+  EditorData& editor,
+  UI_Layout& layout,
+  const AssetManager& assets,
+  const Input& input,
+  Entity& entity
+) {
+  if (rotatable(entity)) {
+    rotation_data_edit_ui(layout, entity);
   }
-  ui_element_end(layout, {});
-
-  if (maintenance_clicked) {
-    rotate_maintenace<Assembler>(assembler.maintenance);
+  if (has_inventory(entity)) {
+    inventory_data_edit_ui(editor, layout, assets, input, entity);
   }
-}
-
-void entity_data_edit_ui(UI_Layout& layout, Entity& entity) {
-  std::visit(
-    [&](auto& data) {
-      entity_data_edit_ui(layout, data);
-    },
-    entity.data
-  );
+  if (has_maintenance(entity)) {
+    maintenance_data_edit_ui(layout, entity);
+  }
+  if (is<WorldTunnel>(entity)) {
+    world_tunnel_destination_data_edit_ui(layout, entity);
+  }
 }
 
 void ui(
@@ -219,9 +317,9 @@ void ui(
       ui_text(layout, "selected entity data:", 25, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        entity_data_edit_ui(layout, *selected);
+        entity_data_edit_ui(editor, layout, assets, input, *selected);
       }
-      ui_element_end(layout, {});
+      ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
     }
 
     ui_element_begin(layout, UI_AUTO_ID);

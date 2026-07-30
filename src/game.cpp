@@ -149,6 +149,10 @@ vec2 get_move_vector(const Input& input) {
 struct ItemSlotIdx {
   EntityId entity{};
   u32 slot_idx{};
+
+  explicit inline operator bool() const {
+    return bool(entity);
+  }
 };
 
 struct FrameData {
@@ -166,6 +170,8 @@ struct EditorData {
   World current_world{};
   u32 selected_placeable_idx{};
   EntityId selected_entity_id{};
+
+  ItemSlotIdx selected_inventory_edit_slot{};
 };
 
 static constexpr std::string_view DEFAULT_MAP_FILEPATH = "default_map.json";
@@ -844,7 +850,7 @@ void update_frame(State& state) {
         state.player_id,
         state.resource_message_queue
       );
-      if (receiver_hovered_slot.entity) {
+      if (receiver_hovered_slot) {
         state.frame.hovered_slot = receiver_hovered_slot;
       }
 
@@ -856,7 +862,7 @@ void update_frame(State& state) {
         state.store,
         state.player_id
       );
-      if (assembler_hovered_slot.entity) {
+      if (assembler_hovered_slot) {
         state.frame.hovered_slot = assembler_hovered_slot;
       }
     } break;
@@ -993,7 +999,7 @@ void render(State& state) {
 
   // NOTE: mouse
   {
-    if (!state.frame.hovered_slot.entity) {
+    if (!state.frame.hovered_slot) {
       Rectangle rect = {
         .x      = f32(grid_pos(state.frame_input.mouse_pos).x * GRID_DIMS.x),
         .y      = f32(grid_pos(state.frame_input.mouse_pos).y * GRID_DIMS.y),

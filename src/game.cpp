@@ -1,5 +1,9 @@
 #include "core.cpp"
 
+// TODO: when deserializing the std::vector's may get a wrong size,
+// if i serialized them with one and then i change it to something else,
+// the old one will still remain
+
 enum class Key {
   A,
   B,
@@ -203,6 +207,21 @@ struct State {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(vec2, x, y);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, a);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Rectangle, x, y, width, height);
+
+void to_json(json& j, ItemType t) {
+  j = get_item_name(t);
+}
+
+void from_json(const json& j, ItemType& t) {
+  for (u32 i = 0; i < ITEM_COUNT; ++i) {
+    if (j == get_item_name(ItemType(i))) {
+      t = ItemType(i);
+      return;
+    }
+  }
+  ASSERT(false, "invalid json item type");
+}
+
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ItemSlot, flags, type, count);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EntityId, idx, gen);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConveyorItem, slot, t);

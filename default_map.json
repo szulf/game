@@ -1,1464 +1,1500 @@
 {
-  "minutes": 10,
-  "player_id": {
-    "gen": 0,
-    "idx": 1
-  },
-  "resource_message_queue": {
-    "msgs": []
-  },
-  "resource_message_receiver_id": {
-    "gen": 0,
-    "idx": 14
-  },
-  "store": {
-    "entities": [
-      {
-        "data": {
-          "hand": {
-            "count": 0,
-            "flags": 3,
-            "type": 0
-          },
-          "interaction_radius": 4,
-          "inventory": [
+    "minutes": 23,
+    "player_id": {
+        "gen": 0,
+        "idx": 1
+    },
+    "resource_message_queue": {
+        "msgs": []
+    },
+    "resource_message_receiver_id": {
+        "gen": 0,
+        "idx": 14
+    },
+    "store": {
+        "entities": [
             {
-              "count": 85,
-              "flags": 3,
-              "type": 2
+                "data": {
+                    "hand": {
+                        "count": 0,
+                        "flags": 3,
+                        "type": "Block"
+                    },
+                    "interaction_radius": 4,
+                    "inventory": [
+                        {
+                            "count": 85,
+                            "flags": 3,
+                            "type": "Conveyor"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 6,
+                            "flags": 3,
+                            "type": "Storage"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 20,
+                            "flags": 3,
+                            "type": "Conveyor"
+                        },
+                        {
+                            "count": 30,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 50,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 11,
+                            "flags": 3,
+                            "type": "Storage"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 100,
+                            "flags": 3,
+                            "type": "Conveyor"
+                        },
+                        {
+                            "count": 100,
+                            "flags": 3,
+                            "type": "Conveyor"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        }
+                    ],
+                    "open_gui": {
+                        "gen": 0,
+                        "idx": 13
+                    },
+                    "type": "player"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 1
+                },
+                "pos": {
+                    "x": 12.0,
+                    "y": 9.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "type": "block"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 2
+                },
+                "pos": {
+                    "x": 5.0,
+                    "y": 9.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        }
+                    ],
+                    "type": "storage"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 3
+                },
+                "pos": {
+                    "x": 9.0,
+                    "y": 6.0
+                },
+                "world": 0
             },
             {
-              "count": 6,
-              "flags": 3,
-              "type": 1
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        }
+                    ],
+                    "type": "storage"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 4
+                },
+                "pos": {
+                    "x": 9.0,
+                    "y": 10.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        }
+                    ],
+                    "type": "storage"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 5
+                },
+                "pos": {
+                    "x": 6.0,
+                    "y": 10.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "items": [
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        }
+                    ],
+                    "rotation": 2,
+                    "type": "conveyor"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 6
+                },
+                "pos": {
+                    "x": 9.0,
+                    "y": 7.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "items": [
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        }
+                    ],
+                    "rotation": 2,
+                    "type": "conveyor"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 7
+                },
+                "pos": {
+                    "x": 9.0,
+                    "y": 8.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "items": [
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        }
+                    ],
+                    "rotation": 2,
+                    "type": "conveyor"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 8
+                },
+                "pos": {
+                    "x": 9.0,
+                    "y": 9.0
+                },
+                "world": 0
             },
             {
-              "count": 20,
-              "flags": 3,
-              "type": 2
+                "data": {
+                    "items": [
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        }
+                    ],
+                    "rotation": 3,
+                    "type": "conveyor"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 9
+                },
+                "pos": {
+                    "x": 8.0,
+                    "y": 10.0
+                },
+                "world": 0
             },
             {
-              "count": 30,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "items": [
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        },
+                        {
+                            "slot": {
+                                "count": 0,
+                                "flags": 3,
+                                "type": "Block"
+                            },
+                            "t": 0.0
+                        }
+                    ],
+                    "rotation": 3,
+                    "type": "conveyor"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 10
+                },
+                "pos": {
+                    "x": 7.0,
+                    "y": 10.0
+                },
+                "world": 0
             },
             {
-              "count": 50,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        }
+                    ],
+                    "to": 1,
+                    "type": "world_tunnel"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 11
+                },
+                "pos": {
+                    "x": 10.0,
+                    "y": 10.0
+                },
+                "world": 0
             },
             {
-              "count": 11,
-              "flags": 3,
-              "type": 1
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        }
+                    ],
+                    "to": 0,
+                    "type": "world_tunnel"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 12
+                },
+                "pos": {
+                    "x": 10.0,
+                    "y": 10.0
+                },
+                "world": 1
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "maintenance": null,
+                    "msg_in_create": {
+                        "arrival_time": 0,
+                        "batch_number": 0,
+                        "requested_items": [
+                            0,
+                            0,
+                            0
+                        ]
+                    },
+                    "page": 0,
+                    "type": "resource_message_sender"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 13
+                },
+                "pos": {
+                    "x": 12.0,
+                    "y": 10.0
+                },
+                "world": 0
             },
             {
-              "count": 100,
-              "flags": 3,
-              "type": 2
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        }
+                    ],
+                    "maintenance": {
+                        "broken": {
+                            "pos": {
+                                "x": 0.0,
+                                "y": 0.0
+                            },
+                            "slot": 0
+                        },
+                        "fixed": {
+                            "pos": {
+                                "x": 0.0,
+                                "y": 0.0
+                            },
+                            "slot": 0
+                        },
+                        "open": false,
+                        "slots": [
+                            {
+                                "pos": {
+                                    "x": 0.0,
+                                    "y": 0.0
+                                }
+                            },
+                            {
+                                "pos": {
+                                    "x": 0.0,
+                                    "y": 0.0
+                                }
+                            },
+                            {
+                                "pos": {
+                                    "x": 0.0,
+                                    "y": 0.0
+                                }
+                            }
+                        ],
+                        "type": "component_replacement"
+                    },
+                    "type": "resource_message_receiver"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 14
+                },
+                "pos": {
+                    "x": 14.0,
+                    "y": 11.0
+                },
+                "world": 0
             },
             {
-              "count": 100,
-              "flags": 3,
-              "type": 2
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 3,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        }
+                    ],
+                    "maintenance": {
+                        "dirty_rects": [],
+                        "open": false,
+                        "type": "cleaning"
+                    },
+                    "selected_recipe_idx": 0,
+                    "t": 0.0,
+                    "type": "assembler"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 15
+                },
+                "pos": {
+                    "x": 10.0,
+                    "y": 5.0
+                },
+                "world": 0
             },
             {
-              "count": 0,
-              "flags": 3,
-              "type": 0
+                "data": {
+                    "inventory": [
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 1,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        },
+                        {
+                            "count": 0,
+                            "flags": 2,
+                            "type": "Block"
+                        }
+                    ],
+                    "to": 1,
+                    "type": "world_tunnel"
+                },
+                "id": {
+                    "gen": 2,
+                    "idx": 16
+                },
+                "pos": {
+                    "x": 13.0,
+                    "y": 2.0
+                },
+                "world": 0
+            },
+            {
+                "data": {
+                    "type": "block"
+                },
+                "id": {
+                    "gen": 1,
+                    "idx": 17
+                },
+                "pos": {
+                    "x": 22.0,
+                    "y": 5.0
+                },
+                "world": 1
+            },
+            {
+                "data": {
+                    "type": "block"
+                },
+                "id": {
+                    "gen": 0,
+                    "idx": 18
+                },
+                "pos": {
+                    "x": 22.0,
+                    "y": 4.0
+                },
+                "world": 1
             }
-          ],
-          "open_gui": {
-            "gen": 0,
-            "idx": 0
-          },
-          "type": "player"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 1
-        },
-        "pos": {
-          "x": 12.0,
-          "y": 9.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "type": "block"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 2
-        },
-        "pos": {
-          "x": 5.0,
-          "y": 9.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            }
-          ],
-          "type": "storage"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 3
-        },
-        "pos": {
-          "x": 9.0,
-          "y": 6.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            }
-          ],
-          "type": "storage"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 4
-        },
-        "pos": {
-          "x": 9.0,
-          "y": 10.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            }
-          ],
-          "type": "storage"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 5
-        },
-        "pos": {
-          "x": 6.0,
-          "y": 10.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "items": [
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            }
-          ],
-          "rotation": 2,
-          "type": "conveyor"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 6
-        },
-        "pos": {
-          "x": 9.0,
-          "y": 7.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "items": [
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            }
-          ],
-          "rotation": 2,
-          "type": "conveyor"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 7
-        },
-        "pos": {
-          "x": 9.0,
-          "y": 8.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "items": [
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            }
-          ],
-          "rotation": 2,
-          "type": "conveyor"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 8
-        },
-        "pos": {
-          "x": 9.0,
-          "y": 9.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "items": [
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            }
-          ],
-          "rotation": 3,
-          "type": "conveyor"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 9
-        },
-        "pos": {
-          "x": 8.0,
-          "y": 10.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "items": [
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            },
-            {
-              "slot": {
-                "count": 0,
-                "flags": 3,
-                "type": 0
-              },
-              "t": 0.0
-            }
-          ],
-          "rotation": 3,
-          "type": "conveyor"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 10
-        },
-        "pos": {
-          "x": 7.0,
-          "y": 10.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            }
-          ],
-          "to": 1,
-          "type": "world_tunnel"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 11
-        },
-        "pos": {
-          "x": 10.0,
-          "y": 10.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            }
-          ],
-          "to": 0,
-          "type": "world_tunnel"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 12
-        },
-        "pos": {
-          "x": 10.0,
-          "y": 10.0
-        },
-        "world": 1
-      },
-      {
-        "data": {
-          "maintenance": null,
-          "msg_in_create": {
-            "arrival_time": 0,
-            "batch_number": 0,
-            "requested_items": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-          },
-          "page": 0,
-          "type": "resource_message_sender"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 13
-        },
-        "pos": {
-          "x": 12.0,
-          "y": 10.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            }
-          ],
-          "maintenance": null,
-          "type": "resource_message_receiver"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 14
-        },
-        "pos": {
-          "x": 14.0,
-          "y": 11.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 3,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            }
-          ],
-          "maintenance": {
-            "dirty_rects": [],
-            "open": false,
-            "type": "cleaning"
-          },
-          "selected_recipe_idx": 0,
-          "t": 0.0,
-          "type": "assembler"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 15
-        },
-        "pos": {
-          "x": 10.0,
-          "y": 5.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "inventory": [
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 1,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            },
-            {
-              "count": 0,
-              "flags": 2,
-              "type": 0
-            }
-          ],
-          "to": 1,
-          "type": "world_tunnel"
-        },
-        "id": {
-          "gen": 2,
-          "idx": 16
-        },
-        "pos": {
-          "x": 13.0,
-          "y": 2.0
-        },
-        "world": 0
-      },
-      {
-        "data": {
-          "type": "block"
-        },
-        "id": {
-          "gen": 1,
-          "idx": 17
-        },
-        "pos": {
-          "x": 22.0,
-          "y": 5.0
-        },
-        "world": 1
-      },
-      {
-        "data": {
-          "type": "block"
-        },
-        "id": {
-          "gen": 0,
-          "idx": 18
-        },
-        "pos": {
-          "x": 22.0,
-          "y": 4.0
-        },
-        "world": 1
-      }
-    ],
-    "free_slots": [],
-    "next_entity_idx": 18
-  },
-  "version": 1
+        ],
+        "free_slots": [],
+        "next_entity_idx": 18
+    },
+    "version": 1
 }

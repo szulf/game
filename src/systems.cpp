@@ -312,10 +312,10 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
     {
       ui_text(layout, "requested items:", FONT_SIZE, WHITE);
 
-      for (u32 i = 0; i < ITEM_COUNT; ++i) {
-        ItemType item_type     = ItemType(i);
-        const auto& item_count = msg.requested_items[i];
-        auto& texture          = assets.textures[get_texture_type(item_type)];
+      for (u32 i = 0; i < msg.requested_items.size(); ++i) {
+        ItemType requestable_item = REQUESTABLE_ITEMS[i];
+        const auto& item_count    = msg.requested_items[i];
+        auto& texture             = assets.textures[get_texture_type(requestable_item)];
 
         if (item_count == 0) {
           continue;
@@ -331,7 +331,7 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
               {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
                .texture = &texture}
             );
-            ui_text(layout, get_item_name(item_type), FONT_SIZE, WHITE);
+            ui_text(layout, get_item_name(requestable_item), FONT_SIZE, WHITE);
           }
           ui_element_end(
             layout,
@@ -537,7 +537,9 @@ void system_message_sender_ui(
 
         ui_element_begin(layout, UI_AUTO_ID);
         {
-          for (u32 i = 0; i < ITEM_COUNT; ++i) {
+          for (u32 i = 0; i < msg.requested_items.size(); ++i) {
+            // NOTE: realistically REQUESTABLE_ITEMS[i] should always yield ItemType(i)
+            ItemType requestable_item = REQUESTABLE_ITEMS[i];
             bool add_clicked{};
             bool remove_clicked{};
 
@@ -553,7 +555,7 @@ void system_message_sender_ui(
                   {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
                    .texture = &texture}
                 );
-                ui_text(layout, get_item_name(ItemType(i)), 15, WHITE);
+                ui_text(layout, get_item_name(requestable_item), 15, WHITE);
               }
               ui_element_end(
                 layout,
@@ -788,11 +790,11 @@ void system_transfer_resource_messages(
   for (u32 i = 0; i < msg_queue.msgs.size();) {
     auto& msg = msg_queue.msgs[i];
     if (msg.arrival_time == game_time) {
-      std::array<ItemSlot, ITEM_COUNT> msg_items{};
-      for (u32 item_type = 0; item_type < ITEM_COUNT; ++item_type) {
-        msg_items[item_type] = {
-          .type  = ItemType(item_type),
-          .count = msg.requested_items[item_type],
+      std::array<ItemSlot, REQUESTABLE_ITEMS.size()> msg_items{};
+      for (auto requestable_item : REQUESTABLE_ITEMS) {
+        msg_items[requestable_item] = {
+          .type  = requestable_item,
+          .count = msg.requested_items[requestable_item],
         };
       }
       swap_slot_flags(msg_receiver->inventory);

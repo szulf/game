@@ -1,23 +1,32 @@
-// TODO: remove which items are requestable from here, after implementing that
-// TODO: custom serialization for this (to avoid ordering change bugs)
 enum ItemType {
-  ITEM_BLOCK,
-  ITEM_STORAGE,
-  ITEM_CONVEYOR,
-  ITEM_ASSEMBLER,
-
-  // NOTE: requestable
+  // NOTE: requestable items
   ITEM_COPPER,
   ITEM_PLASTIC,
   ITEM_ALUMINIUM,
 
+  // NOTE: not requestable items
   ITEM_COPPER_WIRE,
   ITEM_BASIC_CIRCUIT_BOARD,
   ITEM_ANTENNA,
   ITEM_COMMUNICATION_COMPONENT,
 
+  // NOTE: block items
+  ITEM_BLOCK,
+  ITEM_STORAGE,
+  ITEM_CONVEYOR,
+  ITEM_ASSEMBLER,
+
   ITEM_COUNT,
 };
+
+// TODO: i dont really like that i have to put the requestable items in two places
+// but i dont know how to do it better for now
+// (used only to get REQUESTABLE_ITEMS.size() which is needed for ResourceMessage)
+static constexpr std::array REQUESTABLE_ITEMS = std::to_array<ItemType>({
+  ITEM_COPPER,
+  ITEM_PLASTIC,
+  ITEM_ALUMINIUM,
+});
 
 enum ItemSlotFlag {
   ITEM_SLOT_INPUT  = 1 << 0,

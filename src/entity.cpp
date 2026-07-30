@@ -690,10 +690,8 @@ static constexpr u32 MAX_REQUESTED_ITEMS      = ITEM_MAX_COUNT;
 static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
 
 struct ResourceMessage {
-  // TODO: not all items should be requestable through the message systems,
-  // only a group of base items should be
   // NOTE: map from ItemType to amount of item requested
-  std::array<u32, ITEM_COUNT> requested_items{};
+  std::array<u32, REQUESTABLE_ITEMS.size()> requested_items{};
   u64 arrival_time{};
   u32 batch_number{};
 };
@@ -764,7 +762,7 @@ bool fits_in_last_batch(ResourceMessageQueue& queue, const ResourceMessage& msg,
 
 void add_resource_message(ResourceMessageQueue& queue, ResourceMessage& msg, u64 game_time) {
   // TODO: maybe calculate this from the amount of items requested?
-  static constexpr u64 MINUTES_TO_ARRIVAL = 300;
+  static constexpr u64 MINUTES_TO_ARRIVAL = 10;
 
   if (queue.msgs.empty()) {
     msg.batch_number = 0;
@@ -812,9 +810,9 @@ struct ResourceMessageReceiver {
     MaintenanceMessageReceiver{},
   });
   Maintenance maintenance{};
-  // NOTE: this effectively means that max batch size is a max stack of each item type
-  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(ITEM_COUNT);
+  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(REQUESTABLE_ITEMS.size());
 
+  // TODO: this is not really needed
   constexpr ResourceMessageReceiver() {
     for (auto& slot : inventory) {
       slot.flags = ITEM_SLOT_OUTPUT;
@@ -888,7 +886,7 @@ struct Assembler {
         {.type = ITEM_ALUMINIUM, .count = 4},
         {.type = ITEM_COPPER_WIRE, .count = 2},
       }},
-      .output_slots = {{{.type = ITEM_BASIC_CIRCUIT_BOARD, .count = 1}}},
+      .output_slots = {{{.type = ITEM_ANTENNA, .count = 1}}},
     },
     {
       .name         = "communication component",

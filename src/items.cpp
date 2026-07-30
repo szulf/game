@@ -9,6 +9,9 @@ enum ItemType {
   ITEM_BASIC_CIRCUIT_BOARD,
   ITEM_ANTENNA,
   ITEM_COMMUNICATION_COMPONENT,
+  ITEM_WIRE_BUNDLE,
+  ITEM_COGWHEEL,
+  ITEM_SPARE_PARTS,
 
   // NOTE: block items
   ITEM_BLOCK,
@@ -88,6 +91,12 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_ANTENNA_ITEM;
     case ITEM_COMMUNICATION_COMPONENT:
       return TEXTURE_COMMUNICATION_COMPONENT_ITEM;
+    case ITEM_WIRE_BUNDLE:
+      return TEXTURE_WIRE_BUNDLE_ITEM;
+    case ITEM_COGWHEEL:
+      return TEXTURE_COGWHEEL_ITEM;
+    case ITEM_SPARE_PARTS:
+      return TEXTURE_SPARE_PARTS_ITEM;
 
     case ITEM_COUNT:
       break;
@@ -119,6 +128,12 @@ std::string_view get_item_name(ItemType item) {
       return "Antenna";
     case ITEM_COMMUNICATION_COMPONENT:
       return "Communication Component";
+    case ITEM_WIRE_BUNDLE:
+      return "Wire Bundle";
+    case ITEM_COGWHEEL:
+      return "Cogwheel";
+    case ITEM_SPARE_PARTS:
+      return "Spare Parts";
     case ITEM_COUNT:
       break;
   }

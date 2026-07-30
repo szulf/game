@@ -18,6 +18,9 @@ enum TextureType {
   TEXTURE_BASIC_CIRCUIT_BOARD_ITEM,
   TEXTURE_ANTENNA_ITEM,
   TEXTURE_COMMUNICATION_COMPONENT_ITEM,
+  TEXTURE_WIRE_BUNDLE_ITEM,
+  TEXTURE_COGWHEEL_ITEM,
+  TEXTURE_SPARE_PARTS_ITEM,
 
   TEXTURE_COUNT,
 };
@@ -62,6 +65,13 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/antenna_item.png";
     case TEXTURE_COMMUNICATION_COMPONENT_ITEM:
       return "assets/communication_component_item.png";
+    case TEXTURE_WIRE_BUNDLE_ITEM:
+      return "assets/wire_bundle_item.png";
+    case TEXTURE_COGWHEEL_ITEM:
+      return "assets/cogwheel_item.png";
+    case TEXTURE_SPARE_PARTS_ITEM:
+      return "assets/spare_parts_item.png";
+
     case TEXTURE_COUNT:
       break;
   }

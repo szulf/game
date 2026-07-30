@@ -39,7 +39,11 @@
 - [ ] map editor
   - [x] placing
   - [x] destroying
-  - [x] editing data
+  - [ ] editing data
+    - [x] world tunnels
+    - [x] rotation
+    - [x] maintenance
+    - [ ] inventories
   - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
   - [x] switch between worlds

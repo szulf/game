@@ -366,7 +366,7 @@ struct ComponentSlot {
 
 struct MaintenanceComponentReplacement {
   static constexpr std::string_view NAME = "component_replacement";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_CONVEYOR, .count = 1};
+  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_SPARE_PARTS, .count = 1};
   vec2 window_offset{};
   bool open{};
 
@@ -897,6 +897,33 @@ struct Assembler {
       }},
       .output_slots = {{{.type = ITEM_COMMUNICATION_COMPONENT, .count = 1}}},
     },
+    {
+      .name         = "wire bundle",
+      .recipe_time  = 2.0f,
+      .input_slots  = {{
+        {.type = ITEM_COPPER_WIRE, .count = 2},
+        {.type = ITEM_PLASTIC, .count = 1},
+      }},
+      .output_slots = {{{.type = ITEM_WIRE_BUNDLE, .count = 1}}},
+    },
+    {
+      .name         = "cogwheel",
+      .recipe_time  = 4.0f,
+      .input_slots  = {{
+        {.type = ITEM_ALUMINIUM, .count = 4},
+      }},
+      .output_slots = {{{.type = ITEM_COGWHEEL, .count = 3}}},
+    },
+    {
+      .name         = "spare parts",
+      .recipe_time  = 8.0f,
+      .input_slots  = {{
+        {.type = ITEM_BASIC_CIRCUIT_BOARD, .count = 1},
+        {.type = ITEM_COGWHEEL, .count = 2},
+        {.type = ITEM_WIRE_BUNDLE, .count = 2},
+      }},
+      .output_slots = {{{.type = ITEM_SPARE_PARTS, .count = 1}}},
+    },
   });
 };
 
@@ -1198,6 +1225,9 @@ std::optional<bool> rotatable(ItemType type) {
     case ITEM_BASIC_CIRCUIT_BOARD:
     case ITEM_ANTENNA:
     case ITEM_COMMUNICATION_COMPONENT:
+    case ITEM_WIRE_BUNDLE:
+    case ITEM_COGWHEEL:
+    case ITEM_SPARE_PARTS:
       return std::nullopt;
     case ITEM_COUNT:
       break;
@@ -1343,6 +1373,9 @@ std::optional<Entity> entity_from_item(ItemType item) {
     case ITEM_BASIC_CIRCUIT_BOARD:
     case ITEM_ANTENNA:
     case ITEM_COMMUNICATION_COMPONENT:
+    case ITEM_WIRE_BUNDLE:
+    case ITEM_COGWHEEL:
+    case ITEM_SPARE_PARTS:
       return std::nullopt;
     case ITEM_COUNT:
       break;

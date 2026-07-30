@@ -10,15 +10,31 @@ static bool pos_in_radius(const vec2& pos, const vec2& start_pos, f32 radius) {
 // TODO: this is bad now, the text is rendered on top of the texture, starting at the textures top
 // left corner, it should start at the cells top left corner instead, idk if its a limitation of the
 // ui library, or i just dont know how to do it, but yeah
-static bool
-item_slot_icon_ui(const AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
+// TODO: i dont really like the display_count argument
+static bool item_slot_icon_ui(
+  const AssetManager& assets,
+  UI_Layout& layout,
+  const ItemSlot& item_slot,
+  bool display_count = true
+) {
   bool hovered = false;
   if (item_slot) {
     auto& texture = assets.textures[get_texture_type(item_slot.type)];
 
     ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
     {
-      ui_text(layout, std::format("{}", item_slot.count), 15);
+      if (display_count) {
+        auto item_slot_info = item_info(item_slot.type);
+        if (item_slot_info.has_durability) {
+          ASSERT(item_slot_info.max_count == 1, "items with durability cannot stack");
+          auto usage_percent =
+            (f32(item_slot_info.max_damage - item_slot.damage) / f32(item_slot_info.max_damage)) *
+            100.0f;
+          ui_text(layout, std::format("{:2}", usage_percent), 15);
+        } else {
+          ui_text(layout, std::format("{}", item_slot.count), 15);
+        }
+      }
     }
     ui_element_end(
       layout,
@@ -30,12 +46,17 @@ item_slot_icon_ui(const AssetManager& assets, UI_Layout& layout, const ItemSlot&
 }
 
 // TODO: render if the slot is input/output only
-static bool item_slot_ui(const AssetManager& assets, UI_Layout& layout, const ItemSlot& item_slot) {
+static bool item_slot_ui(
+  const AssetManager& assets,
+  UI_Layout& layout,
+  const ItemSlot& item_slot,
+  bool display_count = true
+) {
   bool hovered = false;
 
   ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
   {
-    item_slot_icon_ui(assets, layout, item_slot);
+    item_slot_icon_ui(assets, layout, item_slot, display_count);
   }
   ui_element_end(
     layout,
@@ -156,9 +177,10 @@ void system_hand_slot_interactions(
       auto& hand = player->hand;
 
       if (slot && (slot.flags & ITEM_SLOT_INPUT) && hand && slot.type == hand.type) {
-        if (slot.count + hand.count > ITEM_MAX_COUNT) {
-          hand.count = (slot.count + hand.count) - ITEM_MAX_COUNT;
-          slot.count = ITEM_MAX_COUNT;
+        auto max_count = item_info(slot.type).max_count;
+        if (slot.count + hand.count > max_count) {
+          hand.count = (slot.count + hand.count) - max_count;
+          slot.count = max_count;
         } else {
           slot.count += hand.count;
           hand = {};
@@ -418,7 +440,7 @@ void maintenance_ui(
       ui_element_begin(layout, UI_AUTO_ID);
       {
         ui_text(layout, "Fix item: ", 15, WHITE);
-        item_slot_ui(assets, layout, fix_item);
+        item_slot_ui(assets, layout, {.type = fix_item, .count = 1}, false);
       }
       ui_element_end(
         layout,
@@ -442,7 +464,21 @@ void maintenance_ui(
     ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .child_gap = 4});
 
     if (fix_clicked) {
-      if (player.hand.type == fix_item.type && player.hand.count >= fix_item.count) {
+      bool succeeded{};
+      if (player.hand.type == fix_item && player.hand.count >= MAINTENANCE_FIX_ITEM_COUNT) {
+        auto hand_item_info = item_info(player.hand.type);
+        if (hand_item_info.has_durability) {
+          if (hand_item_info.max_damage - player.hand.damage >= MAINTENANCE_FIX_ITEM_DAMAGE) {
+            player.hand.damage += MAINTENANCE_FIX_ITEM_DAMAGE;
+            succeeded = true;
+          }
+        } else {
+          player.hand.count -= MAINTENANCE_FIX_ITEM_COUNT;
+          succeeded = true;
+        }
+      }
+
+      if (succeeded) {
         auto* minigame_open = maintenance_is_minigame_open(maintenance);
         if (minigame_open) {
           *minigame_open = true;
@@ -451,7 +487,6 @@ void maintenance_ui(
         } else {
           maintenance = std::monostate{};
         }
-        player.hand.count -= fix_item.count;
       } else {
         // TODO: notify the user they dont have the item
       }
@@ -580,7 +615,7 @@ void system_message_sender_ui(
             }
             ui_element_end(layout, {.sizing = {ui_sizing_fill(), ui_sizing_fit()}});
 
-            if (add_clicked && msg.requested_items[i] < MAX_REQUESTED_ITEMS) {
+            if (add_clicked && msg.requested_items[i] < item_info(requestable_item).max_count) {
               msg.requested_items[i] += REQUESTED_ITEMS_MULTIPLE;
             }
 
@@ -727,9 +762,10 @@ static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
     }
 
     if (inventory[i].type == slot.type) {
-      if (inventory[i].count + slot.count > ITEM_MAX_COUNT) {
-        slot.count         = (inventory[i].count + slot.count) - ITEM_MAX_COUNT;
-        inventory[i].count = ITEM_MAX_COUNT;
+      auto max_count = item_info(slot.type).max_count;
+      if (inventory[i].count + slot.count > max_count) {
+        slot.count         = (inventory[i].count + slot.count) - max_count;
+        inventory[i].count = max_count;
       } else {
         inventory[i].count += slot.count;
         slot.count = 0;
@@ -942,7 +978,8 @@ void system_progress_recipes(EntityStore& store, f32 dt) {
         output_ok = false;
         break;
       }
-      if (assembler_output.count + recipe_output.count > ITEM_MAX_COUNT) {
+      if (assembler_output.count + recipe_output.count >
+          item_info(assembler_output.type).max_count) {
         output_ok = false;
         break;
       }

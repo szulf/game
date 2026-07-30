@@ -136,6 +136,9 @@ void inventory_data_edit_ui(
 
           if (clicked) {
             selected_slot.type = item_type;
+            if (selected_slot.count > item_info(selected_slot.type).max_count) {
+              selected_slot.count = item_info(selected_slot.type).max_count;
+            }
           }
         }
       }
@@ -167,10 +170,10 @@ void inventory_data_edit_ui(
            .bg_color        = LIGHTGRAY}
         );
 
-        if (dec_clicked) {
+        if (dec_clicked && selected_slot.count > 0) {
           --selected_slot.count;
         }
-        if (inc_clicked) {
+        if (inc_clicked && selected_slot.count < item_info(selected_slot.type).max_count) {
           ++selected_slot.count;
         }
       }

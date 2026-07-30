@@ -111,7 +111,7 @@ struct LubricationPoint {
 
 struct MaintenanceLubrication {
   static constexpr std::string_view NAME = "lubrication";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 1};
+  static constexpr ItemType FIX_ITEM     = ITEM_BLOCK;
   vec2 window_offset{};
   bool open{};
 
@@ -268,7 +268,7 @@ struct DirtyRect {
 
 struct MaintenanceCleaning {
   static constexpr std::string_view NAME = "cleaning";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_STORAGE, .count = 1};
+  static constexpr ItemType FIX_ITEM     = ITEM_BRUSH;
   vec2 window_offset{};
   bool open{};
 
@@ -278,6 +278,7 @@ struct MaintenanceCleaning {
   vec2 last_mouse_pos{};
 };
 
+// TODO: sometimes it seems like the dirty rects get initialized with progress > 0
 void maintenance_init_minigame(MaintenanceCleaning& state) {
   static constexpr vec2 MAX_DIMS = {96, 96};
   for (i32 i = 0; i < 3; ++i) {
@@ -366,7 +367,7 @@ struct ComponentSlot {
 
 struct MaintenanceComponentReplacement {
   static constexpr std::string_view NAME = "component_replacement";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_SPARE_PARTS, .count = 1};
+  static constexpr ItemType FIX_ITEM     = ITEM_SPARE_PARTS;
   vec2 window_offset{};
   bool open{};
 
@@ -456,14 +457,14 @@ void maintenance_render_minigame(
     auto origin = slot.DIMS * 0.5f;
     DrawRectanglePro(rect, vector2_from_vec2(origin), 0, LIGHTGRAY);
   }
-  render_component(state.broken, assets, get_texture_type(state.FIX_ITEM.type));
-  render_component(state.fixed, assets, get_texture_type(state.FIX_ITEM.type));
+  render_component(state.broken, assets, get_texture_type(state.FIX_ITEM));
+  render_component(state.fixed, assets, get_texture_type(state.FIX_ITEM));
   EndTextureMode();
 }
 
 struct MaintenanceCalibration {
   static constexpr std::string_view NAME = "calibration";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_BLOCK, .count = 3};
+  static constexpr ItemType FIX_ITEM     = ITEM_BLOCK;
   vec2 window_offset{};
   bool open{};
 
@@ -570,13 +571,16 @@ void maintenance_render_minigame(
 
 struct MaintenanceMessageSender {
   static constexpr std::string_view NAME = "message_sender";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_COMMUNICATION_COMPONENT, .count = 1};
+  static constexpr ItemType FIX_ITEM     = ITEM_COMMUNICATION_COMPONENT;
 };
 
 struct MaintenanceMessageReceiver {
   static constexpr std::string_view NAME = "message_receiver";
-  static constexpr ItemSlot FIX_ITEM     = {.type = ITEM_COMMUNICATION_COMPONENT, .count = 1};
+  static constexpr ItemType FIX_ITEM     = ITEM_COMMUNICATION_COMPONENT;
 };
+
+static constexpr u32 MAINTENANCE_FIX_ITEM_COUNT  = 1;
+static constexpr u32 MAINTENANCE_FIX_ITEM_DAMAGE = 1;
 
 using Maintenance = std::variant<
   std::monostate,
@@ -601,14 +605,13 @@ std::string_view maintenance_name(const Maintenance& maintenance) {
   );
 }
 
-const ItemSlot& maintenance_fix_item(const Maintenance& maintenance) {
+ItemType maintenance_fix_item(const Maintenance& maintenance) {
   return std::visit(
-    [](const auto& value) -> const ItemSlot& {
+    [](const auto& value) -> ItemType {
       using T = std::decay_t<decltype(value)>;
       if constexpr (std::is_same_v<T, std::monostate>) {
         ASSERT(false, "null maintenance has no fix item");
       } else {
-        ASSERT(value.FIX_ITEM, "every maintenance needs a valid fix item");
         return value.FIX_ITEM;
       }
     },
@@ -686,7 +689,6 @@ void maintenance_render_minigame(
   );
 }
 
-static constexpr u32 MAX_REQUESTED_ITEMS      = ITEM_MAX_COUNT;
 static constexpr u32 REQUESTED_ITEMS_MULTIPLE = 4;
 
 struct ResourceMessage {
@@ -745,15 +747,15 @@ bool fits_in_last_batch(ResourceMessageQueue& queue, const ResourceMessage& msg,
 
   // NOTE: item count check
   for (const auto& batch_msg : last_batch) {
-    for (u32 i = 0; i < ITEM_COUNT; ++i) {
+    for (u32 i = 0; i < dummy_msg.requested_items.size(); ++i) {
       dummy_msg.requested_items[i] += batch_msg.requested_items[i];
     }
   }
-  for (u32 i = 0; i < ITEM_COUNT; ++i) {
+  for (u32 i = 0; i < dummy_msg.requested_items.size(); ++i) {
     dummy_msg.requested_items[i] += msg.requested_items[i];
   }
-  for (u32 i = 0; i < ITEM_COUNT; ++i) {
-    if (dummy_msg.requested_items[i] > MAX_REQUESTED_ITEMS) {
+  for (u32 i = 0; i < dummy_msg.requested_items.size(); ++i) {
+    if (dummy_msg.requested_items[i] > item_info(REQUESTABLE_ITEMS[i]).max_count) {
       return false;
     }
   }
@@ -1228,6 +1230,7 @@ std::optional<bool> rotatable(ItemType type) {
     case ITEM_WIRE_BUNDLE:
     case ITEM_COGWHEEL:
     case ITEM_SPARE_PARTS:
+    case ITEM_BRUSH:
       return std::nullopt;
     case ITEM_COUNT:
       break;
@@ -1376,6 +1379,7 @@ std::optional<Entity> entity_from_item(ItemType item) {
     case ITEM_WIRE_BUNDLE:
     case ITEM_COGWHEEL:
     case ITEM_SPARE_PARTS:
+    case ITEM_BRUSH:
       return std::nullopt;
     case ITEM_COUNT:
       break;

@@ -10,7 +10,7 @@
 - [x] in game time
   - needed for the message system
   - time in hud
-- [x] message sending system
+- [ ] message sending system
   - [x] sender block
     - displays the current message queue
     - allows for building and sending messages
@@ -39,7 +39,7 @@
 - [ ] map editor
   - [x] placing
   - [x] destroying
-  - [ ] editing data
+  - [x] editing data
     - [x] world tunnels
     - [x] rotation
     - [x] maintenance

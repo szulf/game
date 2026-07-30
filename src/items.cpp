@@ -19,6 +19,9 @@ enum ItemType {
   ITEM_CONVEYOR,
   ITEM_ASSEMBLER,
 
+  // NOTE: tool items
+  ITEM_BRUSH,
+
   ITEM_COUNT,
 };
 
@@ -40,12 +43,14 @@ using ItemSlotFlags = u32;
 
 static constexpr ItemSlotFlags ITEM_SLOT_FLAGS_MASK = ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT;
 
-static constexpr u32 ITEM_MAX_COUNT = 100;
+// TODO: do i want to destroy items when they reach max damage?
 
 struct ItemSlot {
   ItemSlotFlags flags = ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT;
   ItemType type{};
   u32 count{};
+  // NOTE: ignored for items with item_data(type).has_durability == false
+  u32 damage{};
 
   explicit inline operator bool() const {
     return count > 0;
@@ -56,9 +61,11 @@ void swap_slots(ItemSlot& a, ItemSlot& b) {
   ItemSlot temp = a;
   a.type        = b.type;
   a.count       = b.count;
+  a.damage      = b.damage;
 
-  b.type  = temp.type;
-  b.count = temp.count;
+  b.type   = temp.type;
+  b.count  = temp.count;
+  b.damage = temp.damage;
 }
 
 void swap_slot_flags(std::span<ItemSlot> inventory) {
@@ -97,7 +104,8 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_COGWHEEL_ITEM;
     case ITEM_SPARE_PARTS:
       return TEXTURE_SPARE_PARTS_ITEM;
-
+    case ITEM_BRUSH:
+      return TEXTURE_BRUSH_ITEM;
     case ITEM_COUNT:
       break;
   }
@@ -134,6 +142,40 @@ std::string_view get_item_name(ItemType item) {
       return "Cogwheel";
     case ITEM_SPARE_PARTS:
       return "Spare Parts";
+    case ITEM_BRUSH:
+      return "Brush";
+    case ITEM_COUNT:
+      break;
+  }
+  ASSERT_NO_MSG(false);
+}
+
+struct ItemInfo {
+  u32 max_count{};
+  bool has_durability{};
+  // NOTE: used only when has_durability == true
+  u32 max_damage{};
+};
+
+constexpr ItemInfo item_info(ItemType item) {
+  switch (item) {
+    case ITEM_BLOCK:
+    case ITEM_STORAGE:
+    case ITEM_CONVEYOR:
+    case ITEM_ASSEMBLER:
+    case ITEM_COPPER:
+    case ITEM_PLASTIC:
+    case ITEM_ALUMINIUM:
+    case ITEM_COPPER_WIRE:
+    case ITEM_BASIC_CIRCUIT_BOARD:
+    case ITEM_ANTENNA:
+    case ITEM_COMMUNICATION_COMPONENT:
+    case ITEM_WIRE_BUNDLE:
+    case ITEM_COGWHEEL:
+    case ITEM_SPARE_PARTS:
+      return {.max_count = 100, .has_durability = false};
+    case ITEM_BRUSH:
+      return {.max_count = 1, .has_durability = true, .max_damage = 20};
     case ITEM_COUNT:
       break;
   }

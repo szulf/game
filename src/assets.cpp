@@ -21,6 +21,7 @@ enum TextureType {
   TEXTURE_WIRE_BUNDLE_ITEM,
   TEXTURE_COGWHEEL_ITEM,
   TEXTURE_SPARE_PARTS_ITEM,
+  TEXTURE_BRUSH_ITEM,
 
   TEXTURE_COUNT,
 };
@@ -71,7 +72,8 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/cogwheel_item.png";
     case TEXTURE_SPARE_PARTS_ITEM:
       return "assets/spare_parts_item.png";
-
+    case TEXTURE_BRUSH_ITEM:
+      return "assets/brush_item.png";
     case TEXTURE_COUNT:
       break;
   }

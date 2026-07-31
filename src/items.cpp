@@ -24,6 +24,8 @@ enum ItemType {
   // NOTE: tool items
   ITEM_BRUSH,
   ITEM_LUBRICANT_CAN,
+  // TODO: make this rechargeable with power in the future
+  ITEM_CALIBRATOR,
 
   ITEM_COUNT,
 };
@@ -114,6 +116,8 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_LUBRICANT_CAN_ITEM;
     case ITEM_OIL_CANISTER:
       return TEXTURE_OIL_CANISTER_ITEM;
+    case ITEM_CALIBRATOR:
+      return TEXTURE_CALIBRATOR_ITEM;
     case ITEM_COUNT:
       break;
   }
@@ -156,6 +160,8 @@ std::string_view get_item_name(ItemType item) {
       return "Lubricant Can";
     case ITEM_OIL_CANISTER:
       return "Oil Canister";
+    case ITEM_CALIBRATOR:
+      return "Calibrator";
     case ITEM_COUNT:
       break;
   }
@@ -192,6 +198,8 @@ constexpr ItemInfo item_info(ItemType item) {
       return {.max_count = 1, .has_durability = true, .max_damage = 20};
     case ITEM_LUBRICANT_CAN:
       return {.max_count = 1, .has_durability = true, .max_damage = 100};
+    case ITEM_CALIBRATOR:
+      return {.max_count = 1, .has_durability = true, .max_damage = 50};
     case ITEM_COUNT:
       break;
   }

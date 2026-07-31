@@ -471,7 +471,7 @@ void maintenance_render_minigame(
 
 struct MaintenanceCalibration {
   static constexpr std::string_view NAME = "calibration";
-  static constexpr ItemType FIX_ITEM     = ITEM_BLOCK;
+  static constexpr ItemType FIX_ITEM     = ITEM_CALIBRATOR;
   vec2 window_offset{};
   bool open{};
 
@@ -1256,6 +1256,7 @@ std::optional<bool> rotatable(ItemType type) {
     case ITEM_BRUSH:
     case ITEM_LUBRICANT_CAN:
     case ITEM_OIL_CANISTER:
+    case ITEM_CALIBRATOR:
       return std::nullopt;
     case ITEM_COUNT:
       break;
@@ -1401,6 +1402,7 @@ std::optional<Entity> entity_from_item(ItemType item) {
     case ITEM_BRUSH:
     case ITEM_LUBRICANT_CAN:
     case ITEM_OIL_CANISTER:
+    case ITEM_CALIBRATOR:
       return std::nullopt;
     case ITEM_COUNT:
       break;

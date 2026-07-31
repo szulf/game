@@ -22,6 +22,8 @@ enum TextureType {
   TEXTURE_COGWHEEL_ITEM,
   TEXTURE_SPARE_PARTS_ITEM,
   TEXTURE_BRUSH_ITEM,
+  TEXTURE_LUBRICANT_CAN_ITEM,
+  TEXTURE_OIL_CANISTER_ITEM,
 
   TEXTURE_COUNT,
 };
@@ -74,6 +76,10 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/spare_parts_item.png";
     case TEXTURE_BRUSH_ITEM:
       return "assets/brush_item.png";
+    case TEXTURE_LUBRICANT_CAN_ITEM:
+      return "assets/lubricant_can_item.png";
+    case TEXTURE_OIL_CANISTER_ITEM:
+      return "assets/oil_canister_item.png";
     case TEXTURE_COUNT:
       break;
   }

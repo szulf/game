@@ -57,6 +57,9 @@
 
 ### after alpha demo:
 
+- [ ] code cleanup
+  - [ ] cmake
+  - [ ] more methods
 - [ ] conveyors
   - [x] basic item movement on conveyors
   - [ ] proper from/to directions
@@ -81,9 +84,9 @@
 - [ ] proper positions for ui
 - [ ] proper game camera
   - game world should not always take up one screen
-- [ ] code cleanup (?)
 - [ ] different textures when maintenance is needed (?)
 - [ ] texture atlas
+- [ ] more machines
 
 # game design:
 

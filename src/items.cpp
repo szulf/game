@@ -1,8 +1,10 @@
 enum ItemType {
   // NOTE: requestable items
   ITEM_COPPER,
+  // TODO: make plastic not requestable, but instead made from oil?
   ITEM_PLASTIC,
   ITEM_ALUMINIUM,
+  ITEM_OIL_CANISTER,
 
   // NOTE: not requestable items
   ITEM_COPPER_WIRE,
@@ -21,6 +23,7 @@ enum ItemType {
 
   // NOTE: tool items
   ITEM_BRUSH,
+  ITEM_LUBRICANT_CAN,
 
   ITEM_COUNT,
 };
@@ -32,6 +35,7 @@ static constexpr std::array REQUESTABLE_ITEMS = std::to_array<ItemType>({
   ITEM_COPPER,
   ITEM_PLASTIC,
   ITEM_ALUMINIUM,
+  ITEM_OIL_CANISTER,
 });
 
 enum ItemSlotFlag {
@@ -106,6 +110,10 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_SPARE_PARTS_ITEM;
     case ITEM_BRUSH:
       return TEXTURE_BRUSH_ITEM;
+    case ITEM_LUBRICANT_CAN:
+      return TEXTURE_LUBRICANT_CAN_ITEM;
+    case ITEM_OIL_CANISTER:
+      return TEXTURE_OIL_CANISTER_ITEM;
     case ITEM_COUNT:
       break;
   }
@@ -144,6 +152,10 @@ std::string_view get_item_name(ItemType item) {
       return "Spare Parts";
     case ITEM_BRUSH:
       return "Brush";
+    case ITEM_LUBRICANT_CAN:
+      return "Lubricant Can";
+    case ITEM_OIL_CANISTER:
+      return "Oil Canister";
     case ITEM_COUNT:
       break;
   }
@@ -173,9 +185,13 @@ constexpr ItemInfo item_info(ItemType item) {
     case ITEM_WIRE_BUNDLE:
     case ITEM_COGWHEEL:
     case ITEM_SPARE_PARTS:
-      return {.max_count = 100, .has_durability = false};
+      return {.max_count = 100};
+    case ITEM_OIL_CANISTER:
+      return {.max_count = 20};
     case ITEM_BRUSH:
       return {.max_count = 1, .has_durability = true, .max_damage = 20};
+    case ITEM_LUBRICANT_CAN:
+      return {.max_count = 1, .has_durability = true, .max_damage = 100};
     case ITEM_COUNT:
       break;
   }

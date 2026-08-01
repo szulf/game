@@ -15,7 +15,7 @@ enum TextureType {
   TEXTURE_PLASTIC_ITEM,
   TEXTURE_ALUMINIUM_ITEM,
   TEXTURE_COPPER_WIRE_ITEM,
-  TEXTURE_BASIC_CIRCUIT_BOARD_ITEM,
+  TEXTURE_CIRCUIT_BOARD_ITEM,
   TEXTURE_ANTENNA_ITEM,
   TEXTURE_COMMUNICATION_COMPONENT_ITEM,
   TEXTURE_WIRE_BUNDLE_ITEM,
@@ -25,6 +25,10 @@ enum TextureType {
   TEXTURE_LUBRICANT_CAN_ITEM,
   TEXTURE_OIL_CANISTER_ITEM,
   TEXTURE_CALIBRATOR_ITEM,
+  TEXTURE_SILICON_WAFER_ITEM,
+  TEXTURE_BLANK_BOARD_ITEM,
+  TEXTURE_TRANSISTOR_ITEM,
+  TEXTURE_CAPACITOR_ITEM,
 
   TEXTURE_COUNT,
 };
@@ -63,8 +67,8 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/aluminium_item.png";
     case TEXTURE_COPPER_WIRE_ITEM:
       return "assets/copper_wire_item.png";
-    case TEXTURE_BASIC_CIRCUIT_BOARD_ITEM:
-      return "assets/basic_circuit_board_item.png";
+    case TEXTURE_CIRCUIT_BOARD_ITEM:
+      return "assets/circuit_board_item.png";
     case TEXTURE_ANTENNA_ITEM:
       return "assets/antenna_item.png";
     case TEXTURE_COMMUNICATION_COMPONENT_ITEM:
@@ -83,6 +87,14 @@ static std::string_view get_texture_path(TextureType texture) {
       return "assets/oil_canister_item.png";
     case TEXTURE_CALIBRATOR_ITEM:
       return "assets/calibrator_item.png";
+    case TEXTURE_SILICON_WAFER_ITEM:
+      return "assets/silicon_wafer_item.png";
+    case TEXTURE_BLANK_BOARD_ITEM:
+      return "assets/blank_board_item.png";
+    case TEXTURE_TRANSISTOR_ITEM:
+      return "assets/transistor_item.png";
+    case TEXTURE_CAPACITOR_ITEM:
+      return "assets/capacitor_item.png";
     case TEXTURE_COUNT:
       break;
   }

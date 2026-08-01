@@ -114,35 +114,53 @@ void inventory_data_edit_ui(
       ui_text(layout, "item type:", 15, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        for (u32 i = 0; i < ITEM_COUNT; ++i) {
-          auto item_type = ItemType(i);
-          bool clicked{};
-          Color color = LIGHTGRAY;
-          if (selected_slot.type == item_type) {
-            color = GRAY;
-          }
+        static constexpr u32 ROW_SIZE = 8;
+        static constexpr u32 ROW_COUNT =
+          ITEM_COUNT % ROW_SIZE == 0 ? ITEM_COUNT / ROW_SIZE : (ITEM_COUNT / ROW_SIZE) + 1;
 
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-          {
-            const auto& texture = assets.textures[get_texture_type(item_type)];
-            ui_element_begin(layout, UI_AUTO_ID);
-            ui_element_end(
-              layout,
-              {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
-               .texture = &texture}
-            );
-          }
-          ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+        for (u32 i = 0; i < ROW_COUNT; ++i) {
+          ui_element_begin(layout, UI_AUTO_ID);
+          for (u32 j = 0; j < ROW_SIZE; ++j) {
+            auto idx = i * ROW_SIZE + j;
+            if (idx >= ITEM_COUNT) {
+              break;
+            }
 
-          if (clicked) {
-            selected_slot.type = item_type;
-            if (selected_slot.count > item_info(selected_slot.type).max_count) {
-              selected_slot.count = item_info(selected_slot.type).max_count;
+            auto item_type = ItemType(idx);
+            bool clicked{};
+            Color color = LIGHTGRAY;
+            if (selected_slot.type == item_type) {
+              color = GRAY;
+            }
+
+            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+            {
+              const auto& texture = assets.textures[get_texture_type(item_type)];
+              ui_element_begin(layout, UI_AUTO_ID);
+              ui_element_end(
+                layout,
+                {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+                 .texture = &texture}
+              );
+            }
+            ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+
+            if (clicked) {
+              selected_slot.type = item_type;
+              if (selected_slot.count > item_info(selected_slot.type).max_count) {
+                selected_slot.count = item_info(selected_slot.type).max_count;
+              }
             }
           }
+          ui_element_end(layout, {.child_gap = 2});
         }
       }
-      ui_element_end(layout, {.padding = ui_padding_all(2), .child_gap = 2});
+      ui_element_end(
+        layout,
+        {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+         .padding          = ui_padding_all(2),
+         .child_gap        = 2}
+      );
 
       ui_text(layout, "count:", 15, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);

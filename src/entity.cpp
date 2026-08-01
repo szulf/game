@@ -875,7 +875,34 @@ struct Assembler {
 
   static constexpr std::array RECIPES = std::to_array<Recipe>({
     {
-      .name         = "copper cable",
+      .name         = "storage",
+      .recipe_time  = 2.0f,
+      .input_slots  = {{
+        {.type = ITEM_ALUMINIUM, .count = 4},
+      }},
+      .output_slots = {{{.type = ITEM_STORAGE, .count = 1}}},
+    },
+    {
+      .name         = "conveyor",
+      .recipe_time  = 0.5f,
+      .input_slots  = {{
+        {.type = ITEM_ALUMINIUM, .count = 1},
+        {.type = ITEM_COGWHEEL, .count = 1},
+      }},
+      .output_slots = {{{.type = ITEM_CONVEYOR, .count = 2}}},
+    },
+    {
+      .name         = "assembler",
+      .recipe_time  = 5.0f,
+      .input_slots  = {{
+        {.type = ITEM_CIRCUIT_BOARD, .count = 1},
+        {.type = ITEM_COGWHEEL, .count = 2},
+        {.type = ITEM_WIRE_BUNDLE, .count = 2},
+      }},
+      .output_slots = {{{.type = ITEM_ASSEMBLER, .count = 1}}},
+    },
+    {
+      .name         = "copper wire",
       .recipe_time  = 1.0f,
       .input_slots  = {{
         {.type = ITEM_COPPER, .count = 2},
@@ -883,13 +910,42 @@ struct Assembler {
       .output_slots = {{{.type = ITEM_COPPER_WIRE, .count = 3}}},
     },
     {
-      .name         = "basic circuit board",
-      .recipe_time  = 5.0f,
+      .name         = "blank board",
+      .recipe_time  = 2.5f,
       .input_slots  = {{
         {.type = ITEM_PLASTIC, .count = 2},
-        {.type = ITEM_COPPER_WIRE, .count = 6},
+        {.type = ITEM_COPPER_WIRE, .count = 4},
       }},
-      .output_slots = {{{.type = ITEM_BASIC_CIRCUIT_BOARD, .count = 1}}},
+      .output_slots = {{{.type = ITEM_BLANK_BOARD, .count = 1}}},
+    },
+    {
+      .name         = "transistor",
+      .recipe_time  = 1.0f,
+      .input_slots  = {{
+        {.type = ITEM_SILICON_WAFER, .count = 1},
+        {.type = ITEM_COPPER_WIRE, .count = 2},
+        {.type = ITEM_PLASTIC, .count = 1},
+      }},
+      .output_slots = {{{.type = ITEM_TRANSISTOR, .count = 4}}},
+    },
+    {
+      .name         = "capacitor",
+      .recipe_time  = 1.0f,
+      .input_slots  = {{
+        {.type = ITEM_ALUMINIUM, .count = 1},
+        {.type = ITEM_PLASTIC, .count = 1},
+      }},
+      .output_slots = {{{.type = ITEM_CAPACITOR, .count = 2}}},
+    },
+    {
+      .name         = "circuit board",
+      .recipe_time  = 5.0f,
+      .input_slots  = {{
+        {.type = ITEM_BLANK_BOARD, .count = 1},
+        {.type = ITEM_TRANSISTOR, .count = 2},
+        {.type = ITEM_CAPACITOR, .count = 2},
+      }},
+      .output_slots = {{{.type = ITEM_CIRCUIT_BOARD, .count = 1}}},
     },
     {
       .name         = "antenna",
@@ -904,7 +960,7 @@ struct Assembler {
       .name         = "communication component",
       .recipe_time  = 25.0f,
       .input_slots  = {{
-        {.type = ITEM_BASIC_CIRCUIT_BOARD, .count = 1},
+        {.type = ITEM_CIRCUIT_BOARD, .count = 1},
         {.type = ITEM_ANTENNA, .count = 1},
       }},
       .output_slots = {{{.type = ITEM_COMMUNICATION_COMPONENT, .count = 1}}},
@@ -930,7 +986,7 @@ struct Assembler {
       .name         = "spare parts",
       .recipe_time  = 8.0f,
       .input_slots  = {{
-        {.type = ITEM_BASIC_CIRCUIT_BOARD, .count = 1},
+        {.type = ITEM_CIRCUIT_BOARD, .count = 1},
         {.type = ITEM_COGWHEEL, .count = 2},
         {.type = ITEM_WIRE_BUNDLE, .count = 2},
       }},
@@ -1247,7 +1303,7 @@ std::optional<bool> rotatable(ItemType type) {
     case ITEM_PLASTIC:
     case ITEM_ALUMINIUM:
     case ITEM_COPPER_WIRE:
-    case ITEM_BASIC_CIRCUIT_BOARD:
+    case ITEM_CIRCUIT_BOARD:
     case ITEM_ANTENNA:
     case ITEM_COMMUNICATION_COMPONENT:
     case ITEM_WIRE_BUNDLE:
@@ -1257,6 +1313,10 @@ std::optional<bool> rotatable(ItemType type) {
     case ITEM_LUBRICANT_CAN:
     case ITEM_OIL_CANISTER:
     case ITEM_CALIBRATOR:
+    case ITEM_SILICON_WAFER:
+    case ITEM_BLANK_BOARD:
+    case ITEM_TRANSISTOR:
+    case ITEM_CAPACITOR:
       return std::nullopt;
     case ITEM_COUNT:
       break;
@@ -1393,7 +1453,7 @@ std::optional<Entity> entity_from_item(ItemType item) {
     case ITEM_PLASTIC:
     case ITEM_ALUMINIUM:
     case ITEM_COPPER_WIRE:
-    case ITEM_BASIC_CIRCUIT_BOARD:
+    case ITEM_CIRCUIT_BOARD:
     case ITEM_ANTENNA:
     case ITEM_COMMUNICATION_COMPONENT:
     case ITEM_WIRE_BUNDLE:
@@ -1403,6 +1463,10 @@ std::optional<Entity> entity_from_item(ItemType item) {
     case ITEM_LUBRICANT_CAN:
     case ITEM_OIL_CANISTER:
     case ITEM_CALIBRATOR:
+    case ITEM_SILICON_WAFER:
+    case ITEM_BLANK_BOARD:
+    case ITEM_TRANSISTOR:
+    case ITEM_CAPACITOR:
       return std::nullopt;
     case ITEM_COUNT:
       break;

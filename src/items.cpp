@@ -5,10 +5,14 @@ enum ItemType {
   ITEM_PLASTIC,
   ITEM_ALUMINIUM,
   ITEM_OIL_CANISTER,
+  ITEM_SILICON_WAFER,
 
   // NOTE: not requestable items
   ITEM_COPPER_WIRE,
-  ITEM_BASIC_CIRCUIT_BOARD,
+  ITEM_BLANK_BOARD,
+  ITEM_TRANSISTOR,
+  ITEM_CAPACITOR,
+  ITEM_CIRCUIT_BOARD,
   ITEM_ANTENNA,
   ITEM_COMMUNICATION_COMPONENT,
   ITEM_WIRE_BUNDLE,
@@ -38,6 +42,7 @@ static constexpr std::array REQUESTABLE_ITEMS = std::to_array<ItemType>({
   ITEM_PLASTIC,
   ITEM_ALUMINIUM,
   ITEM_OIL_CANISTER,
+  ITEM_SILICON_WAFER,
 });
 
 enum ItemSlotFlag {
@@ -98,8 +103,8 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_ALUMINIUM_ITEM;
     case ITEM_COPPER_WIRE:
       return TEXTURE_COPPER_WIRE_ITEM;
-    case ITEM_BASIC_CIRCUIT_BOARD:
-      return TEXTURE_BASIC_CIRCUIT_BOARD_ITEM;
+    case ITEM_CIRCUIT_BOARD:
+      return TEXTURE_CIRCUIT_BOARD_ITEM;
     case ITEM_ANTENNA:
       return TEXTURE_ANTENNA_ITEM;
     case ITEM_COMMUNICATION_COMPONENT:
@@ -118,6 +123,15 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_OIL_CANISTER_ITEM;
     case ITEM_CALIBRATOR:
       return TEXTURE_CALIBRATOR_ITEM;
+    case ITEM_SILICON_WAFER:
+      return TEXTURE_SILICON_WAFER_ITEM;
+    case ITEM_BLANK_BOARD:
+      return TEXTURE_BLANK_BOARD_ITEM;
+    case ITEM_TRANSISTOR:
+      return TEXTURE_TRANSISTOR_ITEM;
+    case ITEM_CAPACITOR:
+      return TEXTURE_CAPACITOR_ITEM;
+
     case ITEM_COUNT:
       break;
   }
@@ -142,8 +156,8 @@ std::string_view get_item_name(ItemType item) {
       return "Aluminium";
     case ITEM_COPPER_WIRE:
       return "Copper Wire";
-    case ITEM_BASIC_CIRCUIT_BOARD:
-      return "Basic Circuit Board";
+    case ITEM_CIRCUIT_BOARD:
+      return "Circuit Board";
     case ITEM_ANTENNA:
       return "Antenna";
     case ITEM_COMMUNICATION_COMPONENT:
@@ -162,6 +176,14 @@ std::string_view get_item_name(ItemType item) {
       return "Oil Canister";
     case ITEM_CALIBRATOR:
       return "Calibrator";
+    case ITEM_SILICON_WAFER:
+      return "Silicon Wafer";
+    case ITEM_BLANK_BOARD:
+      return "Blank Board";
+    case ITEM_TRANSISTOR:
+      return "Transistor";
+    case ITEM_CAPACITOR:
+      return "Capacitor";
     case ITEM_COUNT:
       break;
   }
@@ -185,12 +207,16 @@ constexpr ItemInfo item_info(ItemType item) {
     case ITEM_PLASTIC:
     case ITEM_ALUMINIUM:
     case ITEM_COPPER_WIRE:
-    case ITEM_BASIC_CIRCUIT_BOARD:
+    case ITEM_CIRCUIT_BOARD:
     case ITEM_ANTENNA:
     case ITEM_COMMUNICATION_COMPONENT:
     case ITEM_WIRE_BUNDLE:
     case ITEM_COGWHEEL:
     case ITEM_SPARE_PARTS:
+    case ITEM_SILICON_WAFER:
+    case ITEM_BLANK_BOARD:
+    case ITEM_TRANSISTOR:
+    case ITEM_CAPACITOR:
       return {.max_count = 100};
     case ITEM_OIL_CANISTER:
       return {.max_count = 20};

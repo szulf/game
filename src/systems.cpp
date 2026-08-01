@@ -870,16 +870,37 @@ ItemSlotIdx system_assembler_ui(
     maintenance_ui(layout, render_texture, assets, *player, assembler->maintenance);
   } else {
     ui_element_begin(layout, UI_AUTO_ID);
-    for (u32 i = 0; i < Assembler::RECIPES.size(); ++i) {
-      const auto& recipe = Assembler::RECIPES[i];
-      bool clicked = recipe_button_ui(layout, recipe.name, assembler->selected_recipe_idx == i);
-      if (clicked && assembler->selected_recipe_idx != i) {
-        assembler->selected_recipe_idx = i;
-        // TODO: pull out to a clear or something function
-        assembler->t = 0;
+    {
+      static constexpr u32 ROW_SIZE  = 3;
+      static constexpr u32 ROW_COUNT = Assembler::RECIPES.size() % 4 == 0
+                                         ? Assembler::RECIPES.size() / ROW_SIZE
+                                         : (Assembler::RECIPES.size() / ROW_SIZE) + 1;
+
+      for (u32 i = 0; i < ROW_COUNT; ++i) {
+        ui_element_begin(layout, UI_AUTO_ID);
+        for (u32 j = 0; j < ROW_SIZE; ++j) {
+          auto idx = i * ROW_SIZE + j;
+          if (idx >= Assembler::RECIPES.size()) {
+            break;
+          }
+          const auto& recipe = Assembler::RECIPES[idx];
+          bool clicked =
+            recipe_button_ui(layout, recipe.name, assembler->selected_recipe_idx == idx);
+          if (clicked && assembler->selected_recipe_idx != idx) {
+            assembler->selected_recipe_idx = idx;
+            // TODO: pull out to a clear or something function
+            assembler->t = 0;
+          }
+        }
+        ui_element_end(
+          layout,
+          {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
+           .child_gap       = 4,
+           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
+        );
       }
     }
-    ui_element_end(layout, {.child_gap = 4});
+    ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .child_gap = 4});
 
     const auto& selected_recipe = Assembler::RECIPES[assembler->selected_recipe_idx];
     ui_text(layout, "Recipe:", 15, WHITE);

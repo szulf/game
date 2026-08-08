@@ -228,7 +228,7 @@ void from_json(const json& j, ItemType& t) {
   ASSERT(false, "invalid json item type");
 }
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ItemSlot, flags, type, count);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ItemSlot, flags, type, count, damage);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EntityId, idx, gen);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConveyorItem, slot, t);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Cogwheel, pos, radius, color);
@@ -278,12 +278,7 @@ void to_json(json& j, const Maintenance& m) {
           {"t", v.t},
         };
       },
-      [&](const MaintenanceMessageSender& v) {
-        j = json{
-          {"type", v.NAME},
-        };
-      },
-      [&](const MaintenanceMessageReceiver& v) {
+      [&](const MaintenanceMessagingSystem& v) {
         j = json{
           {"type", v.NAME},
         };
@@ -326,11 +321,8 @@ void from_json(const json& j, Maintenance& m) {
     j.at("value").get_to(v.value);
     j.at("t").get_to(v.t);
     m = v;
-  } else if (type == MaintenanceMessageSender::NAME) {
-    MaintenanceMessageSender v{};
-    m = v;
-  } else if (type == MaintenanceMessageReceiver::NAME) {
-    MaintenanceMessageReceiver v{};
+  } else if (type == MaintenanceMessagingSystem::NAME) {
+    MaintenanceMessagingSystem v{};
     m = v;
   }
 }
@@ -808,7 +800,7 @@ void update_tick(State& state, f32 dt) {
       system_serialization(state, "save_file.json");
     } break;
     case Mode::EDITOR: {
-      editor::update(state.editor, state.store, state.tick_input);
+      editor::update(state, state.editor, state.store, state.tick_input);
     } break;
   }
 

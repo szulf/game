@@ -1,22 +1,29 @@
 namespace editor {
 
-void update(EditorData& editor, EntityStore& store, const Input& input) {
+// TODO: i dont like passing state around
+void update(State& state, EditorData& editor, EntityStore& store, const Input& input) {
   auto* entity_at_mouse_pos =
     get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world);
 
-  if (input.lmb.pressed() && entity_at_mouse_pos) {
+  if (input.lmb.down && entity_at_mouse_pos) {
     if (entity_at_mouse_pos->id == editor.selected_entity_id) {
       editor.selected_entity_id = {};
     }
     remove_entity(store, entity_at_mouse_pos->id);
   }
 
-  if (input.rmb.pressed() && !entity_at_mouse_pos) {
+  if (input.rmb.down && !entity_at_mouse_pos) {
     const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
     Entity entity         = placeable;
     entity.pos            = grid_pos(input.mouse_pos);
     entity.world          = editor.current_world;
-    add_entity(store, entity);
+    auto id               = add_entity(store, entity);
+    if (is<Player>(placeable)) {
+      state.player_id = id;
+    }
+    if (is<ResourceMessageReceiver>(placeable)) {
+      state.resource_message_receiver_id = id;
+    }
   }
 
   if (input.rmb.pressed() && entity_at_mouse_pos) {
@@ -196,6 +203,43 @@ void inventory_data_edit_ui(
         }
       }
       ui_element_end(layout, {.child_gap = 4});
+
+      if (item_info(selected_slot.type).has_durability) {
+        ui_text(layout, "damage:", 15, WHITE);
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          bool dec_clicked{};
+          bool inc_clicked{};
+
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &dec_clicked});
+          ui_text(layout, "-", 10, BLACK);
+          ui_element_end(
+            layout,
+            {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+             .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+             .bg_color        = LIGHTGRAY}
+          );
+
+          ui_text(layout, std::format("{}", selected_slot.damage), 15, WHITE);
+
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &inc_clicked});
+          ui_text(layout, "+", 10, BLACK);
+          ui_element_end(
+            layout,
+            {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+             .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+             .bg_color        = LIGHTGRAY}
+          );
+
+          if (dec_clicked && selected_slot.damage > 0) {
+            --selected_slot.damage;
+          }
+          if (inc_clicked && selected_slot.damage < item_info(selected_slot.type).max_damage) {
+            ++selected_slot.damage;
+          }
+        }
+        ui_element_end(layout, {.child_gap = 4});
+      }
 
       ui_text(layout, "flags:", 15, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);

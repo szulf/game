@@ -2,14 +2,57 @@
 
 ## gameplay:
 
-### before alpha demo:
+### before refined demo:
 
-- [x] dropping items on the floor
-- [x] mini puzzle worlds
-  - with item input/output
-- [x] in game time
-  - needed for the message system
-  - time in hud
+- [ ] code cleanup
+  - [ ] cmake
+  - [ ] more methods
+- [ ] resizable window
+- [ ] UI library
+  - [ ] borders
+  - [ ] justify-content: space-between from css
+  - [ ] better element api (the UI_Scope thing probably)
+  - [ ] child layouts (?)
+  - [ ] components (?)
+  - [ ] animations
+- [ ] proper positions for ui
+- [ ] proper game camera
+  - game world should not always take up one screen
+- [ ] bigger machines
+- [ ] containers that can output only from a single side
+- [ ] conveyors
+  - [x] basic item movement on conveyors
+  - [ ] proper from/to directions
+  - [ ] fix the todos in the comment over system_move_items()
+        (add them here after fixing to say what issues i encountered)
+- [ ] movement system
+- [ ] placing system
+- [ ] crafting system
+  - [x] basic functionality
+  - [ ] take items in any order in recipes or slot locking
+- [ ] map editor
+  - [x] placing
+  - [x] destroying
+  - [x] editing data
+    - [x] world tunnels
+    - [x] rotation
+    - [x] maintenance
+    - [x] inventories
+    - [ ] time
+  - [x] save to a file
+    - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
+  - [x] switch between worlds
+  - [ ] copying
+  - [ ] validation of the current save
+    - [ ] one player
+    - [ ] one resource message receiver
+    - [ ] 1-1 world tunnels ratio
+    - [ ] no more than one entity per tile
+      - exceptions: item entities, player in world tunnel
+  - [ ] undo/redo (???)
+
+### after refined demo:
+
 - [ ] message sending system
   - [x] sender block
     - displays the current message queue
@@ -20,7 +63,6 @@
   - [x] batching
   - [x] message transfer
   - [ ] automation
-- [x] crafting system
 - [ ] machine fixing system
   - [x] machine maintenance
     - [x] maintenance fixing mini-games
@@ -36,63 +78,34 @@
 - [x] serialization
   - [ ] custom json library
     - currently using an external one just to speed up development
-- [ ] map editor
-  - [x] placing
-  - [x] destroying
-  - [x] editing data
-    - [x] world tunnels
-    - [x] rotation
-    - [x] maintenance
-    - [x] inventories
-  - [x] save to a file
-    - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
-  - [x] switch between worlds
-  - [ ] copying
-  - [ ] validation of the current save
-    - one player
-    - one resource message receiver
-    - 1-1 world tunnels ratio
-  - [ ] undo/redo (???)
 - [ ] flashlight and basic lighting system
-
-### after alpha demo:
-
-- [ ] code cleanup
-  - [ ] cmake
-  - [ ] more methods
-- [ ] conveyors
-  - [x] basic item movement on conveyors
-  - [ ] proper from/to directions
-  - [ ] fix the todos in the comment over system_move_items()
-        (add them here after fixing to say what issues i encountered)
-- [ ] better movement system
-- [ ] containers that can output only from a single side
-- [ ] bigger machines
 - [ ] power
 - [ ] in game documentation for all blocks/items
 - [ ] dev console
-- [ ] UI library
-  - [ ] borders
-  - [ ] justify-content: space-between from css
-  - [ ] better element api (the UI_Scope thing probably)
-  - [ ] child layouts (?)
-  - [ ] components (?)
-  - [ ] animations
 - [ ] better textures and animations
 - [ ] sounds
-- [ ] resizable window
-- [ ] proper positions for ui
-- [ ] proper game camera
-  - game world should not always take up one screen
 - [ ] different textures when maintenance is needed (?)
 - [ ] texture atlas
 - [ ] more machines
+
+### done?:
+
+- [x] dropping items on the floor
+- [x] mini puzzle worlds
+  - with item input/output
+- [x] in game time
+  - needed for the message system
+  - time in hud
 
 # game design:
 
 THERE WILL BE A PLAYABLE VERSION OF THE FIRST 2/3 LEVELS BY END OF JULY!!!
 
 - just gameplay, i dont really care about graphics rn
+
+well, i got a demo with just one level D;, but i still like what i have here, the next plan is
+
+**THERE WILL BE A SIMILAR DEMO OF THE FIRST LEVEL, JUST WITH BETTER WORKING MECHANICS BY THE END OF SEPTEMBER**
 
 ## message sending system:
 

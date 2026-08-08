@@ -134,10 +134,8 @@ void system_open_gui(EntityStore& store, EntityId player_id, const Input& input)
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (
-    action_state(input, Action::INTERACT).pressed() &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
-  ) {
+  if (action_state(input, Action::INTERACT).pressed() &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
@@ -151,12 +149,10 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
-    if (
-      action_state(input, Action::CLOSE_INV).pressed() ||
-      (gui_entity &&
-       !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
-      (gui_entity && gui_entity->world != player_entity->world) || !gui_entity
-    ) {
+    if (action_state(input, Action::CLOSE_INV).pressed() ||
+        (gui_entity &&
+         !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
+        (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
       player->open_gui = NULL_ENTITY;
     }
   }
@@ -190,9 +186,8 @@ void system_hand_slot_interactions(
           slot.count += hand.count;
           hand = {};
         }
-      } else if (
-        slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) && hand
-      ) {
+      } else if (slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) &&
+                 hand) {
         swap_slots(slot, hand);
       } else if (slot && (slot.flags & ITEM_SLOT_OUTPUT) && !hand) {
         swap_slots(slot, hand);
@@ -208,10 +203,8 @@ void system_drop_items(EntityStore& store, EntityId player_id, const Input& inpu
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: not sure if lmb_pressed is the right keybind
-  if (
-    input.lmb.pressed() && player->hand &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
-  ) {
+  if (input.lmb.pressed() && player->hand &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
@@ -244,10 +237,8 @@ ItemSlotIdx system_inventory_uis(
   // different systems will handle them too
   // currently just have a different guis for
   // message receiver, storage/world_tunnel, assembler
-  if (
-    player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
-    !is<Assembler>(store, player->open_gui)
-  ) {
+  if (player->open_gui && !is<ResourceMessageReceiver>(store, player->open_gui) &&
+      !is<Assembler>(store, player->open_gui)) {
     auto* open_inv = get_inventory(store, player->open_gui);
     if (open_inv) {
       auto open_inv_layout =
@@ -372,8 +363,8 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .sizing           = {ui_sizing_fill(), ui_sizing_fit()}}
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL, .sizing = {ui_sizing_fill(), ui_sizing_fit()}
+    }
   );
 
   return cancel_clicked;
@@ -1055,11 +1046,9 @@ void system_place_entity(
   ASSERT_NO_MSG(player_entity && player);
 
   // TODO: should check if im not hovering over an item slot
-  if (
-    input.rmb.pressed() && player->hand &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
-    !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)
-  ) {
+  if (input.rmb.pressed() && player->hand &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
+      !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)) {
     auto entity = entity_from_item(player->hand.type);
     if (entity) {
       entity->pos   = grid_pos(input.mouse_pos);
@@ -1077,10 +1066,8 @@ void system_remove_entity(EntityStore& store, EntityId player_id, const Input& i
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
 
-  if (
-    input.lmb.pressed() &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
-  ) {
+  if (input.lmb.pressed() &&
+      pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
@@ -1250,7 +1237,6 @@ Entity* find_corresponding_world_tunnel(EntityStore& store, Entity& tunnel_entit
   return nullptr;
 }
 
-// NOTE: assumes there is always a 1-1 mapping of tunnels between worlds
 // TODO: not sure whether i want to travel via interaction or via walk into
 void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
   auto* player_entity = get_entity(store, player_id);
@@ -1258,9 +1244,13 @@ void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
 
   // NOTE: player
   for (auto& event : listen(store, EventType::PLAYER_COLLIDED)) {
-    auto* tunnel = get_data<WorldTunnel>(store, event.entity);
+    auto [tunnel_entity, tunnel] = get_entity_and_data<WorldTunnel>(store, event.entity);
+    ASSERT_NO_MSG(tunnel_entity);
     if (tunnel) {
+      auto* corresponding_tunnel_entity = find_corresponding_world_tunnel(store, *tunnel_entity);
+      ASSERT(corresponding_tunnel_entity, "there should always be a corresponding tunnel");
       player_entity->world = tunnel->to;
+      player_entity->pos   = corresponding_tunnel_entity->pos;
     }
   }
 
@@ -1288,8 +1278,8 @@ void system_apply_maintenance(EntityStore& store) {
       continue;
     }
 
-    // TODO: this needs a much much lower chance to happen
-    auto value = random_get<u32>(1, 1000);
+    // TODO: is this a good chance?
+    auto value = random_get<u32>(1, 10000);
     if (value != 1) {
       continue;
     }

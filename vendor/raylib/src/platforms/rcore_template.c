@@ -303,13 +303,13 @@ void ShowCursor(void)
     CORE.Input.Mouse.cursorHidden = false;
 }
 
-// Hide mouse cursor
+// Hides mouse cursor
 void HideCursor(void)
 {
     CORE.Input.Mouse.cursorHidden = true;
 }
 
-// Enable cursor (unlock cursor)
+// Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
     // Set cursor position in the middle
@@ -318,7 +318,7 @@ void EnableCursor(void)
     CORE.Input.Mouse.cursorHidden = false;
 }
 
-// Disable cursor (lock cursor)
+// Disables cursor (lock cursor)
 void DisableCursor(void)
 {
     // Set cursor position in the middle
@@ -341,12 +341,10 @@ void SwapScreenBuffer(void)
 double GetTime(void)
 {
     double time = 0.0;
-
     struct timespec ts = { 0 };
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    unsigned long long nanoSeconds = (unsigned long long)ts.tv_sec*1000000000LLU + (unsigned long long)ts.tv_nsec;
-
-    time = (double)(nanoSeconds - CORE.Time.base)*1e-9; // Elapsed time since InitTimer()
+    unsigned long long int nanoSeconds = (unsigned long long int)ts.tv_sec*1000000000LLU + (unsigned long long int)ts.tv_nsec;
+    time = (double)(nanoSeconds - CORE.Time.base)*1e-9;  // Elapsed time since InitTimer()
 
     return time;
 }

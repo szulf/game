@@ -633,7 +633,7 @@ void SetWindowSize(int width, int height)
     // When resizing the canvas, several elements must be considered:
     // - CSS canvas size: Web layout size, logical pixels
     // - Canvas contained framebuffer resolution
-    // - Browser monitor, device pixel ratio (HighDPI)
+    // * Browser monitor, device pixel ratio (HighDPI)
 
     double canvasCssWidth = 0.0;
     double canvasCssHeight = 0.0;
@@ -891,7 +891,7 @@ void ShowCursor(void)
     }
 }
 
-// Hide mouse cursor
+// Hides mouse cursor
 void HideCursor(void)
 {
     if (!CORE.Input.Mouse.cursorHidden)
@@ -902,7 +902,7 @@ void HideCursor(void)
     }
 }
 
-// Enable cursor (unlock cursor)
+// Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
     emscripten_exit_pointerlock();
@@ -913,7 +913,7 @@ void EnableCursor(void)
     // NOTE: CORE.Input.Mouse.cursorLocked handled by EmscriptenPointerlockCallback()
 }
 
-// Disable cursor (lock cursor)
+// Disables cursor (lock cursor)
 void DisableCursor(void)
 {
     emscripten_request_pointerlock(platform.canvasId, 1);

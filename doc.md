@@ -5,7 +5,7 @@
 ### before refined demo:
 
 - [ ] code cleanup
-  - [ ] cmake
+  - [x] cmake
   - [ ] more methods
 - [ ] resizable window
 - [ ] UI library

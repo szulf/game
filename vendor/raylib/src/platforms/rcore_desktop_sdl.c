@@ -56,7 +56,6 @@
     #include "SDL3/SDL.h"
 #elif defined(USING_SDL2_PROJECT)
     #include "SDL2/SDL.h"
-    #include "SDL2/SDL_syswm.h"     // Required to get window handlers
 #else
     #include "SDL.h"
 #endif
@@ -102,13 +101,6 @@ typedef struct {
     SDL_GameController *gamepad[MAX_GAMEPADS];
     SDL_JoystickID gamepadId[MAX_GAMEPADS]; // Joystick instance ids, they do not start from 0
     SDL_Cursor *cursor;
-
-#if defined(__linux__)
-    // Local storage for the window handle (X11)
-    // NOTE: On SDL is not possible to know windowing backend at compile time, so,
-    // just in case, avoiding X11 specific types here
-    unsigned long windowHandleX11;          // Underlying type for: XID, Window
-#endif
 } PlatformData;
 
 //----------------------------------------------------------------------------------
@@ -928,60 +920,9 @@ void SetWindowFocused(void)
 }
 
 // Get native window handle
-// NOTE: Handle type depends on OS and windowing system
 void *GetWindowHandle(void)
 {
-    void *handle = NULL;
-
-#if defined(USING_SDL3_PROJECT)
-    // REF: https://github.com/libsdl-org/SDL/blob/main/include/SDL3/SDL_video.h#L1590
-    SDL_PropertiesID props = SDL_GetWindowProperties(platform.window);
-    #if defined(_WIN32)
-    handle = (void *)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL); // Type: HWND
-    #elif defined(__linux__)
-    unsigned long windowId = (unsigned long)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0); // Type: unsigned long (XID, Window)
-    if (windowId != 0)
-    {
-        // X11 window ID
-        platform.windowHandleX11 = windowId;
-        handle = &platform.windowHandleX11;
-    }
-    else
-    {
-        // Wayland, get display surface pointer
-        // NOTE: Alternative SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER
-        handle = (void *)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL); // Type: struct wl_surface*
-    }
-    #elif defined(__APPLE__)
-    handle = (void *)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL); // Type: NSWindow*
-    #endif
-#elif defined(USING_SDL2_PROJECT)
-    SDL_SysWMinfo wmInfo = { 0 };
-    SDL_VERSION(&wmInfo.version);
-    if (SDL_GetWindowWMInfo(platform.window, &wmInfo))
-    {
-    #if defined(_WIN32)
-        handle = (void *)wmInfo.info.win.window; // Type: HWND
-    #elif defined(__linux__)
-        if (wmInfo.subsystem == SDL_SYSWM_X11)
-        {
-            // X11, get window ID (unsigned long)
-            platform.windowHandleX11 = (unsigned long)wmInfo.info.x11.window;
-            handle = &platform.windowHandleX11;
-        }
-        else if (wmInfo.subsystem == SDL_SYSWM_WAYLAND)
-        {
-            // Wayland, get display surface pointer
-            // NOTE: Alternative: wmInfo.info.wl.display
-            handle = (void *)wmInfo.info.wl.surface; // Type: struct wl_surface*
-        }
-    #elif defined(__APPLE__)
-        handle = (void *)wmInfo.info.cocoa.window; // Type: NSWindow*
-    #endif
-    }
-#endif
-
-    return handle;
+    return (void *)platform.window;
 }
 
 // Get number of monitors
@@ -1203,7 +1144,7 @@ const char *GetClipboardText(void)
 
     char *clipboard = SDL_GetClipboardText();
 
-    int clipboardSize = snprintf(buffer, MAX_CLIPBOARD_BUFFER_LENGTH, "%s", clipboard);
+    int clipboardSize = snprintf(buffer, sizeof(buffer), "%s", clipboard);
     if (clipboardSize >= MAX_CLIPBOARD_BUFFER_LENGTH)
     {
         char *truncate = buffer + MAX_CLIPBOARD_BUFFER_LENGTH - 4;
@@ -1286,7 +1227,7 @@ void ShowCursor(void)
     CORE.Input.Mouse.cursorHidden = false;
 }
 
-// Hide mouse cursor
+// Hides mouse cursor
 void HideCursor(void)
 {
 #if defined(USING_VERSION_SDL3)
@@ -1297,7 +1238,7 @@ void HideCursor(void)
     CORE.Input.Mouse.cursorHidden = true;
 }
 
-// Enable cursor (unlock cursor)
+// Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
     SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -1306,7 +1247,7 @@ void EnableCursor(void)
     CORE.Input.Mouse.cursorLocked = false;
 }
 
-// Disable cursor (lock cursor)
+// Disables cursor (lock cursor)
 void DisableCursor(void)
 {
     SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -1734,13 +1675,8 @@ void PollInputEvents(void)
             } break;
             case SDL_MOUSEWHEEL:
             {
-#if defined(USING_VERSION_SDL3)
-                CORE.Input.Mouse.currentWheelMove.x = event.wheel.x;
-                CORE.Input.Mouse.currentWheelMove.y = event.wheel.y;
-#else
-                CORE.Input.Mouse.currentWheelMove.x = event.wheel.preciseX;
-                CORE.Input.Mouse.currentWheelMove.y = event.wheel.preciseY;
-#endif
+                CORE.Input.Mouse.currentWheelMove.x = (float)event.wheel.x;
+                CORE.Input.Mouse.currentWheelMove.y = (float)event.wheel.y;
             } break;
             case SDL_MOUSEMOTION:
             {

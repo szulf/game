@@ -1,5 +1,6 @@
 main
 save_file.json
+build/
 
 # TODO: remove after moving to my own assets
 assets/

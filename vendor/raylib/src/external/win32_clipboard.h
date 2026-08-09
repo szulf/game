@@ -4,14 +4,14 @@
 
 #ifndef WIN32_CLIPBOARD_
 #define WIN32_CLIPBOARD_
-unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned int *dataSize);
+unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned long long int *dataSize);
 #endif // WIN32_CLIPBOARD_
 
 #ifdef WIN32_CLIPBOARD_IMPLEMENTATION
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <limits.h>
+#include <assert.h>
 
 // NOTE: These search for architecture is taken from "windows.h", and it's necessary to avoid including windows.h
 // and still make it compile on msvc, because import indirectly importing "winnt.h" (e.g. <minwindef.h>) can cause problems is these are not defined
@@ -213,7 +213,7 @@ static int GetPixelDataOffset(BITMAPINFOHEADER bih); // Get pixel data offset fr
 //----------------------------------------------------------------------------------
 // Module Functions Definition
 //----------------------------------------------------------------------------------
-unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned int *dataSize)
+unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned long long int *dataSize)
 {
     unsigned char *bmpData = NULL;
 
@@ -228,7 +228,7 @@ unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned int 
                 *width = bmpInfoHeader->biWidth;
                 *height = bmpInfoHeader->biHeight;
                 SIZE_T clipDataSize = GlobalSize(clipHandle);
-                if ((clipDataSize >= sizeof(BITMAPINFOHEADER)) && (clipDataSize < INT_MAX))
+                if (clipDataSize >= sizeof(BITMAPINFOHEADER))
                 {
                     int pixelOffset = GetPixelDataOffset(*bmpInfoHeader);
 
@@ -236,7 +236,7 @@ unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned int 
                     //------------------------------------------------------------------------
                     BITMAPFILEHEADER bmpFileHeader = { 0 };
                     SIZE_T bmpFileSize = sizeof(bmpFileHeader) + clipDataSize;
-                    *dataSize = (unsigned int)bmpFileSize;
+                    *dataSize = bmpFileSize;
 
                     bmpFileHeader.bfType = 0x4D42; // BMP fil type constant
                     bmpFileHeader.bfSize = (DWORD)bmpFileSize; // Up to 4GB works fine
@@ -254,7 +254,7 @@ unsigned char *Win32GetClipboardImageData(int *width, int *height, unsigned int 
                 }
                 else
                 {
-                    TRACELOG(LOG_WARNING, "Clipboard data is not supported (>2GB?)");
+                    TRACELOG(LOG_WARNING, "Clipboard data is malformed");
                     GlobalUnlock(clipHandle);
                     CloseClipboard();
                 }

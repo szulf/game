@@ -6,6 +6,7 @@
 
 - [ ] code cleanup
   - [x] cmake
+  - [ ] proper file split
   - [ ] more methods
 - [ ] resizable window
 - [ ] UI library

@@ -43,6 +43,16 @@ include(vendor/vendor.cmake)
 # add_link_options(-fsanitize=address,undefined)
 
 add_executable(game
+  src/core.h
+  src/math.h
+  src/utils.cpp src/utils.h
+  src/assets.cpp src/assets.h
+  src/input.cpp src/input.h
+  src/ui.cpp src/ui.h
+  src/items.cpp src/items.h
+  src/entity.cpp src/entity.h
+  src/systems.cpp src/systems.h
+  src/editor.cpp src/editor.h
   src/main.cpp
 )
 target_include_directories(game PRIVATE ${vendored_include_dirs} SYSTEM)

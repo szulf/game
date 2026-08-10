@@ -1,159 +1,23 @@
-#include "core.cpp"
+#include <fstream>
+
+#include "raylib.h"
+#include "json.hpp"
+using json = nlohmann::json;
+
+#include "core.h"
+#include "math.h"
+#include "utils.h"
+#include "input.h"
+#include "assets.h"
+#include "ui.h"
+#include "items.h"
+#include "entity.h"
+#include "systems.h"
+#include "editor.h"
 
 // TODO: when deserializing the std::vector's may get a wrong size,
 // if i serialized them with one and then i change it to something else,
 // the old one will still remain
-
-enum class Key {
-  A,
-  B,
-  C,
-  D,
-  E,
-  F,
-  G,
-  H,
-  I,
-  J,
-  K,
-  L,
-  M,
-  N,
-  O,
-  P,
-  Q,
-  R,
-  S,
-  T,
-  U,
-  V,
-  W,
-  X,
-  Y,
-  Z,
-  ZERO,
-  ONE,
-  TWO,
-  THREE,
-  FOUR,
-  FIVE,
-  SIX,
-  SEVEN,
-  EIGHT,
-  NINE,
-  F1,
-  F2,
-  F3,
-  F4,
-  F5,
-  F6,
-  F7,
-  F8,
-  F9,
-  F10,
-  F11,
-  F12,
-  SPACE,
-  LSHIFT,
-  TAB,
-  ESCAPE,
-  COUNT,
-};
-
-struct KeyState {
-  u32 transition_count{};
-  bool down{};
-
-  bool pressed() const {
-    return down && transition_count != 0;
-  }
-};
-
-struct Input {
-  EnumArray<KeyState, Key> keys{};
-
-  vec2 mouse_pos{};
-  KeyState lmb{};
-  KeyState rmb{};
-  i32 mouse_scroll{};
-};
-
-void clear(Input& input) {
-  auto mouse_pos  = input.mouse_pos;
-  input           = {};
-  input.mouse_pos = mouse_pos;
-}
-
-enum class Action {
-  MOVE_UP,
-  MOVE_LEFT,
-  MOVE_DOWN,
-  MOVE_RIGHT,
-  INTERACT,
-  CLOSE_INV,
-  ROTATE,
-
-  SERIALIZE,
-  DESERIALIZE,
-
-  TOGGLE_DEBUG_RENDERING,
-  TOGGLE_EDITOR_MODE,
-
-  COUNT,
-};
-
-static constexpr EnumArray<Key, Action> KEYMAP = []() {
-  EnumArray<Key, Action> map{};
-  map[Action::MOVE_UP]    = Key::W;
-  map[Action::MOVE_LEFT]  = Key::A;
-  map[Action::MOVE_DOWN]  = Key::S;
-  map[Action::MOVE_RIGHT] = Key::D;
-  map[Action::INTERACT]   = Key::E;
-  map[Action::CLOSE_INV]  = Key::ESCAPE;
-  map[Action::ROTATE]     = Key::R;
-
-  map[Action::SERIALIZE]   = Key::F1;
-  map[Action::DESERIALIZE] = Key::F2;
-
-  map[Action::TOGGLE_DEBUG_RENDERING] = Key::F3;
-  map[Action::TOGGLE_EDITOR_MODE]     = Key::F4;
-  return map;
-}();
-
-const KeyState& action_state(const Input& input, Action action) {
-  return input.keys[KEYMAP[action]];
-}
-
-vec2 get_move_vector(const Input& input) {
-  vec2 out{};
-  if (action_state(input, Action::MOVE_UP).pressed()) {
-    out.y -= 1;
-  }
-  if (action_state(input, Action::MOVE_DOWN).pressed()) {
-    out.y += 1;
-  }
-  if (action_state(input, Action::MOVE_LEFT).pressed()) {
-    out.x -= 1;
-  }
-  if (action_state(input, Action::MOVE_RIGHT).pressed()) {
-    out.x += 1;
-  }
-  return out;
-}
-
-#include "assets.cpp"
-#include "ui.cpp"
-#include "items.cpp"
-#include "entity.cpp"
-
-struct ItemSlotIdx {
-  EntityId entity{};
-  u32 slot_idx{};
-
-  explicit inline operator bool() const {
-    return bool(entity);
-  }
-};
 
 struct FrameData {
   ItemSlotIdx hovered_slot{};
@@ -164,17 +28,8 @@ enum class Mode {
   EDITOR,
 };
 
-static constexpr vec2 MAINTENANCE_MINIGAME_DIMS = {256, 256};
-
-struct EditorData {
-  World current_world{};
-  u32 selected_placeable_idx{};
-  EntityId selected_entity_id{};
-
-  ItemSlotIdx selected_inventory_edit_slot{};
-};
-
-static constexpr std::string_view DEFAULT_MAP_FILEPATH = "default_map.json";
+static constexpr std::string_view DEFAULT_MAP_FILEPATH       = "default_map.json";
+static constexpr std::string_view SERIALIZATION_MAP_FILEPATH = "save_file.json";
 
 struct State {
   static constexpr u32 SERIALIZATION_VERSION = 1;
@@ -207,7 +62,7 @@ struct State {
 
   bool debug{};
 
-  EditorData editor{};
+  editor::Data editor{};
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(vec2, x, y);
@@ -503,9 +358,6 @@ void load_state_from_file(State& state, const std::filesystem::path& filepath) {
   state.store                        = new_state.store;
 }
 
-#include "systems.cpp"
-#include "editor.cpp"
-
 void init(State& state) {
   InitWindow(WINDOW_DIMS.x, WINDOW_DIMS.y, "test");
   SetTargetFPS(165);
@@ -696,7 +548,7 @@ void gather_input(State& state) {
   auto& input = state.frame_input;
   clear(input);
 
-  input.mouse_pos    = vec2_from_vector2(GetMousePosition());
+  input.mouse_pos    = vec2::from_raylib(GetMousePosition());
   input.mouse_scroll = GetMouseWheelMove();
 
   state.tick_input.mouse_pos = input.mouse_pos;
@@ -797,11 +649,23 @@ void update_tick(State& state, f32 dt) {
       system_progress_recipes(state.store, dt);
       system_apply_maintenance(state.store);
       system_update_maintenance_minigames(state.store, state.tick_input, dt);
-      system_serialization(state, "save_file.json");
     } break;
     case Mode::EDITOR: {
-      editor::update(state, state.editor, state.store, state.tick_input);
+      auto result = editor::update(state.editor, state.store, state.tick_input);
+      if (result.player_id) {
+        state.player_id = result.player_id;
+      }
+      if (result.resource_message_receiver_id) {
+        state.resource_message_receiver_id = result.resource_message_receiver_id;
+      }
     } break;
+  }
+
+  if (action_state(state.tick_input, Action::SERIALIZE).pressed()) {
+    save_state_to_file(state, SERIALIZATION_MAP_FILEPATH);
+  }
+  if (action_state(state.tick_input, Action::DESERIALIZE).pressed()) {
+    load_state_from_file(state, SERIALIZATION_MAP_FILEPATH);
   }
 
   flush(state.store);
@@ -859,14 +723,12 @@ void update_frame(State& state) {
       }
     } break;
     case Mode::EDITOR: {
-      editor::ui(
-        state.editor,
-        state.store,
-        state.ui_system,
-        state.frame_input,
-        state.assets,
-        state
-      );
+      auto result =
+        editor::gui(state.editor, state.store, state.ui_system, state.frame_input, state.assets);
+      if (result.save_requested) {
+        save_state_to_file(state, DEFAULT_MAP_FILEPATH);
+        std::println("saved state to '{}'", DEFAULT_MAP_FILEPATH);
+      }
     } break;
   }
 }
@@ -954,21 +816,9 @@ void render(State& state) {
                 break;
             }
 
-            DrawLineV(
-              vector2_from_vec2(main_start_pos),
-              vector2_from_vec2(main_end_pos),
-              ARROW_COLOR
-            );
-            DrawLineV(
-              vector2_from_vec2(hands_start_pos),
-              vector2_from_vec2(right_end_pos),
-              ARROW_COLOR
-            );
-            DrawLineV(
-              vector2_from_vec2(hands_start_pos),
-              vector2_from_vec2(left_end_pos),
-              ARROW_COLOR
-            );
+            DrawLineV(main_start_pos.to_raylib(), main_end_pos.to_raylib(), ARROW_COLOR);
+            DrawLineV(hands_start_pos.to_raylib(), right_end_pos.to_raylib(), ARROW_COLOR);
+            DrawLineV(hands_start_pos.to_raylib(), left_end_pos.to_raylib(), ARROW_COLOR);
           }
         }
       }

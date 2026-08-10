@@ -1,39 +1,8 @@
-enum TextureType {
-  TEXTURE_PLAYER,
-  TEXTURE_BLOCK,
-  TEXTURE_BLOCK_ITEM,
-  TEXTURE_STORAGE,
-  TEXTURE_STORAGE_ITEM,
-  TEXTURE_CONVEYOR,
-  TEXTURE_CONVEYOR_ITEM,
-  TEXTURE_WORLD_TUNNEL,
-  TEXTURE_MESSAGE_SENDER,
-  TEXTURE_MESSAGE_RECEIVER,
-  TEXTURE_ASSEMBLER,
-  TEXTURE_ASSEMBLER_ITEM,
-  TEXTURE_COPPER_ITEM,
-  TEXTURE_PLASTIC_ITEM,
-  TEXTURE_ALUMINIUM_ITEM,
-  TEXTURE_COPPER_WIRE_ITEM,
-  TEXTURE_CIRCUIT_BOARD_ITEM,
-  TEXTURE_ANTENNA_ITEM,
-  TEXTURE_COMMUNICATION_COMPONENT_ITEM,
-  TEXTURE_WIRE_BUNDLE_ITEM,
-  TEXTURE_COGWHEEL_ITEM,
-  TEXTURE_SPARE_PARTS_ITEM,
-  TEXTURE_BRUSH_ITEM,
-  TEXTURE_LUBRICANT_CAN_ITEM,
-  TEXTURE_OIL_CANISTER_ITEM,
-  TEXTURE_CALIBRATOR_ITEM,
-  TEXTURE_SILICON_WAFER_ITEM,
-  TEXTURE_BLANK_BOARD_ITEM,
-  TEXTURE_TRANSISTOR_ITEM,
-  TEXTURE_CAPACITOR_ITEM,
+#include "assets.h"
 
-  TEXTURE_COUNT,
-};
+#include "core.h"
 
-static std::string_view get_texture_path(TextureType texture) {
+std::string_view get_texture_path(TextureType texture) {
   switch (texture) {
     case TEXTURE_PLAYER:
       return "assets/player.png";
@@ -100,10 +69,6 @@ static std::string_view get_texture_path(TextureType texture) {
   }
   ASSERT_NO_MSG(false);
 }
-
-struct AssetManager {
-  std::array<Texture2D, TEXTURE_COUNT> textures{};
-};
 
 void load_textures(AssetManager& assets) {
   for (u32 i = 0; i < TEXTURE_COUNT; ++i) {

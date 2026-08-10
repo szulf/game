@@ -1,4 +1,19 @@
+#pragma once
+
+#include "raylib.h"
+#include "raymath.h"
+
+#include "core.h"
+
 struct vec2 {
+  constexpr static vec2 from_raylib(const Vector2& vec) {
+    return {vec.x, vec.y};
+  }
+
+  constexpr Vector2 to_raylib() const {
+    return {x, y};
+  }
+
   f32 x{};
   f32 y{};
 };

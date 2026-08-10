@@ -1,37 +1,41 @@
+#include "editor.h"
+
 namespace editor {
 
 // TODO: i dont like passing state around
-void update(State& state, EditorData& editor, EntityStore& store, const Input& input) {
+UpdateResult update(Data& data, EntityStore& store, const Input& input) {
+  UpdateResult result{};
   auto* entity_at_mouse_pos =
-    get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world);
+    get_entity_at_pos(store, grid_pos(input.mouse_pos), data.current_world);
 
   if (input.lmb.down && entity_at_mouse_pos) {
-    if (entity_at_mouse_pos->id == editor.selected_entity_id) {
-      editor.selected_entity_id = {};
+    if (entity_at_mouse_pos->id == data.selected_entity_id) {
+      data.selected_entity_id = {};
     }
     remove_entity(store, entity_at_mouse_pos->id);
   }
 
   if (input.rmb.down && !entity_at_mouse_pos) {
-    const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
+    const auto& placeable = PLACEABLE[data.selected_placeable_idx];
     Entity entity         = placeable;
     entity.pos            = grid_pos(input.mouse_pos);
-    entity.world          = editor.current_world;
+    entity.world          = data.current_world;
     auto id               = add_entity(store, entity);
     if (is<Player>(placeable)) {
-      state.player_id = id;
+      result.player_id = id;
     }
     if (is<ResourceMessageReceiver>(placeable)) {
-      state.resource_message_receiver_id = id;
+      result.resource_message_receiver_id = id;
     }
   }
 
   if (input.rmb.pressed() && entity_at_mouse_pos) {
-    editor.selected_entity_id = entity_at_mouse_pos->id;
+    data.selected_entity_id = entity_at_mouse_pos->id;
   }
+  return result;
 }
 
-void rotation_data_edit_ui(UI_Layout& layout, Entity& entity) {
+static void rotation_data_edit_gui(UI_Layout& layout, Entity& entity) {
   auto* rotation = get_rotation(entity);
   ASSERT(rotation, "entity has no rotation to edit");
   bool clicked{};
@@ -52,10 +56,8 @@ void rotation_data_edit_ui(UI_Layout& layout, Entity& entity) {
   }
 }
 
-void rotate_maintenace(
-  Maintenance& maintenance,
-  std::span<const Maintenance> possible_maintenances
-) {
+static void
+rotate_maintenace(Maintenance& maintenance, std::span<const Maintenance> possible_maintenances) {
   if (std::holds_alternative<std::monostate>(maintenance)) {
     maintenance = possible_maintenances[0];
   } else {
@@ -72,7 +74,7 @@ void rotate_maintenace(
   }
 }
 
-void maintenance_data_edit_ui(UI_Layout& layout, Entity& entity) {
+static void maintenance_data_edit_gui(UI_Layout& layout, Entity& entity) {
   auto [maintenance, possible_maintenance] = get_maintenance(entity);
   ASSERT(maintenance, "entity has no maintenance to edit");
   bool clicked{};
@@ -93,8 +95,8 @@ void maintenance_data_edit_ui(UI_Layout& layout, Entity& entity) {
   }
 }
 
-void inventory_data_edit_ui(
-  EditorData& editor,
+static void inventory_data_edit_gui(
+  Data& data,
   UI_Layout& layout,
   const AssetManager& assets,
   const Input& input,
@@ -108,11 +110,11 @@ void inventory_data_edit_ui(
   // it was clicked or not from the inventory_ui function
   // (and this is not the only place im doing it this way)
   if (input.lmb.pressed() && hovered_slot) {
-    editor.selected_inventory_edit_slot = hovered_slot;
+    data.selected_inventory_edit_slot = hovered_slot;
   }
 
-  if (editor.selected_inventory_edit_slot.entity == entity.id) {
-    auto& selected_slot = (*inventory)[editor.selected_inventory_edit_slot.slot_idx];
+  if (data.selected_inventory_edit_slot.entity == entity.id) {
+    auto& selected_slot = (*inventory)[data.selected_inventory_edit_slot.slot_idx];
 
     ui_element_begin(layout, UI_AUTO_ID);
     {
@@ -274,7 +276,7 @@ void inventory_data_edit_ui(
   }
 }
 
-void world_tunnel_destination_data_edit_ui(UI_Layout& layout, Entity& entity) {
+static void world_tunnel_destination_data_edit_gui(UI_Layout& layout, Entity& entity) {
   auto* tunnel = get_data<WorldTunnel>(entity);
   ASSERT(tunnel, "entity is not of type WorldTunnel");
   bool clicked{};
@@ -296,40 +298,38 @@ void world_tunnel_destination_data_edit_ui(UI_Layout& layout, Entity& entity) {
 }
 
 // TODO: move the ifs into the functions?
-void entity_data_edit_ui(
-  EditorData& editor,
+static void entity_data_edit_gui(
+  Data& data,
   UI_Layout& layout,
   const AssetManager& assets,
   const Input& input,
   Entity& entity
 ) {
   if (rotatable(entity)) {
-    rotation_data_edit_ui(layout, entity);
+    rotation_data_edit_gui(layout, entity);
   }
   if (has_inventory(entity)) {
-    inventory_data_edit_ui(editor, layout, assets, input, entity);
+    inventory_data_edit_gui(data, layout, assets, input, entity);
   }
   if (has_maintenance(entity)) {
-    maintenance_data_edit_ui(layout, entity);
+    maintenance_data_edit_gui(layout, entity);
   }
   if (is<WorldTunnel>(entity)) {
-    world_tunnel_destination_data_edit_ui(layout, entity);
+    world_tunnel_destination_data_edit_gui(layout, entity);
   }
 }
 
-void ui(
-  EditorData& editor,
+GUIResult gui(
+  Data& data,
   EntityStore& store,
   UI_System& ui_system,
   const Input& input,
-  const AssetManager& assets,
-  // TODO: i dont like passing the whole state here, but i do need it for serialization,
-  // and also passing references to objects inside of the state along side the state itself is icky
-  const State& state
+  const AssetManager& assets
 ) {
+  GUIResult result{};
   bool save_clicked{};
 
-  auto layout = ui_layout_begin("editor ui", ui_system, input, {900, 100}, WINDOW_DIMS);
+  auto layout = ui_layout_begin("data ui", ui_system, input, {900, 100}, WINDOW_DIMS);
   ui_element_begin(layout, UI_AUTO_ID);
   {
     ui_text(layout, "placeables:", 25, WHITE);
@@ -339,7 +339,7 @@ void ui(
         const auto& placeable = PLACEABLE[i];
         bool clicked{};
         Color color = LIGHTGRAY;
-        if (i == editor.selected_placeable_idx) {
+        if (i == data.selected_placeable_idx) {
           color = GRAY;
         }
         ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
@@ -355,7 +355,7 @@ void ui(
         ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
 
         if (clicked) {
-          editor.selected_placeable_idx = i;
+          data.selected_placeable_idx = i;
         }
       }
     }
@@ -367,22 +367,22 @@ void ui(
       ui_text(layout, "current world: ", 20, WHITE);
       ui_element_begin(layout, UI_AUTO_ID, {.clicked = &current_world_clicked});
       {
-        ui_text(layout, world_to_string(editor.current_world), 20, BLACK);
+        ui_text(layout, world_to_string(data.current_world), 20, BLACK);
       }
       ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
     }
     ui_element_end(layout, {});
     if (current_world_clicked) {
-      editor.current_world = World((i32(editor.current_world) + 1) % i32(World::COUNT));
+      data.current_world = World((i32(data.current_world) + 1) % i32(World::COUNT));
     }
 
-    if (editor.selected_entity_id) {
-      auto* selected = get_entity(store, editor.selected_entity_id);
+    if (data.selected_entity_id) {
+      auto* selected = get_entity(store, data.selected_entity_id);
       ASSERT_NO_MSG(selected);
       ui_text(layout, "selected entity data:", 25, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        entity_data_edit_ui(editor, layout, assets, input, *selected);
+        entity_data_edit_gui(data, layout, assets, input, *selected);
       }
       ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
     }
@@ -408,14 +408,12 @@ void ui(
   );
   ui_layout_end(layout);
 
-  if (save_clicked) {
-    save_state_to_file(state, DEFAULT_MAP_FILEPATH);
-    std::println("saved world file to '{}'", DEFAULT_MAP_FILEPATH);
-  }
+  result.save_requested = save_clicked;
+  return result;
 }
 
-void render(EditorData& editor, EntityStore& store, const AssetManager& assets) {
-  render_entities(store, editor.current_world, assets);
+void render(Data& data, EntityStore& store, const AssetManager& assets) {
+  render_entities(store, data.current_world, assets);
 }
 
 }

@@ -1,194 +1,13 @@
-// NOTE: possibly im doing way too many iterations over the whole data set
-// so if ever performance becomes an issue i could look at that
+#include "ui.h"
 
-// TODO: helper function to render textures?
-// ui_element_begin(layout, UI_AUTO_ID);
-// ui_element_end(
-//   layout,
-//   {.sizing = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)}, .texture =
-//   &texture}
-// );
-
-enum UI_LayoutDirection {
-  UI_LAYOUT_DIRECTION_HORIZONTAL,
-  UI_LAYOUT_DIRECTION_VERTICAL,
-};
-
-enum UI_SizingType {
-  UI_SIZING_FIT,
-  UI_SIZING_FILL,
-  UI_SIZING_FIXED,
-};
-
-struct UI_SizingAxis {
-  UI_SizingType type{};
-  u16 fixed_px{};
-};
-
-inline UI_SizingAxis ui_sizing_fit() {
-  return {.type = UI_SIZING_FIT};
-}
-
-inline UI_SizingAxis ui_sizing_fill() {
-  return {.type = UI_SIZING_FILL};
-}
-
-inline UI_SizingAxis ui_sizing_fixed(u16 px) {
-  return {.type = UI_SIZING_FIXED, .fixed_px = px};
-}
-
-struct UI_Sizing {
-  UI_SizingAxis width{};
-  UI_SizingAxis height{};
-};
-
-struct UI_Padding {
-  u16 top{};
-  u16 down{};
-  u16 left{};
-  u16 right{};
-};
-
-inline UI_Padding ui_padding_all(u16 value) {
-  return {value, value, value, value};
-}
-
-enum UI_ChildAlignmentAxis {
-  UI_CHILD_ALIGNMENT_START,
-  UI_CHILD_ALIGNMENT_CENTER,
-  UI_CHILD_ALIGNMENT_END,
-};
-
-struct UI_ChildAlignment {
-  UI_ChildAlignmentAxis x{};
-  UI_ChildAlignmentAxis y{};
-};
-
-#define SCROLL_SENSITIVITY 50
-
-struct UI_ElementConfigNormal {
-  UI_LayoutDirection layout_direction{};
-  UI_Sizing sizing{};
-  UI_Padding padding{};
-  u16 child_gap{};
-  UI_ChildAlignment child_alignment{};
-  Color bg_color{};
-
-  // TODO: could pull these two into their own struct UI_Texture or smth
-  const Texture2D* texture{};
-  bool flip_texture_vertically{};
-
-  // TODO: should i have a separate corner_radius for each of the corners? (probably yes)
-  f32 corner_radius{};
-  i32* scroll_value{};
-};
-
-enum UI_ElementType {
-  UI_ELEMENT_NORMAL,
-  UI_ELEMENT_TEXT,
-};
-
-// TODO: remove this?
-static constexpr f32 TEXT_SPACING = 2;
-
-struct UI_ElementConfig {
-  UI_ElementType type{};
-  union {
-    UI_ElementConfigNormal normal{};
-    struct {
-      u32 string_idx{};
-      f32 size{};
-      Color color{};
-    } text;
-  };
-};
-
-struct UI_StateOptions {
-  bool* clicked{};
-  bool* hovered{};
-};
-
-using UI_ElementIdx = u32;
-using UI_Id         = const char*;
-using UI_IdInternal = u32;
-
-struct UI_Element {
-  UI_IdInternal id{};
-  UI_ElementIdx parent{};
-  // NOTE: if idx == 0 then there is no child
-  UI_ElementIdx first_child{};
-  // NOTE: if idx == 0 then there is no sibling
-  UI_ElementIdx next_sibling{};
-  UI_ElementConfig config{};
-  vec2 dimensions{};
-  vec2 pos{};
-  Rectangle clip_rectangle{};
-};
-
-struct UI_QuadCommand {
-  vec2 pos{};
-  vec2 dims{};
-  f32 corner_radius{};
-  Color tint{};
-  std::optional<Rectangle> clip_rectangle{};
-};
-
-struct UI_TextureCommand {
-  vec2 pos{};
-  vec2 dims{};
-  const Texture2D* texture{};
-  bool flip_vertically{};
-  Color tint{};
-  std::optional<Rectangle> clip_rectangle{};
-};
-
-struct UI_TextCommand {
-  vec2 pos{};
-  std::string string{};
-  f32 size{};
-  Color tint{};
-};
-
-using UI_Command = std::variant<UI_QuadCommand, UI_TextureCommand, UI_TextCommand>;
-
-struct UI_System {
-  std::vector<UI_Command> ui_cmds{};
-  struct LastFrameData {
-    std::unordered_map<UI_IdInternal, UI_ElementIdx> id_map{};
-    std::vector<UI_Element> elements{};
-  };
-  std::unordered_map<UI_IdInternal, LastFrameData> last_frame_data{};
-};
-
-// NOTE: needs to be called once every frame, before the first ui_begin_layout
 void ui_system_update(UI_System& system) {
   system.ui_cmds.clear();
 }
 
-struct UI_Layout {
-  UI_IdInternal id{};
-  UI_System* system{};
-  const Input* input{};
-  // NOTE: weird hack to get the union working, because c++
-  // (should probably switch to a std::variant somewhere to fix this properly)
-  std::vector<std::string> strings{};
-  std::vector<UI_Element> elements{};
-  vec2 pos{};
-  vec2 max_dimensions{};
-
-  bool _element{};
-  UI_ElementIdx _active_parent{};
-};
-
-bool ui_intersects(const vec2& point, const vec2& start, const vec2& dimensions) {
+static bool ui_intersects(const vec2& point, const vec2& start, const vec2& dimensions) {
   return (point.x > start.x && point.x < start.x + dimensions.x) &&
          (point.y > start.y && point.y < start.y + dimensions.y);
 }
-
-enum UI_Axis {
-  UI_AXIS_X,
-  UI_AXIS_Y,
-};
 
 constexpr static std::array<UI_LayoutDirection, 2> layout_direction_from_axis = []() {
   std::array<UI_LayoutDirection, 2> t{};
@@ -284,7 +103,7 @@ static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx 
     case UI_ELEMENT_TEXT: {
       auto& config    = elem.config.text;
       auto& str       = layout.strings[config.string_idx];
-      elem.dimensions = vec2_from_vector2(
+      elem.dimensions = vec2::from_raylib(
         MeasureTextEx(GetFontDefault(), str.c_str(), f32(config.size), TEXT_SPACING)
       );
     } break;
@@ -632,9 +451,7 @@ static void set_first_child_or_next_sibling(UI_Layout& layout) {
   }
 }
 
-static constexpr UI_Id UI_AUTO_ID = nullptr;
-
-void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options = {}) {
+void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options) {
   UI_IdInternal id_internal = id ? std::hash<std::string_view>{}(std::string_view{id})
                                  : std::hash<UI_ElementIdx>{}(layout.elements.size());
   if (layout.system->last_frame_data[layout.id].id_map.contains(id_internal)) {
@@ -695,7 +512,7 @@ void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config) {
   layout._active_parent = layout.elements[layout._active_parent].parent;
 }
 
-void ui_text(UI_Layout& layout, std::string_view text, f32 size, Color color = BLACK) {
+void ui_text(UI_Layout& layout, std::string_view text, f32 size, Color color) {
   layout.strings.push_back(std::string{text});
   layout.elements.push_back({
     .parent = layout._active_parent,
@@ -790,7 +607,7 @@ void ui_render(UI_System& system) {
           DrawTextEx(
             GetFontDefault(),
             text.string.c_str(),
-            vector2_from_vec2(text.pos),
+            text.pos.to_raylib(),
             text.size,
             TEXT_SPACING,
             text.tint

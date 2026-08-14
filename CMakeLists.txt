@@ -51,9 +51,11 @@ add_executable(game
   src/ui.cpp src/ui.h
   src/items.cpp src/items.h
   src/entity.cpp src/entity.h
+  src/serialization.cpp src/serialization.h
   src/systems.cpp src/systems.h
   src/gui.cpp src/gui.h
   src/editor.cpp src/editor.h
+  src/game.cpp src/game.h
   src/main.cpp
 )
 target_include_directories(game PRIVATE ${vendored_include_dirs} SYSTEM)

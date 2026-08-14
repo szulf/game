@@ -1,4 +1,4 @@
-#include "game.cpp"
+#include "game.h"
 
 int main() {
   State state = {};

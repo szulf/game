@@ -4,12 +4,9 @@
 #include "assets.h"
 #include "input.h"
 #include "ui.h"
-#include "systems.h"
 #include "entity.h"
 
-namespace editor {
-
-struct Data {
+struct Editor {
   World current_world{};
   u32 selected_placeable_idx{};
   EntityId selected_entity_id{};
@@ -17,24 +14,22 @@ struct Data {
   ItemSlotIdx selected_inventory_edit_slot{};
 };
 
-struct UpdateResult {
+struct EditorUpdateResult {
   EntityId player_id{};
   EntityId resource_message_receiver_id{};
 };
 
-UpdateResult update(Data& editor, EntityStore& store, const Input& input);
+EditorUpdateResult editor_update(Editor& editor, EntityStore& store, const Input& input);
 
-struct GUIResult {
+struct EditorGUIResult {
   bool save_requested{};
 };
 
-GUIResult gui(
-  Data& editor,
+EditorGUIResult editor_gui(
+  Editor& editor,
   EntityStore& store,
   UI_System& ui_system,
   const Input& input,
   const AssetManager& assets
 );
-void render(Data& editor, EntityStore& store, const AssetManager& assets);
-
-}
+void editor_render(Editor& editor, EntityStore& store, const AssetManager& assets);

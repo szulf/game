@@ -2,26 +2,23 @@
 
 #include "gui.h"
 
-namespace editor {
-
-// TODO: i dont like passing state around
-UpdateResult update(Data& data, EntityStore& store, const Input& input) {
-  UpdateResult result{};
+EditorUpdateResult editor_update(Editor& editor, EntityStore& store, const Input& input) {
+  EditorUpdateResult result{};
   auto* entity_at_mouse_pos =
-    get_entity_at_pos(store, grid_pos(input.mouse_pos), data.current_world);
+    get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world);
 
   if (input.lmb.down && entity_at_mouse_pos) {
-    if (entity_at_mouse_pos->id == data.selected_entity_id) {
-      data.selected_entity_id = {};
+    if (entity_at_mouse_pos->id == editor.selected_entity_id) {
+      editor.selected_entity_id = {};
     }
     remove_entity(store, entity_at_mouse_pos->id);
   }
 
   if (input.rmb.down && !entity_at_mouse_pos) {
-    const auto& placeable = PLACEABLE[data.selected_placeable_idx];
+    const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
     Entity entity         = placeable;
     entity.pos            = grid_pos(input.mouse_pos);
-    entity.world          = data.current_world;
+    entity.world          = editor.current_world;
     auto id               = add_entity(store, entity);
     if (is<Player>(placeable)) {
       result.player_id = id;
@@ -32,7 +29,7 @@ UpdateResult update(Data& data, EntityStore& store, const Input& input) {
   }
 
   if (input.rmb.pressed() && entity_at_mouse_pos) {
-    data.selected_entity_id = entity_at_mouse_pos->id;
+    editor.selected_entity_id = entity_at_mouse_pos->id;
   }
   return result;
 }
@@ -98,7 +95,7 @@ static void maintenance_data_edit_gui(UI_Layout& layout, Entity& entity) {
 }
 
 static void inventory_data_edit_gui(
-  Data& data,
+  Editor& editor,
   UI_Layout& layout,
   const AssetManager& assets,
   const Input& input,
@@ -112,11 +109,11 @@ static void inventory_data_edit_gui(
   // it was clicked or not from the inventory_ui function
   // (and this is not the only place im doing it this way)
   if (input.lmb.pressed() && hovered_slot) {
-    data.selected_inventory_edit_slot = hovered_slot;
+    editor.selected_inventory_edit_slot = hovered_slot;
   }
 
-  if (data.selected_inventory_edit_slot.entity == entity.id) {
-    auto& selected_slot = (*inventory)[data.selected_inventory_edit_slot.slot_idx];
+  if (editor.selected_inventory_edit_slot.entity == entity.id) {
+    auto& selected_slot = (*inventory)[editor.selected_inventory_edit_slot.slot_idx];
 
     ui_element_begin(layout, UI_AUTO_ID);
     {
@@ -301,7 +298,7 @@ static void world_tunnel_destination_data_edit_gui(UI_Layout& layout, Entity& en
 
 // TODO: move the ifs into the functions?
 static void entity_data_edit_gui(
-  Data& data,
+  Editor& editor,
   UI_Layout& layout,
   const AssetManager& assets,
   const Input& input,
@@ -311,7 +308,7 @@ static void entity_data_edit_gui(
     rotation_data_edit_gui(layout, entity);
   }
   if (has_inventory(entity)) {
-    inventory_data_edit_gui(data, layout, assets, input, entity);
+    inventory_data_edit_gui(editor, layout, assets, input, entity);
   }
   if (has_maintenance(entity)) {
     maintenance_data_edit_gui(layout, entity);
@@ -321,14 +318,14 @@ static void entity_data_edit_gui(
   }
 }
 
-GUIResult gui(
-  Data& data,
+EditorGUIResult editor_gui(
+  Editor& editor,
   EntityStore& store,
   UI_System& ui_system,
   const Input& input,
   const AssetManager& assets
 ) {
-  GUIResult result{};
+  EditorGUIResult result{};
   bool save_clicked{};
 
   auto layout = ui_layout_begin("data ui", ui_system, input, {900, 100}, WINDOW_DIMS);
@@ -341,7 +338,7 @@ GUIResult gui(
         const auto& placeable = PLACEABLE[i];
         bool clicked{};
         Color color = LIGHTGRAY;
-        if (i == data.selected_placeable_idx) {
+        if (i == editor.selected_placeable_idx) {
           color = GRAY;
         }
         ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
@@ -357,7 +354,7 @@ GUIResult gui(
         ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
 
         if (clicked) {
-          data.selected_placeable_idx = i;
+          editor.selected_placeable_idx = i;
         }
       }
     }
@@ -369,22 +366,22 @@ GUIResult gui(
       ui_text(layout, "current world: ", 20, WHITE);
       ui_element_begin(layout, UI_AUTO_ID, {.clicked = &current_world_clicked});
       {
-        ui_text(layout, world_to_string(data.current_world), 20, BLACK);
+        ui_text(layout, world_to_string(editor.current_world), 20, BLACK);
       }
       ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
     }
     ui_element_end(layout, {});
     if (current_world_clicked) {
-      data.current_world = World((data.current_world + 1) % WORLD_COUNT);
+      editor.current_world = World((editor.current_world + 1) % WORLD_COUNT);
     }
 
-    if (data.selected_entity_id) {
-      auto* selected = get_entity(store, data.selected_entity_id);
+    if (editor.selected_entity_id) {
+      auto* selected = get_entity(store, editor.selected_entity_id);
       ASSERT_NO_MSG(selected);
       ui_text(layout, "selected entity data:", 25, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        entity_data_edit_gui(data, layout, assets, input, *selected);
+        entity_data_edit_gui(editor, layout, assets, input, *selected);
       }
       ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
     }
@@ -414,8 +411,6 @@ GUIResult gui(
   return result;
 }
 
-void render(Data& data, EntityStore& store, const AssetManager& assets) {
-  render_entities(store, data.current_world, assets);
-}
-
+void editor_render(Editor& editor, EntityStore& store, const AssetManager& assets) {
+  render_entities(store, editor.current_world, assets);
 }

@@ -8,14 +8,16 @@
   - [x] cmake
   - [x] proper file split
 - [ ] resizable window
+- [ ] proper positions for ui
 - [ ] UI library
+  - [x] stack elements layout direction
+    - elements on top of each other
   - [ ] borders
   - [ ] justify-content: space-between from css
   - [ ] better element api (the UI_Scope thing probably)
-  - [ ] child layouts (?)
+  - [ ] floating elements (?)
   - [ ] components (?)
   - [ ] animations
-- [ ] proper positions for ui
 - [ ] proper game camera
   - game world should not always take up one screen
 - [ ] bigger machines

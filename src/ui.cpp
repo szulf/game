@@ -1,5 +1,7 @@
 #include "ui.h"
 
+#include "utils.h"
+
 void ui_system_update(UI_System& system) {
   system.ui_cmds.clear();
 }
@@ -16,10 +18,12 @@ constexpr static std::array<UI_LayoutDirection, 2> layout_direction_from_axis = 
   return t;
 }();
 
-constexpr static std::array<UI_Axis, 2> axis_from_layout_direction = []() {
-  std::array<UI_Axis, 2> t{};
+constexpr static std::array<UI_Axis, 3> axis_from_layout_direction = []() {
+  std::array<UI_Axis, 3> t{};
   t[UI_LAYOUT_DIRECTION_HORIZONTAL] = UI_AXIS_X;
   t[UI_LAYOUT_DIRECTION_VERTICAL]   = UI_AXIS_Y;
+  // TODO: does it actually matter what i put in here?
+  t[UI_LAYOUT_DIRECTION_STACK] = UI_AXIS_X;
   return t;
 }();
 
@@ -304,6 +308,7 @@ static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx) {
   auto& config = elem.config.normal;
   f32 max_height{};
   switch (config.layout_direction) {
+    case UI_LAYOUT_DIRECTION_STACK:
     case UI_LAYOUT_DIRECTION_HORIZONTAL: {
       for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx               = layout.elements[child_idx].next_sibling) {

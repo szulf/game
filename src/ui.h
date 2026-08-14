@@ -7,7 +7,6 @@
 
 #include "core.h"
 #include "math.h"
-#include "utils.h"
 #include "input.h"
 
 // NOTE: possibly im doing way too many iterations over the whole data set
@@ -24,6 +23,7 @@
 enum UI_LayoutDirection {
   UI_LAYOUT_DIRECTION_HORIZONTAL,
   UI_LAYOUT_DIRECTION_VERTICAL,
+  UI_LAYOUT_DIRECTION_STACK,
 };
 
 enum UI_SizingType {

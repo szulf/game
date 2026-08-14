@@ -35,10 +35,9 @@ std::string_view direction_to_string(Direction direction);
 f32 rotation_degrees(Direction rotation);
 
 // TODO: should this really be here?
-static constexpr vec2 WINDOW_DIMS = {1280, 720};
-static constexpr vec2 GRID_DIMS   = {32, 32};
-static constexpr i32 TPS          = 60;
-static constexpr f32 DT           = 1.0f / TPS;
+static constexpr vec2 GRID_DIMS = {32, 32};
+static constexpr i32 TPS        = 60;
+static constexpr f32 DT         = 1.0f / TPS;
 
 inline std::mt19937 random_generate() {
   std::random_device rd{};

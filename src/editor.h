@@ -27,9 +27,9 @@ struct EditorGUIResult {
 
 EditorGUIResult editor_gui(
   Editor& editor,
-  EntityStore& store,
-  UI_System& ui_system,
+  UI_Layout& layout,
   const Input& input,
+  EntityStore& store,
   const AssetManager& assets
 );
 void editor_render(Editor& editor, EntityStore& store, const AssetManager& assets);

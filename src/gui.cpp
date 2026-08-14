@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "entity.h"
+#include "ui.h"
 
 // TODO: this is bad now, the text is rendered on top of the texture, starting at the textures top
 // left corner, it should start at the cells top left corner instead, idk if its a limitation of the
@@ -94,27 +95,31 @@ ItemSlotIdx gui_inventory(
 }
 
 ItemSlotIdx gui_player_inventory(
-  UI_System& ui_system,
+  UI_Layout& layout,
   const AssetManager& assets,
-  const Input& input,
   EntityStore& store,
   EntityId player_id
 ) {
   auto* player = get_data<Player>(store, player_id);
   ASSERT_NO_MSG(player);
 
-  auto player_inv_layout =
-    ui_layout_begin("player inventory", ui_system, input, {10, 580}, WINDOW_DIMS);
-  auto hovered_slot = gui_inventory(player_inv_layout, assets, player_id, player->inventory);
-  ui_layout_end(player_inv_layout);
+  ui_element_begin(layout, UI_AUTO_ID);
+  auto hovered_slot = gui_inventory(layout, assets, player_id, player->inventory);
+  ui_element_end(
+    layout,
+    {
+      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .padding         = {.down = 8, .left = 8},
+      .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_END},
+    }
+  );
 
   return hovered_slot;
 }
 
 ItemSlotIdx gui_open_inventory(
-  UI_System& ui_system,
+  UI_Layout& layout,
   const AssetManager& assets,
-  const Input& input,
   EntityStore& store,
   EntityId player_id
 ) {
@@ -136,11 +141,17 @@ ItemSlotIdx gui_open_inventory(
     return {};
   }
 
-  auto open_inv_layout =
-    ui_layout_begin("open inventory", ui_system, input, {10, 300}, WINDOW_DIMS);
-  auto open_inv_hovered_slot = gui_inventory(open_inv_layout, assets, player->open_gui, *open_inv);
-  ui_layout_end(open_inv_layout);
-  return open_inv_hovered_slot;
+  ui_element_begin(layout, UI_AUTO_ID);
+  auto hovered_slot = gui_inventory(layout, assets, player->open_gui, *open_inv);
+  ui_element_end(
+    layout,
+    {
+      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .padding         = {.left = 8},
+      .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+    }
+  );
+  return hovered_slot;
 
   return {};
 }
@@ -393,9 +404,8 @@ message_ui(UI_Layout& layout, AssetManager& assets, const ResourceMessage& msg, 
 }
 
 void gui_message_sender(
-  UI_System& ui_system,
+  UI_Layout& layout,
   const RenderTexture& render_texture,
-  const Input& input,
   AssetManager& assets,
   EntityStore& store,
   EntityId player_id,
@@ -409,7 +419,7 @@ void gui_message_sender(
     return;
   }
 
-  auto layout = ui_layout_begin("message sender", ui_system, input, {10, 200}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_sender->maintenance.index() != 0) {
     maintenance_ui(layout, render_texture, assets, *player, msg_sender->maintenance);
@@ -565,18 +575,26 @@ void gui_message_sender(
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .padding          = ui_padding_all(4),
-     .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
-     .bg_color         = BLACK}
+    {
+      .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+      .padding          = ui_padding_all(4),
+      .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+      .bg_color         = BLACK,
+    }
   );
-  ui_layout_end(layout);
+  ui_element_end(
+    layout,
+    {
+      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .padding         = {.left = 8},
+      .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+    }
+  );
 }
 
 ItemSlotIdx gui_message_receiver(
-  UI_System& ui_system,
+  UI_Layout& layout,
   const RenderTexture& render_texture,
-  const Input& input,
   AssetManager& assets,
   EntityStore& store,
   EntityId player_id,
@@ -590,7 +608,7 @@ ItemSlotIdx gui_message_receiver(
   }
   ItemSlotIdx hovered_slot{};
 
-  auto layout = ui_layout_begin("message receiver", ui_system, input, {10, 200}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
   ui_element_begin(layout, UI_AUTO_ID);
   if (msg_receiver->maintenance.index() != 0) {
     maintenance_ui(layout, render_texture, assets, *player, msg_receiver->maintenance);
@@ -636,12 +654,21 @@ ItemSlotIdx gui_message_receiver(
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .padding          = ui_padding_all(4),
-     .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
-     .bg_color         = BLACK}
+    {
+      .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+      .padding          = ui_padding_all(4),
+      .child_alignment  = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+      .bg_color         = BLACK,
+    }
   );
-  ui_layout_end(layout);
+  ui_element_end(
+    layout,
+    {
+      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .padding         = {.left = 8},
+      .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+    }
+  );
 
   return hovered_slot;
 }
@@ -657,9 +684,8 @@ static bool recipe_button_ui(UI_Layout& layout, std::string_view recipe_name, bo
 }
 
 ItemSlotIdx gui_assembler(
-  UI_System& ui_system,
+  UI_Layout& layout,
   const RenderTexture& render_texture,
-  const Input& input,
   AssetManager& assets,
   EntityStore& store,
   EntityId player_id
@@ -676,7 +702,7 @@ ItemSlotIdx gui_assembler(
   }
 
   ItemSlotIdx hovered{};
-  auto layout = ui_layout_begin("assembler", ui_system, input, {10, 200}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
   ui_element_begin(layout, UI_AUTO_ID);
   if (assembler->maintenance.index() != 0) {
     maintenance_ui(layout, render_texture, assets, *player, assembler->maintenance);
@@ -772,12 +798,21 @@ ItemSlotIdx gui_assembler(
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .padding          = ui_padding_all(4),
-     .child_gap        = 4,
-     .bg_color         = BLACK}
+    {
+      .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+      .padding          = ui_padding_all(4),
+      .child_gap        = 4,
+      .bg_color         = BLACK,
+    }
   );
-  ui_layout_end(layout);
+  ui_element_end(
+    layout,
+    {
+      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .padding         = {.left = 8},
+      .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+    }
+  );
 
   return hovered;
 }

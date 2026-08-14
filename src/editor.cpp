@@ -1,6 +1,7 @@
 #include "editor.h"
 
 #include "gui.h"
+#include "ui.h"
 
 EditorUpdateResult editor_update(Editor& editor, EntityStore& store, const Input& input) {
   EditorUpdateResult result{};
@@ -320,15 +321,15 @@ static void entity_data_edit_gui(
 
 EditorGUIResult editor_gui(
   Editor& editor,
-  EntityStore& store,
-  UI_System& ui_system,
+  UI_Layout& layout,
   const Input& input,
+  EntityStore& store,
   const AssetManager& assets
 ) {
   EditorGUIResult result{};
   bool save_clicked{};
 
-  auto layout = ui_layout_begin("data ui", ui_system, input, {900, 100}, WINDOW_DIMS);
+  ui_element_begin(layout, UI_AUTO_ID);
   ui_element_begin(layout, UI_AUTO_ID);
   {
     ui_text(layout, "placeables:", 25, WHITE);
@@ -400,12 +401,21 @@ EditorGUIResult editor_gui(
   }
   ui_element_end(
     layout,
-    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-     .padding          = ui_padding_all(4),
-     .child_gap        = 4,
-     .bg_color         = BLACK}
+    {
+      .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+      .padding          = ui_padding_all(4),
+      .child_gap        = 4,
+      .bg_color         = BLACK,
+    }
   );
-  ui_layout_end(layout);
+  ui_element_end(
+    layout,
+    {
+      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .padding         = {.top = 8, .right = 8},
+      .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_START},
+    }
+  );
 
   result.save_requested = save_clicked;
   return result;

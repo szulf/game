@@ -15,6 +15,7 @@
 
 struct FrameData {
   ItemSlotIdx hovered_slot{};
+  vec2 window_dims{};
 };
 
 enum Mode {

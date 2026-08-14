@@ -8,7 +8,9 @@
   - [x] cmake
   - [x] proper file split
 - [ ] resizable window
-- [ ] proper positions for ui
+   - [x] proper positions for ui
+   - [ ] game camera
+     - game world should not always take up one screen
 - [ ] UI library
   - [x] stack elements layout direction
     - elements on top of each other
@@ -18,8 +20,6 @@
   - [ ] floating elements (?)
   - [ ] components (?)
   - [ ] animations
-- [ ] proper game camera
-  - game world should not always take up one screen
 - [ ] bigger machines
 - [ ] containers that can output only from a single side
 - [ ] conveyors

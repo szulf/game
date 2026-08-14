@@ -16,7 +16,8 @@
 #include "serialization.h"
 
 void init(State& state) {
-  InitWindow(WINDOW_DIMS.x, WINDOW_DIMS.y, "test");
+  InitWindow(1280, 720, "test");
+  SetWindowState(FLAG_WINDOW_RESIZABLE);
   SetTargetFPS(165);
   SetExitKey(KEY_NULL);
 
@@ -102,33 +103,30 @@ void update_tick(State& state, f32 dt) {
 }
 
 void update_frame(State& state) {
-  state.frame = {};
+  state.frame             = {};
+  state.frame.window_dims = {f32(GetScreenWidth()), f32(GetScreenHeight())};
   gather_input(state.frame_input);
   accumulate_input(state.tick_input, state.frame_input);
   ui_system_update(state.ui_system);
 
+  auto root_layout =
+    ui_layout_begin("root", state.ui_system, state.frame_input, {}, state.frame.window_dims);
+  ui_element_begin(root_layout, UI_AUTO_ID);
+
   switch (state.mode) {
     case MODE_GAME: {
-      auto player_inv_hovered_slot = gui_player_inventory(
-        state.ui_system,
-        state.assets,
-        state.frame_input,
-        state.store,
-        state.player_id
-      );
+      auto player_inv_hovered_slot =
+        gui_player_inventory(root_layout, state.assets, state.store, state.player_id);
       if (player_inv_hovered_slot) {
         state.frame.hovered_slot = player_inv_hovered_slot;
       }
-      auto open_inventory_hovered_slot = gui_open_inventory(
-        state.ui_system,
-        state.assets,
-        state.frame_input,
-        state.store,
-        state.player_id
-      );
+
+      auto open_inventory_hovered_slot =
+        gui_open_inventory(root_layout, state.assets, state.store, state.player_id);
       if (open_inventory_hovered_slot) {
         state.frame.hovered_slot = open_inventory_hovered_slot;
       }
+
       gui_player_hand(
         state.ui_system,
         state.assets,
@@ -136,20 +134,20 @@ void update_frame(State& state) {
         state.store,
         state.player_id
       );
+
       gui_message_sender(
-        state.ui_system,
+        root_layout,
         state.maintenance_minigame_texture,
-        state.frame_input,
         state.assets,
         state.store,
         state.player_id,
         state.resource_message_queue,
         state.minutes
       );
+
       auto receiver_hovered_slot = gui_message_receiver(
-        state.ui_system,
+        root_layout,
         state.maintenance_minigame_texture,
-        state.frame_input,
         state.assets,
         state.store,
         state.player_id,
@@ -160,9 +158,8 @@ void update_frame(State& state) {
       }
 
       auto assembler_hovered_slot = gui_assembler(
-        state.ui_system,
+        root_layout,
         state.maintenance_minigame_texture,
-        state.frame_input,
         state.assets,
         state.store,
         state.player_id
@@ -173,13 +170,22 @@ void update_frame(State& state) {
     } break;
     case MODE_EDITOR: {
       auto result =
-        editor_gui(state.editor, state.store, state.ui_system, state.frame_input, state.assets);
+        editor_gui(state.editor, root_layout, state.frame_input, state.store, state.assets);
       if (result.save_requested) {
         save_state_to_file(state, DEFAULT_MAP_FILEPATH);
         std::println("saved state to '{}'", DEFAULT_MAP_FILEPATH);
       }
     } break;
   }
+
+  ui_element_end(
+    root_layout,
+    {
+      .layout_direction = UI_LAYOUT_DIRECTION_STACK,
+      .sizing           = {ui_sizing_fill(), ui_sizing_fill()},
+    }
+  );
+  ui_layout_end(root_layout);
 }
 
 void render(State& state) {
@@ -189,11 +195,11 @@ void render(State& state) {
   // NOTE: grid
   {
     static constexpr Color GRID_COLOR = {180, 180, 180, 255};
-    for (i32 x = 0; x < WINDOW_DIMS.x; x += GRID_DIMS.x) {
-      DrawLine(x, 0, x, WINDOW_DIMS.y, GRID_COLOR);
+    for (i32 x = 0; x < state.frame.window_dims.x; x += GRID_DIMS.x) {
+      DrawLine(x, 0, x, state.frame.window_dims.y, GRID_COLOR);
     }
-    for (i32 y = 0; y < WINDOW_DIMS.y; y += GRID_DIMS.y) {
-      DrawLine(0, y, WINDOW_DIMS.x, y, GRID_COLOR);
+    for (i32 y = 0; y < state.frame.window_dims.y; y += GRID_DIMS.y) {
+      DrawLine(0, y, state.frame.window_dims.x, y, GRID_COLOR);
     }
   }
 

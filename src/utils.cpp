@@ -18,15 +18,15 @@ vec2 dims_from_texture(const Texture2D& texture) {
 
 Direction opposite_direction(Direction direction) {
   switch (direction) {
-    case Direction::UP:
-      return Direction::DOWN;
-    case Direction::DOWN:
-      return Direction::UP;
-    case Direction::RIGHT:
-      return Direction::LEFT;
-    case Direction::LEFT:
-      return Direction::RIGHT;
-    case Direction::COUNT:
+    case DIR_UP:
+      return DIR_DOWN;
+    case DIR_DOWN:
+      return DIR_UP;
+    case DIR_RIGHT:
+      return DIR_LEFT;
+    case DIR_LEFT:
+      return DIR_RIGHT;
+    case DIR_COUNT:
       break;
   }
   ASSERT(false, "invalid direction: %d\n", i32(direction));
@@ -34,15 +34,15 @@ Direction opposite_direction(Direction direction) {
 
 vec2 direction_to_vec2(Direction direction) {
   switch (direction) {
-    case Direction::UP:
+    case DIR_UP:
       return {0, -1};
-    case Direction::DOWN:
+    case DIR_DOWN:
       return {0, 1};
-    case Direction::RIGHT:
+    case DIR_RIGHT:
       return {1, 0};
-    case Direction::LEFT:
+    case DIR_LEFT:
       return {-1, 0};
-    case Direction::COUNT:
+    case DIR_COUNT:
       break;
   }
   ASSERT(false, "invalid direction: %d\n", i32(direction));
@@ -50,32 +50,32 @@ vec2 direction_to_vec2(Direction direction) {
 
 std::string_view direction_to_string(Direction direction) {
   switch (direction) {
-    case Direction::UP:
+    case DIR_UP:
       return "up";
-    case Direction::DOWN:
+    case DIR_DOWN:
       return "down";
-    case Direction::RIGHT:
+    case DIR_RIGHT:
       return "right";
-    case Direction::LEFT:
+    case DIR_LEFT:
       return "left";
-    case Direction::COUNT:
+    case DIR_COUNT:
       break;
   }
   ASSERT(false, "invalid direction: %d\n", i32(direction));
 }
 
 // TODO: not sure if right and left degrees are correct
-f32 rotation_degrees(Rotation rotation) {
+f32 rotation_degrees(Direction rotation) {
   switch (rotation) {
-    case Rotation::UP:
+    case DIR_UP:
       return 0;
-    case Rotation::DOWN:
+    case DIR_DOWN:
       return 180;
-    case Rotation::RIGHT:
+    case DIR_RIGHT:
       return 90;
-    case Rotation::LEFT:
+    case DIR_LEFT:
       return 270;
-    case Rotation::COUNT:
+    case DIR_COUNT:
       break;
   }
   ASSERT(false, "invalid rotation: %d\n", i32(rotation));

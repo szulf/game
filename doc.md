@@ -4,10 +4,9 @@
 
 ### before refined demo:
 
-- [ ] code cleanup
+- [x] code cleanup
   - [x] cmake
-  - [ ] proper file split
-  - [ ] more methods
+  - [x] proper file split
 - [ ] resizable window
 - [ ] UI library
   - [ ] borders

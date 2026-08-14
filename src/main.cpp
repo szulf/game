@@ -14,11 +14,11 @@ int main() {
     current_time   = new_time;
     accumulator += frame_time;
 
-    gather_input(state);
-
     // TODO: not sure if this is supposed to happen before update_tick (1 tick ui latency i think)
     // but if it happens after,
     // the input is cleared in update_tick and sometimes clicked ui events dont register
+    // i gather the input now at the start of it, so maybe it should happen here?
+    // or maybe separating the input is better after all
     update_frame(state);
 
     while (accumulator >= DT) {

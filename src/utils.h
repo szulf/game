@@ -21,21 +21,18 @@ vec2 pos_from_rect(const Rectangle& rect);
 vec2 dims_from_rect(const Rectangle& rect);
 vec2 dims_from_texture(const Texture2D& texture);
 
-enum class Direction {
-  UP,
-  RIGHT,
-  DOWN,
-  LEFT,
-  COUNT,
+enum Direction {
+  DIR_UP,
+  DIR_RIGHT,
+  DIR_DOWN,
+  DIR_LEFT,
+  DIR_COUNT,
 };
 
 Direction opposite_direction(Direction direction);
 vec2 direction_to_vec2(Direction direction);
 std::string_view direction_to_string(Direction direction);
-
-using Rotation = Direction;
-
-f32 rotation_degrees(Rotation rotation);
+f32 rotation_degrees(Direction rotation);
 
 // TODO: should this really be here?
 static constexpr vec2 WINDOW_DIMS = {1280, 720};
@@ -61,25 +58,5 @@ inline T random_get(T min, T max) {
     static_assert(false, "invalid random number type");
   }
 }
-
-template <typename T, typename E>
-struct EnumArray {
-  static_assert(std::is_enum_v<E>);
-
-  inline constexpr u32 size() const {
-    return u32(E::COUNT);
-  }
-
-  constexpr T& operator[](E idx) {
-    ASSERT(idx < E::COUNT, "index out of bounds");
-    return data[u32(idx)];
-  }
-  constexpr const T& operator[](E idx) const {
-    ASSERT(idx < E::COUNT, "index out of bounds");
-    return data[u32(idx)];
-  }
-
-  std::array<T, u32(E::COUNT)> data{};
-};
 
 vec2 grid_pos(const vec2& pos);

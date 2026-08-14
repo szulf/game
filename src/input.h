@@ -1,62 +1,62 @@
 #pragma once
 
 #include "core.h"
-#include "utils.h"
+#include "math.h"
 
-enum class Key {
-  A,
-  B,
-  C,
-  D,
-  E,
-  F,
-  G,
-  H,
-  I,
-  J,
-  K,
-  L,
-  M,
-  N,
-  O,
-  P,
-  Q,
-  R,
-  S,
-  T,
-  U,
-  V,
-  W,
-  X,
-  Y,
-  Z,
-  ZERO,
-  ONE,
-  TWO,
-  THREE,
-  FOUR,
-  FIVE,
-  SIX,
-  SEVEN,
-  EIGHT,
-  NINE,
-  F1,
-  F2,
-  F3,
-  F4,
-  F5,
-  F6,
-  F7,
-  F8,
-  F9,
-  F10,
-  F11,
-  F12,
-  SPACE,
-  LSHIFT,
-  TAB,
-  ESCAPE,
-  COUNT,
+enum GKey {
+  GKEY_A,
+  GKEY_B,
+  GKEY_C,
+  GKEY_D,
+  GKEY_E,
+  GKEY_F,
+  GKEY_G,
+  GKEY_H,
+  GKEY_I,
+  GKEY_J,
+  GKEY_K,
+  GKEY_L,
+  GKEY_M,
+  GKEY_N,
+  GKEY_O,
+  GKEY_P,
+  GKEY_Q,
+  GKEY_R,
+  GKEY_S,
+  GKEY_T,
+  GKEY_U,
+  GKEY_V,
+  GKEY_W,
+  GKEY_X,
+  GKEY_Y,
+  GKEY_Z,
+  GKEY_0,
+  GKEY_1,
+  GKEY_2,
+  GKEY_3,
+  GKEY_4,
+  GKEY_5,
+  GKEY_6,
+  GKEY_7,
+  GKEY_8,
+  GKEY_9,
+  GKEY_F1,
+  GKEY_F2,
+  GKEY_F3,
+  GKEY_F4,
+  GKEY_F5,
+  GKEY_F6,
+  GKEY_F7,
+  GKEY_F8,
+  GKEY_F9,
+  GKEY_F10,
+  GKEY_F11,
+  GKEY_F12,
+  GKEY_SPACE,
+  GKEY_LSHIFT,
+  GKEY_TAB,
+  GKEY_ESCAPE,
+  GKEY_COUNT,
 };
 
 struct KeyState {
@@ -69,7 +69,7 @@ struct KeyState {
 };
 
 struct Input {
-  EnumArray<KeyState, Key> keys{};
+  std::array<KeyState, GKEY_COUNT> keys{};
 
   vec2 mouse_pos{};
   KeyState lmb{};
@@ -77,41 +77,43 @@ struct Input {
   i32 mouse_scroll{};
 };
 
+void gather_input(Input& input);
+void accumulate_input(Input& to, const Input& from);
 void clear(Input& input);
 
-enum class Action {
-  MOVE_UP,
-  MOVE_LEFT,
-  MOVE_DOWN,
-  MOVE_RIGHT,
-  INTERACT,
-  CLOSE_INV,
-  ROTATE,
+enum Action {
+  ACTION_MOVE_UP,
+  ACTION_MOVE_LEFT,
+  ACTION_MOVE_DOWN,
+  ACTION_MOVE_RIGHT,
+  ACTION_INTERACT,
+  ACTION_CLOSE_INV,
+  ACTION_ROTATE,
 
-  SERIALIZE,
-  DESERIALIZE,
+  ACTION_SERIALIZE,
+  ACTION_DESERIALIZE,
 
-  TOGGLE_DEBUG_RENDERING,
-  TOGGLE_EDITOR_MODE,
+  ACTION_TOGGLE_DEBUG_RENDERING,
+  ACTION_TOGGLE_EDITOR_MODE,
 
-  COUNT,
+  ACTION_COUNT,
 };
 
-static constexpr EnumArray<Key, Action> KEYMAP = []() {
-  EnumArray<Key, Action> map{};
-  map[Action::MOVE_UP]    = Key::W;
-  map[Action::MOVE_LEFT]  = Key::A;
-  map[Action::MOVE_DOWN]  = Key::S;
-  map[Action::MOVE_RIGHT] = Key::D;
-  map[Action::INTERACT]   = Key::E;
-  map[Action::CLOSE_INV]  = Key::ESCAPE;
-  map[Action::ROTATE]     = Key::R;
+static constexpr std::array<GKey, ACTION_COUNT> KEYMAP = []() {
+  std::array<GKey, ACTION_COUNT> map{};
+  map[ACTION_MOVE_UP]    = GKEY_W;
+  map[ACTION_MOVE_LEFT]  = GKEY_A;
+  map[ACTION_MOVE_DOWN]  = GKEY_S;
+  map[ACTION_MOVE_RIGHT] = GKEY_D;
+  map[ACTION_INTERACT]   = GKEY_E;
+  map[ACTION_CLOSE_INV]  = GKEY_ESCAPE;
+  map[ACTION_ROTATE]     = GKEY_R;
 
-  map[Action::SERIALIZE]   = Key::F1;
-  map[Action::DESERIALIZE] = Key::F2;
+  map[ACTION_SERIALIZE]   = GKEY_F1;
+  map[ACTION_DESERIALIZE] = GKEY_F2;
 
-  map[Action::TOGGLE_DEBUG_RENDERING] = Key::F3;
-  map[Action::TOGGLE_EDITOR_MODE]     = Key::F4;
+  map[ACTION_TOGGLE_DEBUG_RENDERING] = GKEY_F3;
+  map[ACTION_TOGGLE_EDITOR_MODE]     = GKEY_F4;
   return map;
 }();
 

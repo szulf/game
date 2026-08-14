@@ -2,13 +2,13 @@
 
 std::string_view world_to_string(World world) {
   switch (world) {
-    case World::MAIN:
+    case WORLD_MAIN:
       return "main";
-    case World::MESSAGING:
+    case WORLD_MESSAGING:
       return "messaging";
-    case World::STORAGE:
+    case WORLD_STORAGE:
       return "storage";
-    case World::COUNT:
+    case WORLD_COUNT:
       break;
   }
   ASSERT(false, "invalid world: %d", i32(world));
@@ -950,9 +950,9 @@ TextureType get_texture_type(const Entity& entity) {
   );
 }
 
-Rotation* get_rotation(Entity& entity) {
+Direction* get_rotation(Entity& entity) {
   return std::visit(
-    [](auto& value) -> Rotation* {
+    [](auto& value) -> Direction* {
       using T = std::decay_t<decltype(value)>;
       if constexpr (Rotatable<T>) {
         return &value.rotation;
@@ -964,7 +964,7 @@ Rotation* get_rotation(Entity& entity) {
   );
 }
 
-Rotation* get_rotation(EntityStore& store, EntityId id) {
+Direction* get_rotation(EntityStore& store, EntityId id) {
   auto* entity = get_entity(store, id);
   if (entity) {
     return get_rotation(*entity);

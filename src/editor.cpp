@@ -1,5 +1,7 @@
 #include "editor.h"
 
+#include "gui.h"
+
 namespace editor {
 
 // TODO: i dont like passing state around
@@ -52,7 +54,7 @@ static void rotation_data_edit_gui(UI_Layout& layout, Entity& entity) {
   ui_element_end(layout, {});
 
   if (clicked) {
-    *rotation = Rotation((i32(*rotation) + 1) % i32(Rotation::COUNT));
+    *rotation = Direction((*rotation + 1) % DIR_COUNT);
   }
 }
 
@@ -105,7 +107,7 @@ static void inventory_data_edit_gui(
   auto* inventory = get_inventory(entity);
   ASSERT(inventory, "entity has no inventory to edit");
 
-  auto hovered_slot = inventory_ui(layout, assets, entity.id, *inventory);
+  auto hovered_slot = gui_inventory(layout, assets, entity.id, *inventory);
   // TODO: this is kind of bad, i should get the information about whether
   // it was clicked or not from the inventory_ui function
   // (and this is not the only place im doing it this way)
@@ -293,7 +295,7 @@ static void world_tunnel_destination_data_edit_gui(UI_Layout& layout, Entity& en
   ui_element_end(layout, {});
 
   if (clicked) {
-    tunnel->to = World((i32(tunnel->to) + 1) % i32(World::COUNT));
+    tunnel->to = World((tunnel->to + 1) % WORLD_COUNT);
   }
 }
 
@@ -373,7 +375,7 @@ GUIResult gui(
     }
     ui_element_end(layout, {});
     if (current_world_clicked) {
-      data.current_world = World((i32(data.current_world) + 1) % i32(World::COUNT));
+      data.current_world = World((data.current_world + 1) % WORLD_COUNT);
     }
 
     if (data.selected_entity_id) {

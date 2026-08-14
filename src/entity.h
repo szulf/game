@@ -26,6 +26,15 @@ struct EntityId {
 
 static constexpr EntityId NULL_ENTITY = {0, 0};
 
+struct ItemSlotIdx {
+  EntityId entity{};
+  u32 slot_idx{};
+
+  explicit inline operator bool() const {
+    return bool(entity);
+  }
+};
+
 static constexpr u32 PLAYER_INVENTORY_SIZE = 16;
 
 struct Player {
@@ -56,7 +65,7 @@ struct ConveyorItem {
 static constexpr u32 CONVEYOR_THROUGHPUT = 10;
 
 struct Conveyor {
-  Rotation rotation{};
+  Direction rotation{};
   std::vector<ConveyorItem> items = std::vector<ConveyorItem>(CONVEYOR_THROUGHPUT);
 };
 
@@ -72,11 +81,12 @@ struct Item {
   ItemSlot slot{};
 };
 
-enum class World {
-  MAIN,
-  MESSAGING,
-  STORAGE,
-  COUNT,
+enum World {
+  WORLD_MAIN,
+  WORLD_MESSAGING,
+  WORLD_STORAGE,
+
+  WORLD_COUNT,
 };
 
 std::string_view world_to_string(World world);
@@ -288,9 +298,9 @@ std::span<ResourceMessage> get_last_resource_message_batch(ResourceMessageQueue&
 void add_resource_message(ResourceMessageQueue& queue, ResourceMessage& msg, u64 game_time);
 void remove_resource_message(ResourceMessageQueue& queue, u32 idx);
 
-enum class ResourceMessageSenderPage {
-  DISPLAY,
-  CREATE,
+enum ResourceMessageSenderPage {
+  SENDER_PAGE_DISPLAY,
+  SENDER_PAGE_CREATE,
 };
 
 struct ResourceMessageSender {
@@ -547,8 +557,8 @@ struct RemoveCommand {
 
 using Command = std::variant<AddCommand, RemoveCommand>;
 
-enum class EventType {
-  PLAYER_COLLIDED,
+enum EventType {
+  EVENT_PLAYER_COLLIDED,
 };
 
 // TODO: can i somehow use Events as a std::variant?
@@ -703,8 +713,8 @@ bool is(EntityStore& store, EntityId id) {
   return false;
 }
 
-Rotation* get_rotation(Entity& entity);
-Rotation* get_rotation(EntityStore& store, EntityId id);
+Direction* get_rotation(Entity& entity);
+Direction* get_rotation(EntityStore& store, EntityId id);
 std::vector<ItemSlot>* get_inventory(Entity& entity);
 std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id);
 // NOTE: both return a (maintenance, possible_maintenances) tuple

@@ -52,6 +52,7 @@ add_executable(game
   src/items.cpp src/items.h
   src/entity.cpp src/entity.h
   src/systems.cpp src/systems.h
+  src/gui.cpp src/gui.h
   src/editor.cpp src/editor.h
   src/main.cpp
 )

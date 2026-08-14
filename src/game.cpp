@@ -13,6 +13,7 @@ using json = nlohmann::json;
 #include "items.h"
 #include "entity.h"
 #include "systems.h"
+#include "gui.h"
 #include "editor.h"
 
 // TODO: when deserializing the std::vector's may get a wrong size,
@@ -23,9 +24,9 @@ struct FrameData {
   ItemSlotIdx hovered_slot{};
 };
 
-enum class Mode {
-  GAME,
-  EDITOR,
+enum Mode {
+  MODE_GAME,
+  MODE_EDITOR,
 };
 
 static constexpr std::string_view DEFAULT_MAP_FILEPATH       = "default_map.json";
@@ -50,7 +51,7 @@ struct State {
   ResourceMessageQueue resource_message_queue{};
 
   // TODO: should reset when changing the player hand item
-  Rotation current_place_rotation{};
+  Direction current_place_rotation{};
 
   // NOTE: there is only one player
   EntityId player_id{};
@@ -368,255 +369,26 @@ void init(State& state) {
   state.maintenance_minigame_texture =
     LoadRenderTexture(MAINTENANCE_MINIGAME_DIMS.x, MAINTENANCE_MINIGAME_DIMS.y);
 
-#if 1
   load_state_from_file(state, DEFAULT_MAP_FILEPATH);
   std::println("loaded world file from '{}'", DEFAULT_MAP_FILEPATH);
-#elif
-  auto player_entity = Entity{
-    .pos  = {8, 4},
-    .data = Player{},
-  };
-  auto* player = get_data<Player>(player_entity);
-  ASSERT_NO_MSG(player);
-  player->inventory[0]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 85};
-  player->inventory[14] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
-  player->inventory[13] = ItemSlot{.type = ITEM_CONVEYOR, .count = 100};
-  player->inventory[8]  = ItemSlot{.type = ITEM_CONVEYOR, .count = 20};
-  player->inventory[9]  = ItemSlot{.type = ITEM_BLOCK, .count = 30};
-  player->inventory[10] = ItemSlot{.type = ITEM_BLOCK, .count = 50};
-  player->inventory[3]  = ItemSlot{.type = ITEM_STORAGE, .count = 6};
-  player->inventory[11] = ItemSlot{.type = ITEM_STORAGE, .count = 11};
-  state.player_id       = add_entity(state.store, player_entity);
-
-  add_entity(state.store, Entity{.pos = {5, 9}, .data = Block{}});
-
-  add_entity(state.store, Entity{.pos = {9, 6}, .data = Storage{}});
-  add_entity(state.store, Entity{.pos = {9, 10}, .data = Storage{}});
-  add_entity(state.store, Entity{.pos = {6, 10}, .data = Storage{}});
-
-  add_entity(state.store, Entity{.pos = {9, 7}, .data = Conveyor{.rotation = Rotation::DOWN}});
-  add_entity(state.store, Entity{.pos = {9, 8}, .data = Conveyor{.rotation = Rotation::DOWN}});
-  add_entity(state.store, Entity{.pos = {9, 9}, .data = Conveyor{.rotation = Rotation::DOWN}});
-  add_entity(state.store, Entity{.pos = {8, 10}, .data = Conveyor{.rotation = Rotation::LEFT}});
-  add_entity(state.store, Entity{.pos = {7, 10}, .data = Conveyor{.rotation = Rotation::LEFT}});
-
-  add_entity(state.store, Entity{.pos = {10, 10}, .data = WorldTunnel{.to = World::OTHER}});
-  add_entity(
-    state.store,
-    Entity{.pos = {10, 10}, .world = World::OTHER, .data = WorldTunnel{.to = World::OVERWORLD}}
-  );
-
-  add_entity(state.store, Entity{.pos = {12, 10}, .data = ResourceMessageSender{}});
-  state.resource_message_receiver_id =
-    add_entity(state.store, Entity{.pos = {14, 11}, .data = ResourceMessageReceiver{}});
-
-  add_entity(state.store, Entity{.pos = {10, 5}, .data = Assembler{}});
-#endif
 
   flush(state.store);
 }
 
-i32 key_to_raylib_key(Key key) {
-  switch (key) {
-    case Key::A:
-      return KEY_A;
-      ;
-    case Key::B:
-      return KEY_B;
-    case Key::C:
-      return KEY_C;
-    case Key::D:
-      return KEY_D;
-    case Key::E:
-      return KEY_E;
-    case Key::F:
-      return KEY_F;
-    case Key::G:
-      return KEY_G;
-    case Key::H:
-      return KEY_H;
-    case Key::I:
-      return KEY_I;
-    case Key::J:
-      return KEY_J;
-    case Key::K:
-      return KEY_K;
-    case Key::L:
-      return KEY_L;
-    case Key::M:
-      return KEY_M;
-    case Key::N:
-      return KEY_N;
-    case Key::O:
-      return KEY_O;
-    case Key::P:
-      return KEY_P;
-    case Key::Q:
-      return KEY_Q;
-    case Key::R:
-      return KEY_R;
-    case Key::S:
-      return KEY_S;
-    case Key::T:
-      return KEY_T;
-    case Key::U:
-      return KEY_U;
-    case Key::V:
-      return KEY_V;
-    case Key::W:
-      return KEY_W;
-    case Key::X:
-      return KEY_X;
-    case Key::Y:
-      return KEY_Y;
-    case Key::Z:
-      return KEY_Z;
-    case Key::ZERO:
-      return KEY_ZERO;
-    case Key::ONE:
-      return KEY_ONE;
-    case Key::TWO:
-      return KEY_TWO;
-    case Key::THREE:
-      return KEY_THREE;
-    case Key::FOUR:
-      return KEY_FOUR;
-    case Key::FIVE:
-      return KEY_FIVE;
-    case Key::SIX:
-      return KEY_SIX;
-    case Key::SEVEN:
-      return KEY_SEVEN;
-    case Key::EIGHT:
-      return KEY_EIGHT;
-    case Key::NINE:
-      return KEY_NINE;
-    case Key::F1:
-      return KEY_F1;
-    case Key::F2:
-      return KEY_F2;
-    case Key::F3:
-      return KEY_F3;
-    case Key::F4:
-      return KEY_F4;
-    case Key::F5:
-      return KEY_F5;
-    case Key::F6:
-      return KEY_F6;
-    case Key::F7:
-      return KEY_F7;
-    case Key::F8:
-      return KEY_F8;
-    case Key::F9:
-      return KEY_F9;
-    case Key::F10:
-      return KEY_F10;
-    case Key::F11:
-      return KEY_F11;
-    case Key::F12:
-      return KEY_F12;
-    case Key::SPACE:
-      return KEY_SPACE;
-    case Key::LSHIFT:
-      return KEY_LEFT_SHIFT;
-    case Key::TAB:
-      return KEY_TAB;
-    case Key::ESCAPE:
-      return KEY_ESCAPE;
-    case Key::COUNT:
-      break;
-  }
-  ASSERT(false, "invalid key: %d", i32(key));
-}
-
-KeyState get_key_state(Key key) {
-  auto raylib_key = key_to_raylib_key(key);
-  KeyState state{};
-  state.down = IsKeyDown(raylib_key);
-  if (IsKeyPressed(raylib_key)) {
-    state.transition_count += 1;
-  }
-  // if (IsKeyReleased(raylib_key)) {
-  //   state.transition_count += 1;
-  // }
-  return state;
-}
-
-// TODO: not accounting for key release in transition_count
-// TODO: not sure whether the tick_input is fully correct
-void gather_input(State& state) {
-  auto& input = state.frame_input;
-  clear(input);
-
-  input.mouse_pos    = vec2::from_raylib(GetMousePosition());
-  input.mouse_scroll = GetMouseWheelMove();
-
-  state.tick_input.mouse_pos = input.mouse_pos;
-  state.tick_input.mouse_scroll += input.mouse_scroll;
-
-  input.lmb.down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-    input.lmb.transition_count += 1;
-  }
-  // if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-  //   input.lmb.transition_count += 1;
-  // }
-
-  state.tick_input.lmb.down = state.tick_input.lmb.down || input.lmb.down;
-  state.tick_input.lmb.transition_count += input.lmb.transition_count;
-  // NOTE: if i released the mouse button this tick set the ticks lmb.down to false
-  // if (!input.lmb.down && input.lmb.transition_count == 1) {
-  //   state.tick_input.lmb.down = false;
-  // }
-
-  input.rmb.down = IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
-  if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-    input.rmb.transition_count += 1;
-  }
-  // if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
-  //   input.rmb.transition_count += 1;
-  // }
-
-  state.tick_input.rmb.down = state.tick_input.rmb.down || input.rmb.down;
-  state.tick_input.rmb.transition_count += input.rmb.transition_count;
-  // NOTE: if i released the mouse button this tick set the ticks rmb.down to false
-  // if (!input.rmb.down && input.rmb.transition_count == 1) {
-  //   state.tick_input.rmb.down = false;
-  // }
-
-  for (u32 i = 0; i < input.keys.size(); ++i) {
-    auto key        = Key(i);
-    input.keys[key] = get_key_state(key);
-  }
-
-  for (u32 i = 0; i < input.keys.size(); ++i) {
-    auto key          = Key(i);
-    auto& tick_state  = state.tick_input.keys[key];
-    auto& frame_state = input.keys[key];
-    tick_state.down   = tick_state.down || frame_state.down;
-    tick_state.transition_count += frame_state.transition_count;
-    // NOTE: if i released the key this tick set the ticks key.down to false
-    // if (!frame_state.down || frame_state.transition_count == 1) {
-    //   tick_state.down = false;
-    // }
-  }
-}
-
 void update_tick(State& state, f32 dt) {
-  if (action_state(state.tick_input, Action::TOGGLE_EDITOR_MODE).pressed()) {
-    if (state.mode == Mode::EDITOR) {
-      state.mode = Mode::GAME;
+  if (action_state(state.tick_input, ACTION_TOGGLE_EDITOR_MODE).pressed()) {
+    if (state.mode == MODE_EDITOR) {
+      state.mode = MODE_GAME;
     } else {
-      state.mode = Mode::EDITOR;
+      state.mode = MODE_EDITOR;
     }
   }
 
   switch (state.mode) {
-    case Mode::GAME: {
+    case MODE_GAME: {
       // TODO: i dont think this belongs in a system, but maybe?
-      if (action_state(state.tick_input, Action::ROTATE).pressed()) {
-        state.current_place_rotation =
-          Rotation((i32(state.current_place_rotation) + 1) % i32(Rotation::COUNT));
+      if (action_state(state.tick_input, ACTION_ROTATE).pressed()) {
+        state.current_place_rotation = Direction((state.current_place_rotation + 1) % DIR_COUNT);
       }
 
       system_update_time(state.minutes, state.minutes_accumulator, dt);
@@ -650,7 +422,7 @@ void update_tick(State& state, f32 dt) {
       system_apply_maintenance(state.store);
       system_update_maintenance_minigames(state.store, state.tick_input, dt);
     } break;
-    case Mode::EDITOR: {
+    case MODE_EDITOR: {
       auto result = editor::update(state.editor, state.store, state.tick_input);
       if (result.player_id) {
         state.player_id = result.player_id;
@@ -661,10 +433,10 @@ void update_tick(State& state, f32 dt) {
     } break;
   }
 
-  if (action_state(state.tick_input, Action::SERIALIZE).pressed()) {
+  if (action_state(state.tick_input, ACTION_SERIALIZE).pressed()) {
     save_state_to_file(state, SERIALIZATION_MAP_FILEPATH);
   }
-  if (action_state(state.tick_input, Action::DESERIALIZE).pressed()) {
+  if (action_state(state.tick_input, ACTION_DESERIALIZE).pressed()) {
     load_state_from_file(state, SERIALIZATION_MAP_FILEPATH);
   }
 
@@ -675,19 +447,40 @@ void update_tick(State& state, f32 dt) {
 
 void update_frame(State& state) {
   state.frame = {};
+  gather_input(state.frame_input);
+  accumulate_input(state.tick_input, state.frame_input);
   ui_system_update(state.ui_system);
 
   switch (state.mode) {
-    case Mode::GAME: {
-      state.frame.hovered_slot = system_inventory_uis(
+    case MODE_GAME: {
+      auto player_inv_hovered_slot = gui_player_inventory(
         state.ui_system,
         state.assets,
         state.frame_input,
         state.store,
         state.player_id
       );
-
-      system_message_sender_ui(
+      if (player_inv_hovered_slot) {
+        state.frame.hovered_slot = player_inv_hovered_slot;
+      }
+      auto open_inventory_hovered_slot = gui_open_inventory(
+        state.ui_system,
+        state.assets,
+        state.frame_input,
+        state.store,
+        state.player_id
+      );
+      if (open_inventory_hovered_slot) {
+        state.frame.hovered_slot = open_inventory_hovered_slot;
+      }
+      gui_player_hand(
+        state.ui_system,
+        state.assets,
+        state.frame_input,
+        state.store,
+        state.player_id
+      );
+      gui_message_sender(
         state.ui_system,
         state.maintenance_minigame_texture,
         state.frame_input,
@@ -697,7 +490,7 @@ void update_frame(State& state) {
         state.resource_message_queue,
         state.minutes
       );
-      auto receiver_hovered_slot = system_message_receiver_ui(
+      auto receiver_hovered_slot = gui_message_receiver(
         state.ui_system,
         state.maintenance_minigame_texture,
         state.frame_input,
@@ -710,7 +503,7 @@ void update_frame(State& state) {
         state.frame.hovered_slot = receiver_hovered_slot;
       }
 
-      auto assembler_hovered_slot = system_assembler_ui(
+      auto assembler_hovered_slot = gui_assembler(
         state.ui_system,
         state.maintenance_minigame_texture,
         state.frame_input,
@@ -722,7 +515,7 @@ void update_frame(State& state) {
         state.frame.hovered_slot = assembler_hovered_slot;
       }
     } break;
-    case Mode::EDITOR: {
+    case MODE_EDITOR: {
       auto result =
         editor::gui(state.editor, state.store, state.ui_system, state.frame_input, state.assets);
       if (result.save_requested) {
@@ -750,7 +543,7 @@ void render(State& state) {
 
   // NOTE: entities
   switch (state.mode) {
-    case Mode::GAME: {
+    case MODE_GAME: {
       system_render(state.store, state.player_id, state.assets);
       // TODO: move to system_render()?
       // TODO: it should also be related to mouse somehow i think
@@ -769,24 +562,24 @@ void render(State& state) {
             vec2 main_end_pos = main_start_pos;
 
             switch (state.current_place_rotation) {
-              case Rotation::UP:
+              case DIR_UP:
                 main_start_pos.y -= GRID_DIMS.y / 3.0f;
                 main_end_pos.y += GRID_DIMS.y / 3.0f;
                 break;
-              case Rotation::DOWN:
+              case DIR_DOWN:
                 main_start_pos.y += GRID_DIMS.y / 3.0f;
                 main_end_pos.y -= GRID_DIMS.y / 3.0f;
                 break;
-              case Rotation::RIGHT:
+              case DIR_RIGHT:
                 main_start_pos.x += GRID_DIMS.x / 3.0f;
                 main_end_pos.x -= GRID_DIMS.x / 3.0f;
                 break;
-              case Rotation::LEFT:
+              case DIR_LEFT:
                 main_start_pos.x -= GRID_DIMS.x / 3.0f;
                 main_end_pos.x += GRID_DIMS.x / 3.0f;
                 break;
-              case Rotation::COUNT:
-                ASSERT(false, "invalid rotation: Rotation::COUNT");
+              case DIR_COUNT:
+                ASSERT(false, "invalid rotation: DIR_COUNT");
                 break;
             }
 
@@ -795,24 +588,24 @@ void render(State& state) {
             vec2 right_end_pos    = hands_start_pos;
 
             switch (state.current_place_rotation) {
-              case Rotation::UP:
+              case DIR_UP:
                 right_end_pos += vec2{-(GRID_DIMS.x / 4.0f), GRID_DIMS.y / 4.0f};
                 left_end_pos += vec2{GRID_DIMS.x / 4.0f, GRID_DIMS.y / 4.0f};
                 break;
-              case Rotation::DOWN:
+              case DIR_DOWN:
                 right_end_pos += vec2{GRID_DIMS.x / 4.0f, -(GRID_DIMS.y / 4.0f)};
                 left_end_pos += vec2{-(GRID_DIMS.x / 4.0f), -(GRID_DIMS.y / 4.0f)};
                 break;
-              case Rotation::RIGHT:
+              case DIR_RIGHT:
                 right_end_pos += vec2{-(GRID_DIMS.y / 4.0f), GRID_DIMS.x / 4.0f};
                 left_end_pos += vec2{-(GRID_DIMS.y / 4.0f), -(GRID_DIMS.x / 4.0f)};
                 break;
-              case Rotation::LEFT:
+              case DIR_LEFT:
                 right_end_pos += vec2{GRID_DIMS.y / 4.0f, -(GRID_DIMS.x / 4.0f)};
                 left_end_pos += vec2{GRID_DIMS.y / 4.0f, GRID_DIMS.x / 4.0f};
                 break;
-              case Rotation::COUNT:
-                ASSERT(false, "invalid rotation: Rotation::COUNT");
+              case DIR_COUNT:
+                ASSERT(false, "invalid rotation: DIR_COUNT");
                 break;
             }
 
@@ -823,7 +616,7 @@ void render(State& state) {
         }
       }
     } break;
-    case Mode::EDITOR: {
+    case MODE_EDITOR: {
       editor::render(state.editor, state.store, state.assets);
     } break;
   }

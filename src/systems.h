@@ -47,6 +47,7 @@ void system_remove_entity(
   const vec2& mouse_world_pos
 );
 void system_pickup_item(EntityStore& store, EntityId player_id);
+void system_output_items(EntityStore& store, f32 dt);
 void system_move_items(EntityStore& store, f32 dt);
 void system_tunnel_through_worlds(EntityStore& store, EntityId player_id);
 void system_apply_maintenance(EntityStore& store);

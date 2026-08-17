@@ -13,7 +13,7 @@ void swap_slots(ItemSlot& a, ItemSlot& b) {
 
 void swap_slot_flags(std::span<ItemSlot> inventory) {
   for (auto& slot : inventory) {
-    slot.flags ^= ITEM_SLOT_FLAGS_MASK;
+    slot.flags ^= ITEM_SLOT_FLAGS_ALL;
   }
 }
 

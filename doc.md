@@ -7,9 +7,23 @@
 - [x] code cleanup
   - [x] cmake
   - [x] proper file split
-- [ ] resizable window
+- [x] resizable window
    - [x] proper positions for ui
    - [x] game camera
+- [x] containers that can output only from a single side
+- [ ] bigger machines
+- [ ] conveyors
+  - [x] basic item movement on conveyors
+  - [ ] proper from/to directions
+  - [x] make extraction from inventories slower than full conveyor throughput
+  - [x] make multiple conveyors extracting from a single inventory extract items in a round robin fashion
+  - [ ] fix the todos in the comment over system_move_items()
+        (add them here after fixing to say what issues i encountered)
+- [ ] movement system
+- [ ] placing system
+- [ ] crafting system
+  - [x] basic functionality
+  - [ ] take items in any order in recipes or slot locking
 - [ ] UI library
   - [x] stack elements layout direction
     - elements on top of each other
@@ -19,18 +33,6 @@
   - [ ] floating elements (?)
   - [ ] components (?)
   - [ ] animations
-- [ ] bigger machines
-- [ ] containers that can output only from a single side
-- [ ] conveyors
-  - [x] basic item movement on conveyors
-  - [ ] proper from/to directions
-  - [ ] fix the todos in the comment over system_move_items()
-        (add them here after fixing to say what issues i encountered)
-- [ ] movement system
-- [ ] placing system
-- [ ] crafting system
-  - [x] basic functionality
-  - [ ] take items in any order in recipes or slot locking
 - [ ] map editor
   - [x] placing
   - [x] destroying

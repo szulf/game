@@ -1,4 +1,7 @@
 #include "systems.h"
+#include "core.h"
+#include "entity.h"
+#include "items.h"
 
 #include <algorithm>
 
@@ -48,10 +51,8 @@ void system_open_gui(
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
-  if (
-    action_state(input, ACTION_INTERACT).pressed() &&
-    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
-  ) {
+  if (action_state(input, ACTION_INTERACT).pressed() &&
+      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
@@ -65,12 +66,10 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
-    if (
-      action_state(input, ACTION_CLOSE_INV).pressed() ||
-      (gui_entity &&
-       !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
-      (gui_entity && gui_entity->world != player_entity->world) || !gui_entity
-    ) {
+    if (action_state(input, ACTION_CLOSE_INV).pressed() ||
+        (gui_entity &&
+         !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
+        (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
       player->open_gui = NULL_ENTITY;
     }
   }
@@ -91,11 +90,11 @@ void system_hand_slot_interactions(
       auto& slot = (*hovered_inv)[hovered_slot.slot_idx];
       auto& hand = player->hand;
       ASSERT(
-        hand.flags == (ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT),
+        hand.flags == (ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT),
         "player hand has to be input and output"
       );
 
-      if (slot && (slot.flags & ITEM_SLOT_INPUT) && hand && slot.type == hand.type) {
+      if (slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && hand && slot.type == hand.type) {
         auto max_count = item_info(slot.type).max_count;
         if (slot.count + hand.count > max_count) {
           hand.count = (slot.count + hand.count) - max_count;
@@ -104,13 +103,12 @@ void system_hand_slot_interactions(
           slot.count += hand.count;
           hand = {};
         }
-      } else if (
-        slot && (slot.flags & ITEM_SLOT_INPUT) && (slot.flags & ITEM_SLOT_OUTPUT) && hand
-      ) {
+      } else if (slot && (slot.flags & ITEM_SLOT_HAND_INPUT) &&
+                 (slot.flags & ITEM_SLOT_HAND_OUTPUT) && hand) {
         swap_slots(slot, hand);
-      } else if (slot && (slot.flags & ITEM_SLOT_OUTPUT) && !hand) {
+      } else if (slot && (slot.flags & ITEM_SLOT_HAND_OUTPUT) && !hand) {
         swap_slots(slot, hand);
-      } else if (!slot && (slot.flags & ITEM_SLOT_INPUT) && hand) {
+      } else if (!slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && hand) {
         swap_slots(slot, hand);
       }
     }
@@ -128,10 +126,8 @@ void system_drop_items(
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: not sure if lmb_pressed is the right keybind
-  if (
-    input.lmb.pressed() && player->hand &&
-    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
-  ) {
+  if (input.lmb.pressed() && player->hand &&
+      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
@@ -145,16 +141,37 @@ void system_drop_items(
   }
 }
 
+enum ItemTransferMode {
+  ITEM_TRANSFER_HAND,
+  ITEM_TRANSFER_MACHINE,
+};
+
 // NOTE: returns whether it succeeded in transfering all items from the slot into the inventory
 // also modified the slot to contain the left amount of items after the transfer
 // so if it succeeded slot.count == 0
-static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
-  if (!(slot.flags & ITEM_SLOT_OUTPUT)) {
+static bool
+transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot, ItemTransferMode mode) {
+  ItemSlotFlag input_flag;
+  ItemSlotFlag output_flag;
+  switch (mode) {
+    case ITEM_TRANSFER_HAND:
+      input_flag  = ITEM_SLOT_HAND_INPUT;
+      output_flag = ITEM_SLOT_HAND_OUTPUT;
+      break;
+    case ITEM_TRANSFER_MACHINE:
+      input_flag  = ITEM_SLOT_MACHINE_INPUT;
+      output_flag = ITEM_SLOT_MACHINE_OUTPUT;
+      break;
+    default:
+      ASSERT_NO_MSG(false);
+  }
+
+  if (!(slot.flags & output_flag)) {
     return false;
   }
 
   for (u32 i = 0; i < inventory.size(); ++i) {
-    if (!(inventory[i].flags & ITEM_SLOT_INPUT)) {
+    if (!(inventory[i].flags & input_flag)) {
       continue;
     }
 
@@ -177,9 +194,10 @@ static bool transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot) {
   return false;
 }
 
-static bool transfer_items(std::vector<ItemSlot>& to, std::span<ItemSlot> from) {
+static bool
+transfer_items(std::vector<ItemSlot>& to, std::span<ItemSlot> from, ItemTransferMode mode) {
   for (auto& slot : from) {
-    if (!transfer_items(to, slot)) {
+    if (!transfer_items(to, slot, mode)) {
       return false;
     }
   }
@@ -212,7 +230,7 @@ void system_transfer_resource_messages(
         };
       }
       swap_slot_flags(msg_receiver->inventory);
-      transfer_items(msg_receiver->inventory, msg_items);
+      transfer_items(msg_receiver->inventory, msg_items, ITEM_TRANSFER_MACHINE);
       swap_slot_flags(msg_receiver->inventory);
       remove_resource_message(msg_queue, i);
     } else {
@@ -308,11 +326,9 @@ void system_place_entity(
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: should check if im not hovering over an item slot
-  if (
-    input.rmb.pressed() && player->hand &&
-    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius) &&
-    !get_entity_at_pos(store, mouse_grid_pos, player_entity->world)
-  ) {
+  if (input.rmb.pressed() && player->hand &&
+      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius) &&
+      !get_entity_at_pos(store, mouse_grid_pos, player_entity->world)) {
     auto entity = entity_from_item(player->hand.type);
     if (entity) {
       entity->pos   = mouse_grid_pos;
@@ -336,10 +352,8 @@ void system_remove_entity(
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
-  if (
-    input.lmb.pressed() &&
-    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
-  ) {
+  if (input.lmb.pressed() &&
+      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
     auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
@@ -373,7 +387,7 @@ void system_pickup_item(EntityStore& store, EntityId player_id) {
   for (auto& event : listen(store, EVENT_PLAYER_COLLIDED)) {
     auto* item = get_data<Item>(store, event.entity);
     if (item) {
-      if (transfer_items(player->inventory, item->slot)) {
+      if (transfer_items(player->inventory, item->slot, ITEM_TRANSFER_HAND)) {
         remove_entity(store, event.entity);
       }
     }
@@ -382,11 +396,63 @@ void system_pickup_item(EntityStore& store, EntityId player_id) {
 
 static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
   for (u32 i = 0; i < inventory.size(); ++i) {
-    if (inventory[i] && (inventory[i].flags & ITEM_SLOT_OUTPUT)) {
+    if (inventory[i] && (inventory[i].flags & ITEM_SLOT_MACHINE_OUTPUT)) {
       return &inventory[i];
     }
   }
   return nullptr;
+}
+
+void system_output_items(EntityStore& store, f32 dt) {
+  for (auto& entity : store) {
+    auto output_properties = get_outputs_item_properties(entity);
+    if (!output_properties.item_output_accumulator) {
+      continue;
+    }
+
+    *output_properties.item_output_accumulator += dt;
+
+    if (*output_properties.item_output_accumulator >= (1.0f / output_properties.output_rate)) {
+      auto* from_inv = get_inventory(entity);
+      ASSERT_NO_MSG(from_inv);
+
+      for (auto dir : output_properties.output_sides) {
+        auto output_pos     = entity.pos + direction_to_vec2(dir);
+        auto* output_entity = get_entity_at_pos(store, output_pos, entity.world);
+        if (!output_entity) {
+          continue;
+        }
+        auto* conveyor = get_data<Conveyor>(*output_entity);
+        if (!conveyor) {
+          continue;
+        }
+        if (output_pos + direction_to_vec2(conveyor_from(*conveyor)) != entity.pos) {
+          continue;
+        }
+
+        for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+          auto& item    = conveyor->items[i];
+          bool can_pull = !item.slot;
+          if (can_pull) {
+            auto* first_extractable = find_first_extractable_slot(*from_inv);
+            if (first_extractable) {
+              // TODO: do i extract this into some function?
+              // like somehow use transfer_items() here?
+              item.slot.type  = first_extractable->type;
+              item.slot.count = 1;
+              if (item_info(first_extractable->type).has_durability) {
+                item.slot.damage          = first_extractable->damage;
+                first_extractable->damage = 0;
+              }
+              --first_extractable->count;
+            }
+            break;
+          }
+        }
+      }
+      *output_properties.item_output_accumulator = 0;
+    }
+  }
 }
 
 // TODO: currently moving items, fuckin sucks actually
@@ -399,20 +465,8 @@ static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
 //      (this fucking sucks actually (but sounds like the coolest thing ever))
 //    - something like a update push system, not updating all conveyors in a frame,
 //      not sure how this one works saw it briefly mentioned on youtube
-// 2. items are moved faster if they are moving through containers all the time
-//    so this
-//    c-c-c-c-c-c
-//    is faster than this
-//    -----------
-//    (where 'c' is a container, and '-' is a belt)
-//    (by about 2x i think)
-// 3. dont know if its actually bad
-//    but if you have more than a single conveyor pulling items out of an inventory
-//    and also a single conveyor pushing items into that inventory
-//    they will not round robin
-//    just one of the pulling conveyors will take all items as they are coming
-// 4. i think i duped an item somehow, no clue how tho (potentially fixable by fixing 1.)
-// 5. if you have two conveyors on the side pushing into a conveyor in the middle,
+// 2. i think i duped an item somehow, no clue how tho (potentially fixable by fixing 1.)
+// 3. if you have two conveyors on the side pushing into a conveyor in the middle,
 //    they wont do a nice split between them, just one will push all the items then the next one
 void system_move_items(EntityStore& store, f32 dt) {
   for (auto& entity : store) {
@@ -431,35 +485,6 @@ void system_move_items(EntityStore& store, f32 dt) {
         }
       } else {
         item.t = 0;
-      }
-    }
-
-    // NOTE: pull in more items
-    for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-      auto& item    = conveyor->items[i];
-      bool can_pull = !item.slot;
-      if (i > 0) {
-        auto& previous_item = conveyor->items[i - 1];
-        can_pull            = can_pull && previous_item.t >= item_gap;
-      }
-      if (can_pull) {
-        vec2 from_pos     = entity.pos + direction_to_vec2(conveyor_from(*conveyor));
-        auto* from_entity = get_entity_at_pos(store, from_pos, entity.world);
-        if (from_entity && has_inventory(*from_entity) && !is<Player>(*from_entity)) {
-          auto* from_inv = get_inventory(*from_entity);
-          ASSERT(
-            from_inv,
-            "entity that satisifies HasInventory has to return an inventory from "
-            "get_inventory()"
-          );
-          auto* first_extractable = find_first_extractable_slot(*from_inv);
-          if (first_extractable) {
-            item.slot.type  = first_extractable->type;
-            item.slot.count = 1;
-            --first_extractable->count;
-          }
-        }
-        break;
       }
     }
 
@@ -483,7 +508,7 @@ void system_move_items(EntityStore& store, f32 dt) {
               }
             }
           } else if (auto* to_inv = get_inventory(*to_entity)) {
-            success = transfer_items(*to_inv, item.slot);
+            success = transfer_items(*to_inv, item.slot, ITEM_TRANSFER_MACHINE);
           }
 
           if (success) {
@@ -536,7 +561,7 @@ void system_tunnel_through_worlds(EntityStore& store, EntityId player_id) {
 
       swap_slot_flags(corresponding_tunnel->inventory);
       swap_slot_flags(tunnel->inventory);
-      transfer_items(corresponding_tunnel->inventory, tunnel->inventory);
+      transfer_items(corresponding_tunnel->inventory, tunnel->inventory, ITEM_TRANSFER_MACHINE);
       swap_slot_flags(corresponding_tunnel->inventory);
       swap_slot_flags(tunnel->inventory);
     }

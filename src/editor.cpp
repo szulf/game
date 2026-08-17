@@ -1,6 +1,7 @@
 #include "editor.h"
 
 #include "gui.h"
+#include "items.h"
 #include "ui.h"
 
 EditorUpdateResult
@@ -249,25 +250,25 @@ static void inventory_data_edit_gui(
       {
         struct FlagsUiData {
           std::string_view text{};
-          ItemSlotFlags flags{};
+          ItemSlotFlag flag{};
         };
         static constexpr std::array FLAGS_UI_DATA = std::to_array<FlagsUiData>({
-          {.text = "none", .flags = 0},
-          {.text = "in", .flags = ITEM_SLOT_INPUT},
-          {.text = "out", .flags = ITEM_SLOT_OUTPUT},
-          {.text = "in & out", .flags = ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT},
+          {.text = "hand in", .flag = ITEM_SLOT_HAND_INPUT},
+          {.text = "hand out", .flag = ITEM_SLOT_HAND_OUTPUT},
+          {.text = "mach in", .flag = ITEM_SLOT_MACHINE_INPUT},
+          {.text = "mach out", .flag = ITEM_SLOT_MACHINE_OUTPUT},
         });
 
         for (const auto& data : FLAGS_UI_DATA) {
           bool clicked{};
-          Color color = selected_slot.flags == data.flags ? GRAY : LIGHTGRAY;
+          Color color = selected_slot.flags & data.flag ? GRAY : LIGHTGRAY;
 
           ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
           ui_text(layout, data.text, 15, BLACK);
           ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
 
           if (clicked) {
-            selected_slot.flags = data.flags;
+            selected_slot.flags ^= data.flag;
           }
         }
       }

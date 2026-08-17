@@ -24,7 +24,7 @@ static constexpr f32 F32_MAX = std::numeric_limits<f32>::max();
 #define ASSERT_NO_MSG(expr)                                                                        \
   do {                                                                                             \
     if (!(expr)) {                                                                                 \
-      std::println("Assertion (%s:%d) failed on expression: '%s'\n", __FILE__, __LINE__, #expr);   \
+      std::println("Assertion ({}:{}) failed on expression: '{}'\n", __FILE__, __LINE__, #expr);   \
       std::abort();                                                                                \
     }                                                                                              \
   } while (false)
@@ -33,7 +33,7 @@ static constexpr f32 F32_MAX = std::numeric_limits<f32>::max();
   do {                                                                                             \
     if (!(expr)) {                                                                                 \
       std::println(                                                                                \
-        "Assertion (%s:%d) failed on expression: '%s' with message:\n",                            \
+        "Assertion ({}:{}) failed on expression: '{}' with message:\n",                            \
         __FILE__,                                                                                  \
         __LINE__,                                                                                  \
         #expr                                                                                      \

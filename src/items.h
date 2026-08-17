@@ -55,18 +55,25 @@ static constexpr std::array REQUESTABLE_ITEMS = std::to_array<ItemType>({
 });
 
 enum ItemSlotFlag {
-  ITEM_SLOT_INPUT  = 1 << 0,
-  ITEM_SLOT_OUTPUT = 1 << 1,
+  ITEM_SLOT_HAND_INPUT     = 1 << 0,
+  ITEM_SLOT_HAND_OUTPUT    = 1 << 1,
+  ITEM_SLOT_MACHINE_INPUT  = 1 << 2,
+  ITEM_SLOT_MACHINE_OUTPUT = 1 << 3,
 };
 
 using ItemSlotFlags = u32;
 
-static constexpr ItemSlotFlags ITEM_SLOT_FLAGS_MASK = ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT;
+static constexpr ItemSlotFlags ITEM_SLOT_FLAGS_INPUT =
+  ITEM_SLOT_HAND_INPUT | ITEM_SLOT_MACHINE_INPUT;
+static constexpr ItemSlotFlags ITEM_SLOT_FLAGS_OUTPUT =
+  ITEM_SLOT_HAND_OUTPUT | ITEM_SLOT_MACHINE_OUTPUT;
+static constexpr ItemSlotFlags ITEM_SLOT_FLAGS_ALL =
+  ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT | ITEM_SLOT_MACHINE_INPUT | ITEM_SLOT_MACHINE_OUTPUT;
 
 // TODO: do i want to destroy items when they reach max damage?
 
 struct ItemSlot {
-  ItemSlotFlags flags = ITEM_SLOT_INPUT | ITEM_SLOT_OUTPUT;
+  ItemSlotFlags flags = ITEM_SLOT_FLAGS_ALL;
   ItemType type{};
   u32 count{};
   // NOTE: ignored for items with item_data(type).has_durability == false

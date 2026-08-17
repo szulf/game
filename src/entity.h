@@ -41,7 +41,13 @@ struct Player {
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
   i32 interaction_radius          = 4;
   EntityId open_gui{};
-  ItemSlot hand{};
+  ItemSlot hand = {.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT};
+
+  constexpr Player() {
+    for (auto& slot : inventory) {
+      slot.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT;
+    }
+  }
 };
 
 struct Block {};
@@ -49,6 +55,15 @@ struct Block {};
 static constexpr u32 STORAGE_INVENTORY_SIZE = 32;
 
 struct Storage {
+  static constexpr std::array<Direction, 4> OUTPUT_SIDES = {
+    DIR_UP,
+    DIR_RIGHT,
+    DIR_DOWN,
+    DIR_LEFT,
+  };
+  static constexpr f32 OUTPUT_RATE = 2;
+  f32 item_output_accumulator{};
+
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(STORAGE_INVENTORY_SIZE);
 };
 
@@ -92,17 +107,27 @@ enum World {
 std::string_view world_to_string(World world);
 
 struct WorldTunnel {
-  World to{};
-  std::vector<ItemSlot> inventory = {
-    {.flags = ITEM_SLOT_INPUT},
-    {.flags = ITEM_SLOT_INPUT},
-    {.flags = ITEM_SLOT_INPUT},
-    {.flags = ITEM_SLOT_INPUT},
-    {.flags = ITEM_SLOT_OUTPUT},
-    {.flags = ITEM_SLOT_OUTPUT},
-    {.flags = ITEM_SLOT_OUTPUT},
-    {.flags = ITEM_SLOT_OUTPUT}
+  static constexpr std::array<Direction, 4> OUTPUT_SIDES = {
+    DIR_UP,
+    DIR_RIGHT,
+    DIR_DOWN,
+    DIR_LEFT,
   };
+  static constexpr f32 OUTPUT_RATE = 5;
+  f32 item_output_accumulator{};
+
+  std::vector<ItemSlot> inventory = {
+    {.flags = ITEM_SLOT_FLAGS_INPUT},
+    {.flags = ITEM_SLOT_FLAGS_INPUT},
+    {.flags = ITEM_SLOT_FLAGS_INPUT},
+    {.flags = ITEM_SLOT_FLAGS_INPUT},
+    {.flags = ITEM_SLOT_FLAGS_OUTPUT},
+    {.flags = ITEM_SLOT_FLAGS_OUTPUT},
+    {.flags = ITEM_SLOT_FLAGS_OUTPUT},
+    {.flags = ITEM_SLOT_FLAGS_OUTPUT}
+  };
+
+  World to{};
 };
 
 static constexpr vec2 MAINTENANCE_MINIGAME_DIMS = {256, 256};
@@ -312,6 +337,7 @@ struct ResourceMessageSender {
     MaintenanceMessagingSystem{},
   });
   Maintenance maintenance{};
+
   ResourceMessageSenderPage page{};
   ResourceMessage msg_in_create{};
 };
@@ -325,12 +351,19 @@ struct ResourceMessageReceiver {
     MaintenanceMessagingSystem{},
   });
   Maintenance maintenance{};
+
+  static constexpr std::array<Direction, 1> OUTPUT_SIDES = {
+    DIR_DOWN,
+  };
+  static constexpr f32 OUTPUT_RATE = 5;
+  f32 item_output_accumulator{};
+
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(REQUESTABLE_ITEMS.size());
 
   // TODO: this is not really needed
   constexpr ResourceMessageReceiver() {
     for (auto& slot : inventory) {
-      slot.flags = ITEM_SLOT_OUTPUT;
+      slot.flags = ITEM_SLOT_FLAGS_OUTPUT;
     }
   }
 };
@@ -357,15 +390,30 @@ struct Assembler {
     MaintenanceCalibration{},
   });
   Maintenance maintenance{};
-  u32 selected_recipe_idx{};
+
+  static constexpr std::array<Direction, 4> OUTPUT_SIDES = {
+    DIR_UP,
+    DIR_RIGHT,
+    DIR_DOWN,
+    DIR_LEFT,
+  };
+  static constexpr f32 OUTPUT_RATE = 5;
+  f32 item_output_accumulator{};
+
   std::vector<ItemSlot> inventory =
     std::vector<ItemSlot>(Recipe::MAX_INPUT_SLOTS + Recipe::MAX_OUTPUT_SLOTS);
+
+  u32 selected_recipe_idx{};
   f32 t{};
 
   constexpr Assembler() {
+    for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
+      auto& slot = inventory[i];
+      slot.flags = ITEM_SLOT_FLAGS_INPUT | ITEM_SLOT_HAND_OUTPUT;
+    }
     for (u32 i = Recipe::MAX_INPUT_SLOTS; i < inventory.size(); ++i) {
       auto& slot = inventory[i];
-      slot.flags = ITEM_SLOT_OUTPUT;
+      slot.flags = ITEM_SLOT_FLAGS_OUTPUT;
     }
   }
 
@@ -547,6 +595,20 @@ concept HasMaintenance = requires(T& t) {
   T::POSSIBLE_MAINTENANCE;
 };
 
+template <typename T>
+concept OutputsItems = HasInventory<T> && requires(T& t) {
+  T::OUTPUT_SIDES;
+  // NOTE: items/sec
+  T::OUTPUT_RATE;
+  t.item_output_accumulator;
+};
+
+struct OutputsItemsProperties {
+  std::span<const Direction> output_sides{};
+  f32 output_rate{};
+  f32* item_output_accumulator{};
+};
+
 struct AddCommand {
   Entity entity{};
 };
@@ -721,6 +783,8 @@ std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id);
 std::tuple<Maintenance*, std::span<const Maintenance>> get_maintenance(Entity& entity);
 std::tuple<Maintenance*, std::span<const Maintenance>>
 get_maintenance(EntityStore& store, EntityId id);
+OutputsItemsProperties get_outputs_item_properties(Entity& entity);
+OutputsItemsProperties get_outputs_item_properties(EntityStore& store, EntityId id);
 
 // TODO: think about what is the real purpose of this function
 template <typename Func>

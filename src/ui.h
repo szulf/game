@@ -1,6 +1,7 @@
 #pragma once
 
 #include <variant>
+#include <vector>
 #include <unordered_map>
 
 #include "raylib.h"

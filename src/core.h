@@ -1,13 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <array>
-#include <limits>
 #include <print>
+#include <limits>
 #include <type_traits>
-#include <random>
-
-#include "raylib.h"
 
 using i8  = int8_t;
 using i16 = int16_t;
@@ -23,6 +19,7 @@ using f32 = float;
 using f64 = double;
 
 static constexpr u16 U16_MAX = std::numeric_limits<u16>::max();
+static constexpr f32 F32_MAX = std::numeric_limits<f32>::max();
 
 #define ASSERT_NO_MSG(expr)                                                                        \
   do {                                                                                             \

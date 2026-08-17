@@ -19,7 +19,8 @@ struct EditorUpdateResult {
   EntityId resource_message_receiver_id{};
 };
 
-EditorUpdateResult editor_update(Editor& editor, EntityStore& store, const Input& input);
+EditorUpdateResult
+editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2& mouse_world_pos);
 
 struct EditorGUIResult {
   bool save_requested{};

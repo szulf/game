@@ -1,6 +1,9 @@
 #pragma once
 
+#include <random>
+
 #include "raylib.h"
+#include "raymath.h"
 
 #include "core.h"
 #include "math.h"
@@ -17,6 +20,8 @@ constexpr Rectangle rect_from_vec2x2(const vec2& pos, const vec2& dims) {
   };
 }
 
+vec2 vec2_from_raylib(const Vector2& vec);
+Vector2 vec2_to_raylib(const vec2& vec);
 vec2 pos_from_rect(const Rectangle& rect);
 vec2 dims_from_rect(const Rectangle& rect);
 vec2 dims_from_texture(const Texture2D& texture);

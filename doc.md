@@ -9,8 +9,7 @@
   - [x] proper file split
 - [ ] resizable window
    - [x] proper positions for ui
-   - [ ] game camera
-     - game world should not always take up one screen
+   - [x] game camera
 - [ ] UI library
   - [x] stack elements layout direction
     - elements on top of each other

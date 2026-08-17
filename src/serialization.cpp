@@ -283,9 +283,9 @@ void load_state_from_file(State& state, const std::filesystem::path& filepath) {
   auto new_state = j.get<State>();
 
   // TODO: pull this state assigning out to a separate function?
+  // state.frame                  = {};
   state.frame_input            = {};
   state.tick_input             = {};
-  state.frame                  = {};
   state.ui_system              = {};
   state.minutes_accumulator    = {};
   state.current_place_rotation = {};

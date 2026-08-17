@@ -138,7 +138,7 @@ void maintenance_render_minigame(
   BeginTextureMode(render_texture);
   ClearBackground(BLACK);
   for (const auto& cog : state.cogwheels) {
-    DrawCircleV(cog.pos.to_raylib(), cog.radius, cog.color);
+    DrawCircleV(vec2_to_raylib(cog.pos), cog.radius, cog.color);
   }
   for (const auto& point : state.points) {
     Color color = point.color;
@@ -147,7 +147,7 @@ void maintenance_render_minigame(
     }
     DrawRectanglePro(
       rect_from_vec2x2(point.pos, point.dims),
-      (point.dims / 2.0f).to_raylib(),
+      vec2_to_raylib(point.dims / 2.0f),
       0,
       color
     );
@@ -291,7 +291,7 @@ render_component(Component& comp, const AssetManager& assets, TextureType textur
   auto source_rect  = rect_from_vec2x2({}, texture_dims);
   auto dest_rect    = rect_from_vec2x2(comp.pos, comp.DIMS);
   auto origin       = comp.DIMS * 0.5f;
-  DrawTexturePro(texture, source_rect, dest_rect, origin.to_raylib(), 0, WHITE);
+  DrawTexturePro(texture, source_rect, dest_rect, vec2_to_raylib(origin), 0, WHITE);
 }
 
 void maintenance_render_minigame(
@@ -307,7 +307,7 @@ void maintenance_render_minigame(
   for (const auto& slot : state.slots) {
     auto rect   = rect_from_vec2x2(slot.pos, slot.DIMS);
     auto origin = slot.DIMS * 0.5f;
-    DrawRectanglePro(rect, origin.to_raylib(), 0, LIGHTGRAY);
+    DrawRectanglePro(rect, vec2_to_raylib(origin), 0, LIGHTGRAY);
   }
   render_component(state.broken, assets, get_texture_type(state.FIX_ITEM));
   render_component(state.fixed, assets, get_texture_type(state.FIX_ITEM));
@@ -404,8 +404,8 @@ void maintenance_render_minigame(
     2,
     WHITE
   );
-  DrawRectanglePro(state.add_rect, origin.to_raylib(), 0, GREEN);
-  DrawRectanglePro(state.remove_rect, origin.to_raylib(), 0, RED);
+  DrawRectanglePro(state.add_rect, vec2_to_raylib(origin), 0, GREEN);
+  DrawRectanglePro(state.remove_rect, vec2_to_raylib(origin), 0, RED);
   EndTextureMode();
 }
 
@@ -1041,7 +1041,7 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
       .height = dims.y,
     };
 
-    auto origin = (dims * 0.5f).to_raylib();
+    auto origin = vec2_to_raylib(dims * 0.5f);
 
     f32 rotation = 0;
     if (auto* rot = get_rotation(entity)) {
@@ -1056,7 +1056,7 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
         if (item.slot) {
           auto& on_texture  = assets.textures[get_texture_type(item.slot.type)];
           vec2 on_dims      = dims_from_texture(on_texture);
-          Vector2 on_origin = on_dims.to_raylib() * 0.5f * ON_CONVEYOR_SCALE;
+          Vector2 on_origin = vec2_to_raylib(on_dims) * 0.5f * ON_CONVEYOR_SCALE;
 
           auto on_source_rect = rect_from_vec2x2({}, on_dims);
 

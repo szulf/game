@@ -1,5 +1,7 @@
 #include "input.h"
 
+#include "utils.h"
+
 i32 gkey_to_raylib_key(GKey key) {
   switch (key) {
     case GKEY_A:
@@ -131,7 +133,7 @@ KeyState get_key_state(GKey key) {
 void gather_input(Input& input) {
   clear(input);
 
-  input.mouse_pos    = vec2::from_raylib(GetMousePosition());
+  input.mouse_pos    = vec2_from_raylib(GetMousePosition());
   input.mouse_scroll = GetMouseWheelMove();
 
   input.lmb.down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);

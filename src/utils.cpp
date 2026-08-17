@@ -4,6 +4,14 @@ bool operator==(const Color& a, const Color& b) {
   return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 }
 
+vec2 vec2_from_raylib(const Vector2& vec) {
+  return {vec.x, vec.y};
+}
+
+Vector2 vec2_to_raylib(const vec2& vec) {
+  return {vec.x, vec.y};
+}
+
 vec2 pos_from_rect(const Rectangle& rect) {
   return {rect.x, rect.y};
 }

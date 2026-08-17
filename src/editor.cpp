@@ -3,10 +3,11 @@
 #include "gui.h"
 #include "ui.h"
 
-EditorUpdateResult editor_update(Editor& editor, EntityStore& store, const Input& input) {
+EditorUpdateResult
+editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2& mouse_world_pos) {
   EditorUpdateResult result{};
-  auto* entity_at_mouse_pos =
-    get_entity_at_pos(store, grid_pos(input.mouse_pos), editor.current_world);
+  auto mouse_grid_pos       = grid_pos(mouse_world_pos);
+  auto* entity_at_mouse_pos = get_entity_at_pos(store, mouse_grid_pos, editor.current_world);
 
   if (input.lmb.down && entity_at_mouse_pos) {
     if (entity_at_mouse_pos->id == editor.selected_entity_id) {
@@ -18,7 +19,7 @@ EditorUpdateResult editor_update(Editor& editor, EntityStore& store, const Input
   if (input.rmb.down && !entity_at_mouse_pos) {
     const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
     Entity entity         = placeable;
-    entity.pos            = grid_pos(input.mouse_pos);
+    entity.pos            = mouse_grid_pos;
     entity.world          = editor.current_world;
     auto id               = add_entity(store, entity);
     if (is<Player>(placeable)) {

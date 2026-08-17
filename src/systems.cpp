@@ -38,15 +38,21 @@ void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
   }
 }
 
-void system_open_gui(EntityStore& store, EntityId player_id, const Input& input) {
+void system_open_gui(
+  EntityStore& store,
+  EntityId player_id,
+  const Input& input,
+  const vec2& mouse_world_pos
+) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
+  auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   if (
     action_state(input, ACTION_INTERACT).pressed() &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
+    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
     }
@@ -111,19 +117,25 @@ void system_hand_slot_interactions(
   }
 }
 
-void system_drop_items(EntityStore& store, EntityId player_id, const Input& input) {
+void system_drop_items(
+  EntityStore& store,
+  EntityId player_id,
+  const Input& input,
+  const vec2& mouse_world_pos
+) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
+  auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: not sure if lmb_pressed is the right keybind
   if (
     input.lmb.pressed() && player->hand &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
+    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
-        .pos   = grid_pos(input.mouse_pos),
+        .pos   = mouse_grid_pos,
         .world = player_entity->world,
         .data  = Item{.slot = player->hand},
       };
@@ -288,20 +300,22 @@ void system_place_entity(
   EntityStore& store,
   EntityId player_id,
   const Input& input,
+  const vec2& mouse_world_pos,
   Direction place_rotation
 ) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
+  auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: should check if im not hovering over an item slot
   if (
     input.rmb.pressed() && player->hand &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius) &&
-    !get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world)
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius) &&
+    !get_entity_at_pos(store, mouse_grid_pos, player_entity->world)
   ) {
     auto entity = entity_from_item(player->hand.type);
     if (entity) {
-      entity->pos   = grid_pos(input.mouse_pos);
+      entity->pos   = mouse_grid_pos;
       entity->world = player_entity->world;
       if (auto* rotation = get_rotation(*entity)) {
         *rotation = place_rotation;
@@ -312,15 +326,21 @@ void system_place_entity(
   }
 }
 
-void system_remove_entity(EntityStore& store, EntityId player_id, const Input& input) {
+void system_remove_entity(
+  EntityStore& store,
+  EntityId player_id,
+  const Input& input,
+  const vec2& mouse_world_pos
+) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
+  auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   if (
     input.lmb.pressed() &&
-    pos_in_radius(grid_pos(input.mouse_pos), player_entity->pos, player->interaction_radius)
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, grid_pos(input.mouse_pos), player_entity->world);
+    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
       ASSERT(item_type, "broken breakable item doesnt have an item_type");
@@ -561,6 +581,25 @@ void system_update_maintenance_minigames(EntityStore& store, const Input& input,
       *maintenance = std::monostate{};
     }
   }
+}
+
+void system_update_camera(
+  Camera2D& camera,
+  const Input& input,
+  EntityStore& store,
+  EntityId player_id,
+  const vec2& window_dims
+) {
+  auto* player_entity = get_entity(store, player_id);
+  ASSERT_NO_MSG(player_entity);
+
+  camera.offset   = vec2_to_raylib(window_dims / 2.0f);
+  camera.target   = vec2_to_raylib((player_entity->pos * GRID_DIMS) + (GRID_DIMS / 2.0f));
+  camera.rotation = 0.0f;
+
+  // TODO: copied from raylibs example, maybe something else feels better
+  camera.zoom = std::exp(std::log(camera.zoom) + (input.mouse_scroll * 0.05f));
+  camera.zoom = std::clamp(camera.zoom, 0.3f, 8.0f);
 }
 
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {

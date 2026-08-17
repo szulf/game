@@ -16,6 +16,7 @@
 struct FrameData {
   ItemSlotIdx hovered_slot{};
   vec2 window_dims{};
+  vec2 mouse_world_pos{};
 };
 
 enum Mode {
@@ -29,6 +30,7 @@ static constexpr std::string_view SERIALIZATION_MAP_FILEPATH = "save_file.json";
 struct State {
   static constexpr u32 SERIALIZATION_VERSION = 1;
   Mode mode{};
+  Camera2D camera{};
 
   // TODO: put into FrameData?
   Input frame_input{};

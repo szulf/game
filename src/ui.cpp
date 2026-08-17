@@ -107,7 +107,7 @@ static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx 
     case UI_ELEMENT_TEXT: {
       auto& config    = elem.config.text;
       auto& str       = layout.strings[config.string_idx];
-      elem.dimensions = vec2::from_raylib(
+      elem.dimensions = vec2_from_raylib(
         MeasureTextEx(GetFontDefault(), str.c_str(), f32(config.size), TEXT_SPACING)
       );
     } break;
@@ -612,7 +612,7 @@ void ui_render(UI_System& system) {
           DrawTextEx(
             GetFontDefault(),
             text.string.c_str(),
-            text.pos.to_raylib(),
+            vec2_to_raylib(text.pos),
             text.size,
             TEXT_SPACING,
             text.tint

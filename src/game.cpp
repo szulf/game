@@ -16,7 +16,8 @@
 #include "serialization.h"
 
 void init(State& state) {
-  InitWindow(1280, 720, "test");
+  state.frame.window_dims = {1280, 720};
+  InitWindow(state.frame.window_dims.x, state.frame.window_dims.y, "test");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
   SetTargetFPS(165);
   SetExitKey(KEY_NULL);
@@ -30,6 +31,17 @@ void init(State& state) {
   std::println("loaded world file from '{}'", DEFAULT_MAP_FILEPATH);
 
   flush(state.store);
+
+  state.camera.zoom = 1.0f;
+  // TODO: dont like calling a system in init, but should be fine,
+  // and will probably change if i ever introduce a start menu or something
+  system_update_camera(
+    state.camera,
+    state.tick_input,
+    state.store,
+    state.player_id,
+    state.frame.window_dims
+  );
 }
 
 void update_tick(State& state, f32 dt) {
@@ -50,7 +62,7 @@ void update_tick(State& state, f32 dt) {
 
       system_update_time(state.minutes, state.minutes_accumulator, dt);
       system_move_player(state.store, state.player_id, state.tick_input);
-      system_open_gui(state.store, state.player_id, state.tick_input);
+      system_open_gui(state.store, state.player_id, state.tick_input, state.frame.mouse_world_pos);
       system_close_gui(state.store, state.player_id, state.tick_input);
       system_hand_slot_interactions(
         state.store,
@@ -58,14 +70,25 @@ void update_tick(State& state, f32 dt) {
         state.frame.hovered_slot,
         state.tick_input
       );
-      system_drop_items(state.store, state.player_id, state.tick_input);
+      system_drop_items(
+        state.store,
+        state.player_id,
+        state.tick_input,
+        state.frame.mouse_world_pos
+      );
       system_place_entity(
         state.store,
         state.player_id,
         state.tick_input,
+        state.frame.mouse_world_pos,
         state.current_place_rotation
       );
-      system_remove_entity(state.store, state.player_id, state.tick_input);
+      system_remove_entity(
+        state.store,
+        state.player_id,
+        state.tick_input,
+        state.frame.mouse_world_pos
+      );
       system_pickup_item(state.store, state.player_id);
       system_move_items(state.store, dt);
       system_tunnel_through_worlds(state.store, state.player_id);
@@ -78,9 +101,17 @@ void update_tick(State& state, f32 dt) {
       system_progress_recipes(state.store, dt);
       system_apply_maintenance(state.store);
       system_update_maintenance_minigames(state.store, state.tick_input, dt);
+      system_update_camera(
+        state.camera,
+        state.tick_input,
+        state.store,
+        state.player_id,
+        state.frame.window_dims
+      );
     } break;
     case MODE_EDITOR: {
-      auto result = editor_update(state.editor, state.store, state.tick_input);
+      auto result =
+        editor_update(state.editor, state.store, state.tick_input, state.frame.mouse_world_pos);
       if (result.player_id) {
         state.player_id = result.player_id;
       }
@@ -105,6 +136,8 @@ void update_tick(State& state, f32 dt) {
 void update_frame(State& state) {
   state.frame             = {};
   state.frame.window_dims = {f32(GetScreenWidth()), f32(GetScreenHeight())};
+  state.frame.mouse_world_pos =
+    vec2_from_raylib(GetScreenToWorld2D(vec2_to_raylib(state.frame_input.mouse_pos), state.camera));
   gather_input(state.frame_input);
   accumulate_input(state.tick_input, state.frame_input);
   ui_system_update(state.ui_system);
@@ -192,6 +225,8 @@ void render(State& state) {
   BeginDrawing();
   ClearBackground(WHITE);
 
+  BeginMode2D(state.camera);
+
   // NOTE: grid
   {
     static constexpr Color GRID_COLOR = {180, 180, 180, 255};
@@ -220,7 +255,7 @@ void render(State& state) {
             static constexpr Color ARROW_COLOR = {80, 60, 0, 255};
 
             vec2 main_start_pos =
-              (grid_pos(state.frame_input.mouse_pos) * GRID_DIMS) + (GRID_DIMS / 2);
+              (grid_pos(state.frame.mouse_world_pos) * GRID_DIMS) + (GRID_DIMS / 2);
             vec2 main_end_pos = main_start_pos;
 
             switch (state.current_place_rotation) {
@@ -271,9 +306,9 @@ void render(State& state) {
                 break;
             }
 
-            DrawLineV(main_start_pos.to_raylib(), main_end_pos.to_raylib(), ARROW_COLOR);
-            DrawLineV(hands_start_pos.to_raylib(), right_end_pos.to_raylib(), ARROW_COLOR);
-            DrawLineV(hands_start_pos.to_raylib(), left_end_pos.to_raylib(), ARROW_COLOR);
+            DrawLineV(vec2_to_raylib(main_start_pos), vec2_to_raylib(main_end_pos), ARROW_COLOR);
+            DrawLineV(vec2_to_raylib(hands_start_pos), vec2_to_raylib(right_end_pos), ARROW_COLOR);
+            DrawLineV(vec2_to_raylib(hands_start_pos), vec2_to_raylib(left_end_pos), ARROW_COLOR);
           }
         }
       }
@@ -283,23 +318,13 @@ void render(State& state) {
     } break;
   }
 
-  // NOTE: ui
-  ui_render(state.ui_system);
-  auto time_str = std::format(
-    "{:02}:{:02} DAY: {}",
-    (state.minutes / 60) % 24,
-    state.minutes % 60,
-    (state.minutes / 60) / 24
-  );
-  DrawText(time_str.c_str(), 5, 25, 20, DARKGREEN);
-  DrawFPS(5, 5);
-
   // NOTE: mouse
   {
     if (!state.frame.hovered_slot) {
-      Rectangle rect = {
-        .x      = f32(grid_pos(state.frame_input.mouse_pos).x * GRID_DIMS.x),
-        .y      = f32(grid_pos(state.frame_input.mouse_pos).y * GRID_DIMS.y),
+      auto mouse_grid_pos = grid_pos(state.frame.mouse_world_pos);
+      Rectangle rect      = {
+        .x      = f32(mouse_grid_pos.x * GRID_DIMS.x),
+        .y      = f32(mouse_grid_pos.y * GRID_DIMS.y),
         .width  = GRID_DIMS.x,
         .height = GRID_DIMS.y,
       };
@@ -322,6 +347,19 @@ void render(State& state) {
       GREEN
     );
   }
+
+  EndMode2D();
+
+  // NOTE: ui
+  ui_render(state.ui_system);
+  auto time_str = std::format(
+    "{:02}:{:02} DAY: {}",
+    (state.minutes / 60) % 24,
+    state.minutes % 60,
+    (state.minutes / 60) / 24
+  );
+  DrawText(time_str.c_str(), 5, 25, 20, DARKGREEN);
+  DrawFPS(5, 5);
 
   EndDrawing();
 }

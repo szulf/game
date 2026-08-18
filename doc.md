@@ -11,7 +11,7 @@
    - [x] proper positions for ui
    - [x] game camera
 - [x] containers that can output only from a single side
-- [ ] bigger machines
+- [x] bigger machines
 - [ ] conveyors
   - [x] basic item movement on conveyors
   - [ ] proper from/to directions
@@ -32,6 +32,7 @@
   - [ ] better element api (the UI_Scope thing probably)
   - [ ] floating elements (?)
   - [ ] components (?)
+    - button, slider, movable window
   - [ ] animations
 - [ ] map editor
   - [x] placing
@@ -41,6 +42,7 @@
     - [x] rotation
     - [x] maintenance
     - [x] inventories
+    - [ ] conveyor items
     - [ ] time
   - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever

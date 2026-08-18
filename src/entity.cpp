@@ -647,19 +647,28 @@ Entity* get_entity(EntityStore& store, EntityId id) {
   return &entity;
 }
 
-Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world) {
+Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims) {
   for (auto& entity : store) {
-    if (entity.world == world && entity.pos == pos) {
+    auto entity_dims = get_dims(entity);
+    bool same_world  = world == entity.world;
+    bool x_in_range  = pos.x < entity.pos.x + entity_dims.x && pos.x + dims.x > entity.pos.x;
+    bool y_in_range  = pos.y < entity.pos.y + entity_dims.y && pos.y + dims.y > entity.pos.y;
+    if (same_world && x_in_range && y_in_range) {
       return &entity;
     }
   }
   return nullptr;
 }
 
-std::vector<Entity*> get_entities_at_pos(EntityStore& store, const vec2& pos, World world) {
+std::vector<Entity*>
+get_entities_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims) {
   std::vector<Entity*> entities{};
   for (auto& entity : store) {
-    if (entity.world == world && entity.pos == pos) {
+    auto entity_dims = get_dims(entity);
+    bool same_world  = world == entity.world;
+    bool x_in_range  = pos.x < entity.pos.x + entity_dims.x && pos.x + dims.x > entity.pos.x;
+    bool y_in_range  = pos.y < entity.pos.y + entity_dims.y && pos.y + dims.y > entity.pos.y;
+    if (same_world && x_in_range && y_in_range) {
       entities.push_back(&entity);
     }
   }
@@ -1002,7 +1011,7 @@ get_maintenance(EntityStore& store, EntityId id) {
   return {nullptr, {}};
 }
 
-OutputsItemsProperties get_outputs_item_properties(Entity& entity) {
+OutputsItemsProperties get_outputs_items_properties(Entity& entity) {
   return std::visit(
     [](auto& value) -> OutputsItemsProperties {
       using T = std::decay_t<decltype(value)>;
@@ -1019,10 +1028,27 @@ OutputsItemsProperties get_outputs_item_properties(Entity& entity) {
   );
 }
 
-OutputsItemsProperties get_outputs_item_properties(EntityStore& store, EntityId id) {
+OutputsItemsProperties get_outputs_items_properties(EntityStore& store, EntityId id) {
   auto* entity = get_entity(store, id);
   if (entity) {
-    return get_outputs_item_properties(*entity);
+    return get_outputs_items_properties(*entity);
+  }
+  return {};
+}
+
+vec2 get_dims(const Entity& entity) {
+  return std::visit(
+    [](const auto& value) -> vec2 {
+      return value.DIMS;
+    },
+    entity.data
+  );
+}
+
+vec2 get_dims(EntityStore& store, EntityId id) {
+  auto* entity = get_entity(store, id);
+  if (entity) {
+    return get_dims(*entity);
   }
   return {};
 }
@@ -1043,19 +1069,25 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
     }
     vec2 dims = dims_from_texture(*texture);
 
-    auto source_rect    = rect_from_vec2x2({}, dims);
+    auto source_rect = rect_from_vec2x2({}, dims);
+    // TODO: because of the change in origin rendering item entities is now wrong
     Rectangle dest_rect = {
-      .x      = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - dims.x) / 2.0f) + (dims.x * 0.5f),
-      .y      = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - dims.y) / 2.0f) + (dims.y * 0.5f),
+      .x      = entity.pos.x * GRID_DIMS.x,
+      .y      = entity.pos.y * GRID_DIMS.y,
       .width  = dims.x,
       .height = dims.y,
     };
-
-    auto origin = vec2_to_raylib(dims * 0.5f);
+    Vector2 origin = {};
 
     f32 rotation = 0;
     if (auto* rot = get_rotation(entity)) {
       rotation = rotation_degrees(*rot);
+      // TODO: no idea how to properly rotate when origin is top left corner
+      // and dont want to think about it right now
+      // (origin cannot be always center, because of entities that are bigger than 1x1)
+      dest_rect.x += GRID_DIMS.x * 0.5f;
+      dest_rect.y += GRID_DIMS.y * 0.5f;
+      origin = vec2_to_raylib(dims * 0.5f);
     }
 
     DrawTexturePro(*texture, source_rect, dest_rect, origin, rotation, WHITE);
@@ -1071,10 +1103,8 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
           auto on_source_rect = rect_from_vec2x2({}, on_dims);
 
           Rectangle on_dest_rect = {
-            .x = (entity.pos.x * GRID_DIMS.x) + ((GRID_DIMS.x - on_dims.x) / 2.0f) +
-                 (on_dims.x * 0.5f),
-            .y = (entity.pos.y * GRID_DIMS.y) + ((GRID_DIMS.y - on_dims.y) / 2.0f) +
-                 (on_dims.y * 0.5f),
+            .x      = (entity.pos.x * GRID_DIMS.x) + (GRID_DIMS.x * 0.5f),
+            .y      = (entity.pos.y * GRID_DIMS.y) + (GRID_DIMS.y * 0.5f),
             .width  = on_dims.x * ON_CONVEYOR_SCALE,
             .height = on_dims.y * ON_CONVEYOR_SCALE,
           };

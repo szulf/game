@@ -18,6 +18,8 @@ void system_update_time(u64& min, f32& min_accumulator, f32 dt) {
   }
 }
 
+// TODO: can currently move through walls if you move at an angle
+// since i dont check whether there exists a possible path between point A and point B
 void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
   auto move_vector = get_move_vector(input);
   if (move_vector == vec2{0, 0}) {
@@ -26,8 +28,12 @@ void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
 
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);
-  auto collided =
-    get_entities_at_pos(store, player_entity->pos + move_vector, player_entity->world);
+  auto collided = get_entities_at_pos(
+    store,
+    player_entity->pos + move_vector,
+    player_entity->world,
+    Player::DIMS
+  );
   bool can_move = true;
 
   for (auto& collision : collided) {
@@ -53,7 +59,7 @@ void system_open_gui(
 
   if (action_state(input, ACTION_INTERACT).pressed() &&
       pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
-    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
+    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
     }
@@ -128,7 +134,7 @@ void system_drop_items(
   // TODO: not sure if lmb_pressed is the right keybind
   if (input.lmb.pressed() && player->hand &&
       pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
-    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
+    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
         .pos   = mouse_grid_pos,
@@ -326,20 +332,27 @@ void system_place_entity(
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: should check if im not hovering over an item slot
-  if (input.rmb.pressed() && player->hand &&
-      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius) &&
-      !get_entity_at_pos(store, mouse_grid_pos, player_entity->world)) {
-    auto entity = entity_from_item(player->hand.type);
-    if (entity) {
-      entity->pos   = mouse_grid_pos;
-      entity->world = player_entity->world;
-      if (auto* rotation = get_rotation(*entity)) {
-        *rotation = place_rotation;
-      }
-      add_entity(store, *entity);
-      --player->hand.count;
-    }
+  if (!input.rmb.pressed() || !player->hand ||
+      !pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
+    return;
   }
+
+  auto entity = entity_from_item(player->hand.type);
+  if (!entity) {
+    return;
+  }
+  auto dims = get_dims(*entity);
+  if (get_entity_at_pos(store, mouse_grid_pos, player_entity->world, dims)) {
+    return;
+  }
+
+  entity->pos   = mouse_grid_pos;
+  entity->world = player_entity->world;
+  if (auto* rotation = get_rotation(*entity)) {
+    *rotation = place_rotation;
+  }
+  add_entity(store, *entity);
+  --player->hand.count;
 }
 
 void system_remove_entity(
@@ -354,7 +367,7 @@ void system_remove_entity(
 
   if (input.lmb.pressed() &&
       pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
-    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world);
+    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
       ASSERT(item_type, "broken breakable item doesnt have an item_type");
@@ -404,8 +417,16 @@ static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
 }
 
 void system_output_items(EntityStore& store, f32 dt) {
+  static constexpr std::array<std::pair<Direction, vec2>, 4> SIDES = {{
+    {DIR_RIGHT, {1, 0}},
+    {DIR_DOWN, {0, 1}},
+    {DIR_LEFT, {-1, 0}},
+    {DIR_UP, {0, -1}},
+  }};
+
+  // TODO: only do anything if a conveyor is attached?
   for (auto& entity : store) {
-    auto output_properties = get_outputs_item_properties(entity);
+    auto output_properties = get_outputs_items_properties(entity);
     if (!output_properties.item_output_accumulator) {
       continue;
     }
@@ -414,42 +435,53 @@ void system_output_items(EntityStore& store, f32 dt) {
 
     if (*output_properties.item_output_accumulator >= (1.0f / output_properties.output_rate)) {
       auto* from_inv = get_inventory(entity);
-      ASSERT_NO_MSG(from_inv);
+      ASSERT(from_inv, "entities with OutputsItems must satisfy HasInventory");
+      auto dims = get_dims(entity);
 
-      for (auto dir : output_properties.output_sides) {
-        auto output_pos     = entity.pos + direction_to_vec2(dir);
-        auto* output_entity = get_entity_at_pos(store, output_pos, entity.world);
-        if (!output_entity) {
-          continue;
-        }
-        auto* conveyor = get_data<Conveyor>(*output_entity);
-        if (!conveyor) {
-          continue;
-        }
-        if (output_pos + direction_to_vec2(conveyor_from(*conveyor)) != entity.pos) {
-          continue;
-        }
-
-        for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-          auto& item    = conveyor->items[i];
-          bool can_pull = !item.slot;
-          if (can_pull) {
-            auto* first_extractable = find_first_extractable_slot(*from_inv);
-            if (first_extractable) {
-              // TODO: do i extract this into some function?
-              // like somehow use transfer_items() here?
-              item.slot.type  = first_extractable->type;
-              item.slot.count = 1;
-              if (item_info(first_extractable->type).has_durability) {
-                item.slot.damage          = first_extractable->damage;
-                first_extractable->damage = 0;
-              }
-              --first_extractable->count;
+      for (u32 y = 0; y < u32(dims.y); ++y) {
+        for (u32 x = 0; x < u32(dims.x); ++x) {
+          auto pos = entity.pos + vec2{f32(x), f32(y)};
+          for (auto [side, side_vector] : SIDES) {
+            if (!(output_properties.output_sides[(dims.x * y) + x] & side)) {
+              continue;
             }
-            break;
+            auto output_pos = pos + side_vector;
+            auto* output_entity =
+              get_entity_at_pos(store, output_pos, entity.world, Conveyor::DIMS);
+            if (!output_entity) {
+              continue;
+            }
+            auto* conveyor = get_data<Conveyor>(*output_entity);
+            if (!conveyor) {
+              continue;
+            }
+            if (output_pos + direction_to_vec2(conveyor_from(*conveyor)) != pos) {
+              continue;
+            }
+
+            for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+              auto& item    = conveyor->items[i];
+              bool can_pull = !item.slot;
+              if (can_pull) {
+                auto* first_extractable = find_first_extractable_slot(*from_inv);
+                if (first_extractable) {
+                  // TODO: do i extract this into some function?
+                  // like somehow use transfer_items() here?
+                  item.slot.type  = first_extractable->type;
+                  item.slot.count = 1;
+                  if (item_info(first_extractable->type).has_durability) {
+                    item.slot.damage          = first_extractable->damage;
+                    first_extractable->damage = 0;
+                  }
+                  --first_extractable->count;
+                }
+                break;
+              }
+            }
           }
         }
       }
+
       *output_properties.item_output_accumulator = 0;
     }
   }
@@ -493,7 +525,7 @@ void system_move_items(EntityStore& store, f32 dt) {
       auto& item = conveyor->items[0];
       if (item.t >= 1) {
         vec2 to_pos     = entity.pos + direction_to_vec2(conveyor_to(*conveyor));
-        auto* to_entity = get_entity_at_pos(store, to_pos, entity.world);
+        auto* to_entity = get_entity_at_pos(store, to_pos, entity.world, {1, 1});
         if (to_entity && !is<Player>(*to_entity)) {
           bool success = false;
 

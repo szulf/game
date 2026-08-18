@@ -27,22 +27,25 @@ vec2 dims_from_rect(const Rectangle& rect);
 vec2 dims_from_texture(const Texture2D& texture);
 
 enum Direction {
-  DIR_UP,
-  DIR_RIGHT,
-  DIR_DOWN,
-  DIR_LEFT,
-  DIR_COUNT,
+  DIR_UP    = 1 << 0,
+  DIR_RIGHT = 1 << 1,
+  DIR_DOWN  = 1 << 2,
+  DIR_LEFT  = 1 << 3,
 };
 
+using Directions = u32;
+
+Direction next_direction(Direction direction);
 Direction opposite_direction(Direction direction);
 vec2 direction_to_vec2(Direction direction);
 std::string_view direction_to_string(Direction direction);
 f32 rotation_degrees(Direction rotation);
 
 // TODO: should this really be here?
-static constexpr vec2 GRID_DIMS = {32, 32};
-static constexpr i32 TPS        = 60;
-static constexpr f32 DT         = 1.0f / TPS;
+static constexpr vec2 GRID_DIMS   = {32, 32};
+static constexpr vec2 CURSOR_DIMS = {1, 1};
+static constexpr i32 TPS          = 60;
+static constexpr f32 DT           = 1.0f / TPS;
 
 inline std::mt19937 random_generate() {
   std::random_device rd{};

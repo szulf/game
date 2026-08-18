@@ -38,6 +38,8 @@ struct ItemSlotIdx {
 static constexpr u32 PLAYER_INVENTORY_SIZE = 16;
 
 struct Player {
+  static constexpr vec2 DIMS = {1, 1};
+
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
   i32 interaction_radius          = 4;
   EntityId open_gui{};
@@ -50,16 +52,17 @@ struct Player {
   }
 };
 
-struct Block {};
+struct Block {
+  static constexpr vec2 DIMS = {1, 1};
+};
 
 static constexpr u32 STORAGE_INVENTORY_SIZE = 32;
 
 struct Storage {
-  static constexpr std::array<Direction, 4> OUTPUT_SIDES = {
-    DIR_UP,
-    DIR_RIGHT,
-    DIR_DOWN,
-    DIR_LEFT,
+  static constexpr vec2 DIMS = {1, 1};
+
+  static constexpr std::array<Directions, 1> OUTPUT_SIDES = {
+    DIR_UP | DIR_RIGHT | DIR_DOWN | DIR_LEFT,
   };
   static constexpr f32 OUTPUT_RATE = 2;
   f32 item_output_accumulator{};
@@ -80,6 +83,8 @@ struct ConveyorItem {
 static constexpr u32 CONVEYOR_THROUGHPUT = 10;
 
 struct Conveyor {
+  static constexpr vec2 DIMS = {1, 1};
+
   Direction rotation{};
   std::vector<ConveyorItem> items = std::vector<ConveyorItem>(CONVEYOR_THROUGHPUT);
 };
@@ -93,6 +98,8 @@ inline Direction conveyor_to(const Conveyor& conveyor) {
 }
 
 struct Item {
+  static constexpr vec2 DIMS = {1, 1};
+
   ItemSlot slot{};
 };
 
@@ -107,11 +114,10 @@ enum World {
 std::string_view world_to_string(World world);
 
 struct WorldTunnel {
-  static constexpr std::array<Direction, 4> OUTPUT_SIDES = {
-    DIR_UP,
-    DIR_RIGHT,
-    DIR_DOWN,
-    DIR_LEFT,
+  static constexpr vec2 DIMS = {1, 1};
+
+  static constexpr std::array<Directions, 1> OUTPUT_SIDES = {
+    DIR_UP | DIR_RIGHT | DIR_DOWN | DIR_LEFT,
   };
   static constexpr f32 OUTPUT_RATE = 5;
   f32 item_output_accumulator{};
@@ -329,6 +335,8 @@ enum ResourceMessageSenderPage {
 };
 
 struct ResourceMessageSender {
+  static constexpr vec2 DIMS = {1, 1};
+
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
     MaintenanceLubrication{},
     MaintenanceCleaning{},
@@ -343,6 +351,8 @@ struct ResourceMessageSender {
 };
 
 struct ResourceMessageReceiver {
+  static constexpr vec2 DIMS = {3, 2};
+
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
     MaintenanceLubrication{},
     MaintenanceCleaning{},
@@ -352,7 +362,12 @@ struct ResourceMessageReceiver {
   });
   Maintenance maintenance{};
 
-  static constexpr std::array<Direction, 1> OUTPUT_SIDES = {
+  static constexpr std::array<Directions, 6> OUTPUT_SIDES = {
+    0,
+    0,
+    0,
+    DIR_DOWN,
+    DIR_DOWN,
     DIR_DOWN,
   };
   static constexpr f32 OUTPUT_RATE = 5;
@@ -383,6 +398,8 @@ struct Recipe {
 };
 
 struct Assembler {
+  static constexpr vec2 DIMS = {1, 1};
+
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
     MaintenanceLubrication{},
     MaintenanceCleaning{},
@@ -391,11 +408,8 @@ struct Assembler {
   });
   Maintenance maintenance{};
 
-  static constexpr std::array<Direction, 4> OUTPUT_SIDES = {
-    DIR_UP,
-    DIR_RIGHT,
-    DIR_DOWN,
-    DIR_LEFT,
+  static constexpr std::array<Directions, 1> OUTPUT_SIDES = {
+    DIR_UP | DIR_RIGHT | DIR_DOWN | DIR_LEFT,
   };
   static constexpr f32 OUTPUT_RATE = 5;
   f32 item_output_accumulator{};
@@ -584,27 +598,29 @@ static const std::array PLACEABLE = std::to_array<Entity>({
 });
 
 template <typename T>
-concept HasInventory = requires(T& t) { t.inventory; };
+concept HasInventory = requires(T t) { t.inventory; };
 
 template <typename T>
-concept Rotatable = requires(T& t) { t.rotation; };
+concept Rotatable = requires(T t) { t.rotation; };
 
 template <typename T>
-concept HasMaintenance = requires(T& t) {
+concept HasMaintenance = requires(T t) {
   t.maintenance;
   T::POSSIBLE_MAINTENANCE;
 };
 
 template <typename T>
-concept OutputsItems = HasInventory<T> && requires(T& t) {
-  T::OUTPUT_SIDES;
+concept OutputsItems = HasInventory<T> && requires(T t) {
+  // NOTE: ordered in a row major fashion fashion
+  // indexed like this [(y * T::DIMS.x) + x]
+  { T::OUTPUT_SIDES } -> std::same_as<const std::array<Directions, u32(T::DIMS.x * T::DIMS.y)>&>;
   // NOTE: items/sec
   T::OUTPUT_RATE;
   t.item_output_accumulator;
 };
 
 struct OutputsItemsProperties {
-  std::span<const Direction> output_sides{};
+  std::span<const Directions> output_sides{};
   f32 output_rate{};
   f32* item_output_accumulator{};
 };
@@ -670,8 +686,9 @@ bool contains_entity(EntityStore& store, EntityId id);
 // NOTE: DO NOT save the pointer for longer than a single system!
 // It will break things when the entities vector reallocates
 Entity* get_entity(EntityStore& store, EntityId id);
-Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world);
-std::vector<Entity*> get_entities_at_pos(EntityStore& store, const vec2& pos, World world);
+Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims);
+std::vector<Entity*>
+get_entities_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims);
 void emit(EntityStore& store, const Event& event);
 
 struct EventView {
@@ -783,8 +800,10 @@ std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id);
 std::tuple<Maintenance*, std::span<const Maintenance>> get_maintenance(Entity& entity);
 std::tuple<Maintenance*, std::span<const Maintenance>>
 get_maintenance(EntityStore& store, EntityId id);
-OutputsItemsProperties get_outputs_item_properties(Entity& entity);
-OutputsItemsProperties get_outputs_item_properties(EntityStore& store, EntityId id);
+OutputsItemsProperties get_outputs_items_properties(Entity& entity);
+OutputsItemsProperties get_outputs_items_properties(EntityStore& store, EntityId id);
+vec2 get_dims(const Entity& entity);
+vec2 get_dims(EntityStore& store, EntityId id);
 
 // TODO: think about what is the real purpose of this function
 template <typename Func>

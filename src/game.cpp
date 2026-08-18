@@ -57,7 +57,7 @@ void update_tick(State& state, f32 dt) {
     case MODE_GAME: {
       // TODO: i dont think this belongs in a system, but maybe?
       if (action_state(state.tick_input, ACTION_ROTATE).pressed()) {
-        state.current_place_rotation = Direction((state.current_place_rotation + 1) % DIR_COUNT);
+        state.current_place_rotation = next_direction(state.current_place_rotation);
       }
 
       system_update_time(state.minutes, state.minutes_accumulator, dt);
@@ -276,9 +276,6 @@ void render(State& state) {
                 main_start_pos.x -= GRID_DIMS.x / 3.0f;
                 main_end_pos.x += GRID_DIMS.x / 3.0f;
                 break;
-              case DIR_COUNT:
-                ASSERT(false, "invalid rotation: DIR_COUNT");
-                break;
             }
 
             auto& hands_start_pos = main_start_pos;
@@ -301,9 +298,6 @@ void render(State& state) {
               case DIR_LEFT:
                 right_end_pos += vec2{GRID_DIMS.y / 4.0f, -(GRID_DIMS.x / 4.0f)};
                 left_end_pos += vec2{GRID_DIMS.y / 4.0f, GRID_DIMS.x / 4.0f};
-                break;
-              case DIR_COUNT:
-                ASSERT(false, "invalid rotation: DIR_COUNT");
                 break;
             }
 

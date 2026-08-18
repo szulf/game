@@ -59,4 +59,5 @@ void system_update_camera(
   EntityId player_id,
   const vec2& window_dims
 );
+// TODO: remove this, its not really a system (?)
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets);

@@ -7,8 +7,9 @@
 EditorUpdateResult
 editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2& mouse_world_pos) {
   EditorUpdateResult result{};
-  auto mouse_grid_pos       = grid_pos(mouse_world_pos);
-  auto* entity_at_mouse_pos = get_entity_at_pos(store, mouse_grid_pos, editor.current_world);
+  auto mouse_grid_pos = grid_pos(mouse_world_pos);
+  auto* entity_at_mouse_pos =
+    get_entity_at_pos(store, mouse_grid_pos, editor.current_world, CURSOR_DIMS);
 
   if (input.lmb.down && entity_at_mouse_pos) {
     if (entity_at_mouse_pos->id == editor.selected_entity_id) {
@@ -17,17 +18,20 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
     remove_entity(store, entity_at_mouse_pos->id);
   }
 
-  if (input.rmb.down && !entity_at_mouse_pos) {
+  if (input.rmb.down) {
     const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
-    Entity entity         = placeable;
-    entity.pos            = mouse_grid_pos;
-    entity.world          = editor.current_world;
-    auto id               = add_entity(store, entity);
-    if (is<Player>(placeable)) {
-      result.player_id = id;
-    }
-    if (is<ResourceMessageReceiver>(placeable)) {
-      result.resource_message_receiver_id = id;
+    auto dims             = get_dims(placeable);
+    if (!get_entity_at_pos(store, mouse_grid_pos, editor.current_world, dims)) {
+      Entity entity = placeable;
+      entity.pos    = mouse_grid_pos;
+      entity.world  = editor.current_world;
+      auto id       = add_entity(store, entity);
+      if (is<Player>(placeable)) {
+        result.player_id = id;
+      }
+      if (is<ResourceMessageReceiver>(placeable)) {
+        result.resource_message_receiver_id = id;
+      }
     }
   }
 
@@ -54,7 +58,7 @@ static void rotation_data_edit_gui(UI_Layout& layout, Entity& entity) {
   ui_element_end(layout, {});
 
   if (clicked) {
-    *rotation = Direction((*rotation + 1) % DIR_COUNT);
+    *rotation = next_direction(*rotation);
   }
 }
 

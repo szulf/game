@@ -24,6 +24,21 @@ vec2 dims_from_texture(const Texture2D& texture) {
   return {f32(texture.width), f32(texture.height)};
 }
 
+// TODO: could possibly do some bit shifting shit, but this seems easier for now
+Direction next_direction(Direction direction) {
+  switch (direction) {
+    case DIR_UP:
+      return DIR_RIGHT;
+    case DIR_RIGHT:
+      return DIR_DOWN;
+    case DIR_DOWN:
+      return DIR_LEFT;
+    case DIR_LEFT:
+      return DIR_UP;
+  }
+  ASSERT(false, "invalid direction: {}\n", i32(direction));
+}
+
 Direction opposite_direction(Direction direction) {
   switch (direction) {
     case DIR_UP:
@@ -34,10 +49,8 @@ Direction opposite_direction(Direction direction) {
       return DIR_LEFT;
     case DIR_LEFT:
       return DIR_RIGHT;
-    case DIR_COUNT:
-      break;
   }
-  ASSERT(false, "invalid direction: %d\n", i32(direction));
+  ASSERT(false, "invalid direction: {}\n", i32(direction));
 }
 
 vec2 direction_to_vec2(Direction direction) {
@@ -50,10 +63,8 @@ vec2 direction_to_vec2(Direction direction) {
       return {1, 0};
     case DIR_LEFT:
       return {-1, 0};
-    case DIR_COUNT:
-      break;
   }
-  ASSERT(false, "invalid direction: %d\n", i32(direction));
+  ASSERT(false, "invalid direction: {}\n", i32(direction));
 }
 
 std::string_view direction_to_string(Direction direction) {
@@ -66,13 +77,10 @@ std::string_view direction_to_string(Direction direction) {
       return "right";
     case DIR_LEFT:
       return "left";
-    case DIR_COUNT:
-      break;
   }
-  ASSERT(false, "invalid direction: %d\n", i32(direction));
+  ASSERT(false, "invalid direction: {}\n", i32(direction));
 }
 
-// TODO: not sure if right and left degrees are correct
 f32 rotation_degrees(Direction rotation) {
   switch (rotation) {
     case DIR_UP:
@@ -83,10 +91,8 @@ f32 rotation_degrees(Direction rotation) {
       return 90;
     case DIR_LEFT:
       return 270;
-    case DIR_COUNT:
-      break;
   }
-  ASSERT(false, "invalid rotation: %d\n", i32(rotation));
+  ASSERT(false, "invalid rotation: {}\n", i32(rotation));
 }
 
 // TODO: seed it always in the same way in debug builds?

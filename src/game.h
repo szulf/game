@@ -47,7 +47,7 @@ struct State {
   ResourceMessageQueue resource_message_queue{};
 
   // TODO: should reset when changing the player hand item
-  Direction current_place_rotation{};
+  Direction current_place_rotation = DIR_UP;
 
   // NOTE: there is only one player
   EntityId player_id{};

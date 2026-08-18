@@ -288,7 +288,7 @@ void load_state_from_file(State& state, const std::filesystem::path& filepath) {
   state.tick_input             = {};
   state.ui_system              = {};
   state.minutes_accumulator    = {};
-  state.current_place_rotation = {};
+  state.current_place_rotation = DIR_UP;
   state.debug                  = {};
 
   state.minutes                      = new_state.minutes;

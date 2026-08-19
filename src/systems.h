@@ -6,7 +6,7 @@
 #include "entity.h"
 
 void system_update_time(u64& min, f32& min_accumulator, f32 dt);
-void system_move_player(EntityStore& store, EntityId player_id, Input& input);
+void system_move_player(EntityStore& store, EntityId player_id, const Input& input, f32 dt);
 void system_open_gui(
   EntityStore& store,
   EntityId player_id,

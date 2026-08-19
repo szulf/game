@@ -1,6 +1,7 @@
 #include "systems.h"
 #include "core.h"
 #include "entity.h"
+#include "input.h"
 #include "items.h"
 
 #include <algorithm>
@@ -18,32 +19,65 @@ void system_update_time(u64& min, f32& min_accumulator, f32 dt) {
   }
 }
 
-// TODO: can currently move through walls if you move at an angle
-// since i dont check whether there exists a possible path between point A and point B
-void system_move_player(EntityStore& store, EntityId player_id, Input& input) {
-  auto move_vector = get_move_vector(input);
-  if (move_vector == vec2{0, 0}) {
-    return;
-  }
+void system_move_player(EntityStore& store, EntityId player_id, const Input& input, f32 dt) {
+  auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
+  ASSERT_NO_MSG(player_entity && player);
+  auto& curr_move = player->current_movement;
 
-  auto* player_entity = get_entity(store, player_id);
-  ASSERT_NO_MSG(player_entity);
-  auto collided = get_entities_at_pos(
-    store,
-    player_entity->pos + move_vector,
-    player_entity->world,
-    Player::DIMS
-  );
-  bool can_move = true;
-
-  for (auto& collision : collided) {
-    emit(store, {.type = EVENT_PLAYER_COLLIDED, .entity = collision->id});
-    if (solid(*collision)) {
-      can_move = false;
+  // TODO: do i somehow prioritize the newest input?
+  static constexpr std::array<std::pair<Action, Direction>, 4> MOVEMENT_DIRECTIONS = {{
+    {ACTION_MOVE_UP, DIR_UP},
+    {ACTION_MOVE_DOWN, DIR_DOWN},
+    {ACTION_MOVE_RIGHT, DIR_RIGHT},
+    {ACTION_MOVE_LEFT, DIR_LEFT},
+  }};
+  std::optional<MovementAction> movement{};
+  for (auto& [action, direction] : MOVEMENT_DIRECTIONS) {
+    if (action_state(input, action).down) {
+      movement = {.direction = direction};
+      break;
     }
   }
-  if (can_move) {
-    player_entity->pos += move_vector;
+
+  if (movement) {
+    bool can_move = true;
+    auto collided = get_entities_at_pos(
+      store,
+      player_entity->pos + direction_to_vec2(movement->direction),
+      player_entity->world,
+      Player::DIMS
+    );
+
+    for (auto& collision : collided) {
+      movement->collision_events.push_back({
+        .type   = EVENT_PLAYER_COLLIDED,
+        .entity = collision->id,
+      });
+      if (solid(*collision)) {
+        can_move = false;
+      }
+    }
+
+    if (can_move) {
+      if (curr_move && movement->direction == opposite_direction(curr_move->direction)) {
+        curr_move->collision_events = movement->collision_events;
+        curr_move->direction        = movement->direction;
+        curr_move->t                = -curr_move->t;
+      } else if (!curr_move) {
+        curr_move = movement;
+      }
+    }
+  }
+
+  if (curr_move) {
+    curr_move->t += dt;
+    if (curr_move->t >= PLAYER_MOVE_ACTION_DURATION) {
+      player_entity->pos += direction_to_vec2(curr_move->direction);
+      for (auto& event : curr_move->collision_events) {
+        emit(store, event);
+      }
+      curr_move = std::nullopt;
+    }
   }
 }
 
@@ -650,8 +684,9 @@ void system_update_camera(
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);
 
-  camera.offset   = vec2_to_raylib(window_dims / 2.0f);
-  camera.target   = vec2_to_raylib((player_entity->pos * GRID_DIMS) + (GRID_DIMS / 2.0f));
+  camera.offset = vec2_to_raylib(window_dims / 2.0f);
+  camera.target =
+    vec2_to_raylib((player_actual_pos(*player_entity) * GRID_DIMS) + (GRID_DIMS / 2.0f));
   camera.rotation = 0.0f;
 
   // TODO: copied from raylibs example, maybe something else feels better

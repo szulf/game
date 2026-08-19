@@ -1,4 +1,5 @@
 #include "entity.h"
+#include "utils.h"
 
 std::string_view world_to_string(World world) {
   switch (world) {
@@ -584,6 +585,18 @@ ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx) {
   return assembler.inventory[idx + Recipe::MAX_INPUT_SLOTS];
 }
 
+vec2 player_actual_pos(Entity& entity) {
+  vec2 pos     = entity.pos;
+  auto* player = get_data<Player>(entity);
+  ASSERT_NO_MSG(player);
+  if (player->current_movement) {
+    auto& movement = *player->current_movement;
+    vec2 move_dir  = direction_to_vec2(movement.direction);
+    pos += move_dir * (movement.t / PLAYER_MOVE_ACTION_DURATION);
+  }
+  return pos;
+}
+
 EntityIterator begin(EntityStore& store) {
   EntityIterator iter{};
   iter.curr = store.entities.data();
@@ -1078,6 +1091,12 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
       .height = dims.y,
     };
     Vector2 origin = {};
+
+    if (is<Player>(entity)) {
+      auto actual_pos = player_actual_pos(entity);
+      dest_rect.x     = actual_pos.x * GRID_DIMS.x;
+      dest_rect.y     = actual_pos.y * GRID_DIMS.y;
+    }
 
     f32 rotation = 0;
     if (auto* rot = get_rotation(entity)) {

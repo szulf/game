@@ -10,6 +10,8 @@
 #include "input.h"
 #include "items.h"
 
+// TODO: move concepts to the top and static_assert that each struct satisfies the proper concept
+
 // NOTE: i dont think i will have more than U16_MAX(65'536) entities
 struct EntityId {
   u16 idx{};
@@ -26,6 +28,19 @@ struct EntityId {
 
 static constexpr EntityId NULL_ENTITY = {0, 0};
 
+enum EventType {
+  EVENT_PLAYER_COLLIDED,
+};
+
+// TODO: can i somehow use Events as a std::variant?
+// i would still need to keep EventType for listen()
+// (or just pass the EventType as a template)
+struct Event {
+  EventType type{};
+  // NOTE: PLAYER_COLLIDED
+  EntityId entity{};
+};
+
 struct ItemSlotIdx {
   EntityId entity{};
   u32 slot_idx{};
@@ -37,13 +52,24 @@ struct ItemSlotIdx {
 
 static constexpr u32 PLAYER_INVENTORY_SIZE = 16;
 
+static constexpr f32 PLAYER_MOVE_ACTION_DURATION = 0.15f;
+
+struct MovementAction {
+  Direction direction{};
+  f32 t{};
+  // TODO: i dont really like keeping a std::vector here, but i dont know what else to do
+  std::vector<Event> collision_events;
+};
+
 struct Player {
   static constexpr vec2 DIMS = {1, 1};
 
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
-  i32 interaction_radius          = 4;
+
+  i32 interaction_radius = 4;
   EntityId open_gui{};
   ItemSlot hand = {.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT};
+  std::optional<MovementAction> current_movement{};
 
   constexpr Player() {
     for (auto& slot : inventory) {
@@ -586,6 +612,8 @@ struct Entity {
   EntityData data{};
 };
 
+vec2 player_actual_pos(Entity& entity);
+
 static const std::array PLACEABLE = std::to_array<Entity>({
   {.data = Block{}},
   {.data = Player{}},
@@ -634,18 +662,6 @@ struct RemoveCommand {
 };
 
 using Command = std::variant<AddCommand, RemoveCommand>;
-
-enum EventType {
-  EVENT_PLAYER_COLLIDED,
-};
-
-// TODO: can i somehow use Events as a std::variant?
-// i would still need to keep EventType for listen()
-struct Event {
-  EventType type{};
-  // NOTE: PLAYER_COLLIDED
-  EntityId entity{};
-};
 
 struct EntityStore {
   // NOTE: stores which idx is free and what generation it previously had

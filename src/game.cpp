@@ -61,7 +61,7 @@ void update_tick(State& state, f32 dt) {
       }
 
       system_update_time(state.minutes, state.minutes_accumulator, dt);
-      system_move_player(state.store, state.player_id, state.tick_input);
+      system_move_player(state.store, state.player_id, state.tick_input, dt);
       system_open_gui(state.store, state.player_id, state.tick_input, state.frame.mouse_world_pos);
       system_close_gui(state.store, state.player_id, state.tick_input);
       system_hand_slot_interactions(

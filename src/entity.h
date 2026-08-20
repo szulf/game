@@ -10,7 +10,33 @@
 #include "input.h"
 #include "items.h"
 
-// TODO: move concepts to the top and static_assert that each struct satisfies the proper concept
+template <typename T>
+concept HasInventory = requires(T t) { t.inventory; };
+
+template <typename T>
+concept Rotatable = requires(T t) { t.rotation; };
+
+template <typename T>
+concept HasMaintenance = requires(T t) {
+  t.maintenance;
+  T::POSSIBLE_MAINTENANCE;
+};
+
+template <typename T>
+concept OutputsItems = HasInventory<T> && requires(T t) {
+  // NOTE: ordered in a row major fashion fashion
+  // indexed like this [(y * T::DIMS.x) + x]
+  { T::OUTPUT_SIDES } -> std::same_as<const std::array<Directions, u32(T::DIMS.x * T::DIMS.y)>&>;
+  // NOTE: items/sec
+  T::OUTPUT_RATE;
+  t.item_output_accumulator;
+};
+
+struct OutputsItemsProperties {
+  std::span<const Directions> output_sides{};
+  f32 output_rate{};
+  f32* item_output_accumulator{};
+};
 
 // NOTE: i dont think i will have more than U16_MAX(65'536) entities
 struct EntityId {
@@ -77,6 +103,7 @@ struct Player {
     }
   }
 };
+static_assert(HasInventory<Player>);
 
 struct Block {
   static constexpr vec2 DIMS = {1, 1};
@@ -95,6 +122,8 @@ struct Storage {
 
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(STORAGE_INVENTORY_SIZE);
 };
+static_assert(OutputsItems<Storage>);
+static_assert(HasInventory<Storage>);
 
 struct ConveyorItem {
   ItemSlot slot{};
@@ -114,6 +143,7 @@ struct Conveyor {
   Direction rotation{};
   std::vector<ConveyorItem> items = std::vector<ConveyorItem>(CONVEYOR_THROUGHPUT);
 };
+static_assert(Rotatable<Conveyor>);
 
 inline Direction conveyor_from(const Conveyor& conveyor) {
   return opposite_direction(conveyor.rotation);
@@ -161,6 +191,23 @@ struct WorldTunnel {
 
   World to{};
 };
+static_assert(OutputsItems<WorldTunnel>);
+static_assert(HasInventory<WorldTunnel>);
+
+template <typename T>
+concept MaintenanceHasMiniGame = requires(
+  T& t,
+  const Input& input,
+  f32 dt,
+  const AssetManager& assets,
+  const RenderTexture2D& render_texture,
+  const vec2& window_offset
+) {
+  t.open;
+  maintenance_init_minigame(t);
+  maintenance_update_minigame(t, input, dt);
+  maintenance_render_minigame(t, assets, render_texture, window_offset);
+};
 
 static constexpr vec2 MAINTENANCE_MINIGAME_DIMS = {256, 256};
 
@@ -200,6 +247,8 @@ void maintenance_render_minigame(
   const vec2& window_offset
 );
 
+static_assert(MaintenanceHasMiniGame<MaintenanceLubrication>);
+
 struct DirtyRect {
   Rectangle area{};
   // NOTE: value in range [0; 1] that indicates how clean it is
@@ -228,6 +277,8 @@ void maintenance_render_minigame(
   const RenderTexture2D& render_texture,
   const vec2& window_offset
 );
+
+static_assert(MaintenanceHasMiniGame<MaintenanceCleaning>);
 
 enum ComponentSlotType {
   COMPONENT_SLOT_BROKEN,
@@ -269,6 +320,8 @@ void maintenance_render_minigame(
   const vec2& window_offset
 );
 
+static_assert(MaintenanceHasMiniGame<MaintenanceComponentReplacement>);
+
 struct MaintenanceCalibration {
   static constexpr std::string_view NAME = "calibration";
   static constexpr ItemType FIX_ITEM     = ITEM_CALIBRATOR;
@@ -293,6 +346,8 @@ void maintenance_render_minigame(
   const vec2& window_offset
 );
 
+static_assert(MaintenanceHasMiniGame<MaintenanceCalibration>);
+
 struct MaintenanceMessagingSystem {
   static constexpr std::string_view NAME = "messaging_system";
   static constexpr ItemType FIX_ITEM     = ITEM_COMMUNICATION_COMPONENT;
@@ -311,21 +366,6 @@ using Maintenance = std::variant<
 
 std::string_view maintenance_name(const Maintenance& maintenance);
 ItemType maintenance_fix_item(const Maintenance& maintenance);
-
-template <typename T>
-concept MaintenanceHasMiniGame = requires(
-  T& t,
-  const Input& input,
-  f32 dt,
-  const AssetManager& assets,
-  const RenderTexture2D& render_texture,
-  const vec2& window_offset
-) {
-  t.open;
-  maintenance_init_minigame(t);
-  maintenance_update_minigame(t, input, dt);
-  maintenance_render_minigame(t, assets, render_texture, window_offset);
-};
 
 bool* maintenance_is_minigame_open(Maintenance& maintenance);
 void maintenance_init_minigame(Maintenance& maintenance);
@@ -375,6 +415,7 @@ struct ResourceMessageSender {
   ResourceMessageSenderPage page{};
   ResourceMessage msg_in_create{};
 };
+static_assert(HasMaintenance<ResourceMessageSender>);
 
 struct ResourceMessageReceiver {
   static constexpr vec2 DIMS = {3, 2};
@@ -408,6 +449,9 @@ struct ResourceMessageReceiver {
     }
   }
 };
+static_assert(HasMaintenance<ResourceMessageReceiver>);
+static_assert(OutputsItems<ResourceMessageReceiver>);
+static_assert(HasInventory<ResourceMessageReceiver>);
 
 bool resource_message_receiver_empty(const ResourceMessageReceiver& msg_receiver);
 
@@ -587,6 +631,9 @@ struct Assembler {
     },
   });
 };
+static_assert(HasMaintenance<Assembler>);
+static_assert(OutputsItems<Assembler>);
+static_assert(HasInventory<Assembler>);
 
 ItemSlot& assembler_input_slot(Assembler& assembler, u32 idx);
 ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx);
@@ -624,34 +671,6 @@ static const std::array PLACEABLE = std::to_array<Entity>({
   {.data = ResourceMessageReceiver{}},
   {.data = Assembler{}},
 });
-
-template <typename T>
-concept HasInventory = requires(T t) { t.inventory; };
-
-template <typename T>
-concept Rotatable = requires(T t) { t.rotation; };
-
-template <typename T>
-concept HasMaintenance = requires(T t) {
-  t.maintenance;
-  T::POSSIBLE_MAINTENANCE;
-};
-
-template <typename T>
-concept OutputsItems = HasInventory<T> && requires(T t) {
-  // NOTE: ordered in a row major fashion fashion
-  // indexed like this [(y * T::DIMS.x) + x]
-  { T::OUTPUT_SIDES } -> std::same_as<const std::array<Directions, u32(T::DIMS.x * T::DIMS.y)>&>;
-  // NOTE: items/sec
-  T::OUTPUT_RATE;
-  t.item_output_accumulator;
-};
-
-struct OutputsItemsProperties {
-  std::span<const Directions> output_sides{};
-  f32 output_rate{};
-  f32* item_output_accumulator{};
-};
 
 struct AddCommand {
   Entity entity{};

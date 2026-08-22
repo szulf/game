@@ -94,8 +94,10 @@ void system_open_gui(
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
-  if (action_state(input, ACTION_INTERACT).pressed() &&
-      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
+  if (
+    action_state(input, ACTION_INTERACT).pressed() &&
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
+  ) {
     auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
@@ -109,10 +111,12 @@ void system_close_gui(EntityStore& store, EntityId player_id, const Input& input
 
   if (player->open_gui) {
     auto* gui_entity = get_entity(store, player->open_gui);
-    if (action_state(input, ACTION_CLOSE_INV).pressed() ||
-        (gui_entity &&
-         !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
-        (gui_entity && gui_entity->world != player_entity->world) || !gui_entity) {
+    if (
+      action_state(input, ACTION_CLOSE_INV).pressed() ||
+      (gui_entity &&
+       !pos_in_radius(gui_entity->pos, player_entity->pos, player->interaction_radius)) ||
+      (gui_entity && gui_entity->world != player_entity->world) || !gui_entity
+    ) {
       player->open_gui = NULL_ENTITY;
     }
   }
@@ -143,8 +147,9 @@ void system_hand_slot_interactions(
           slot.count += hand.count;
           hand = {};
         }
-      } else if (slot && (slot.flags & ITEM_SLOT_HAND_INPUT) &&
-                 (slot.flags & ITEM_SLOT_HAND_OUTPUT) && hand) {
+      } else if (
+        slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && (slot.flags & ITEM_SLOT_HAND_OUTPUT) && hand
+      ) {
         swap_slots(slot, hand);
       } else if (slot && (slot.flags & ITEM_SLOT_HAND_OUTPUT) && !hand) {
         swap_slots(slot, hand);
@@ -166,8 +171,10 @@ void system_drop_items(
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: not sure if lmb_pressed is the right keybind
-  if (input.lmb.pressed() && player->hand &&
-      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
+  if (
+    input.lmb.pressed() && player->hand &&
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
+  ) {
     auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
@@ -366,8 +373,10 @@ void system_place_entity(
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   // TODO: should check if im not hovering over an item slot
-  if (!input.rmb.pressed() || !player->hand ||
-      !pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
+  if (
+    !input.rmb.pressed() || !player->hand ||
+    !pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
+  ) {
     return;
   }
 
@@ -405,8 +414,10 @@ void system_remove_entity(
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
-  if (input.lmb.pressed() &&
-      pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)) {
+  if (
+    input.lmb.pressed() &&
+    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
+  ) {
     auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
@@ -527,32 +538,25 @@ void system_output_items(EntityStore& store, f32 dt) {
   }
 }
 
-// TODO: currently moving items, fuckin sucks actually
-// 1. its too dependent on the ordering of conveyors in EntityStore
-//    so it gets choppy if conveyors are not stored in the right order
-//    possible solutions (i should implement this shit before finishing):
-//    - double buffering (reminds me of my game-of-life)
-//      update everything based on this frames step into a second buffer then swap them
-//    - build graphs of conveyor chains, sort them, then update in order
-//      (this fucking sucks actually (but sounds like the coolest thing ever))
-//    - something like a update push system, not updating all conveyors in a frame,
-//      not sure how this one works saw it briefly mentioned on youtube
-// 2. i think i duped an item somehow, no clue how tho (potentially fixable by fixing 1.)
-// 3. if you have two conveyors on the side pushing into a conveyor in the middle,
-//    they wont do a nice split between them, just one will push all the items then the next one
 void system_move_items(EntityStore& store, f32 dt) {
+  static constexpr f32 ITEM_GAP = 1.0f / CONVEYOR_THROUGHPUT;
+  std::vector<std::pair<Entity, Entity&>> buffer{};
   for (auto& entity : store) {
-    auto* conveyor = get_data<Conveyor>(entity);
-    if (!conveyor) {
-      continue;
+    if (is<Conveyor>(entity)) {
+      buffer.push_back({entity, entity});
     }
-    f32 item_gap = 1.0f / CONVEYOR_THROUGHPUT;
+  }
+
+  for (auto& [entity, old_entity] : buffer) {
+    const auto* old_conveyor = get_data<Conveyor>(old_entity);
+    auto* conveyor           = get_data<Conveyor>(entity);
+    ASSERT_NO_MSG(old_conveyor && conveyor);
 
     // NOTE: move items that are already on the conveyor
     for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
       auto& item = conveyor->items[i];
       if (item.slot) {
-        if (item.t < 1 - (i * item_gap)) {
+        if (item.t < 1 - (i * ITEM_GAP)) {
           item.t += dt;
         }
       } else {
@@ -560,30 +564,52 @@ void system_move_items(EntityStore& store, f32 dt) {
       }
     }
 
+    // NOTE: take items on
+    {
+      vec2 from_pos         = old_entity.pos + direction_to_vec2(old_conveyor->rotation);
+      auto* old_from_entity = get_entity_at_pos(store, from_pos, old_entity.world, {1, 1});
+      if (old_from_entity && is<Conveyor>(*old_from_entity)) {
+        const auto* old_from_conveyor = get_data<Conveyor>(*old_from_entity);
+        ASSERT_NO_MSG(old_from_conveyor);
+        const auto& old_from_item = old_from_conveyor->items[0];
+        if (conveyor_points_to(*old_from_entity, old_entity.pos) && old_from_item.t >= 1.0f) {
+          for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+            const auto& old_item = old_conveyor->items[i];
+            auto& item           = conveyor->items[i];
+            if (!old_item.slot) {
+              assign_slot(item.slot, old_from_item.slot);
+              item.t = 0;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     // NOTE: push items off
     {
-      auto& item = conveyor->items[0];
-      if (item.t >= 1) {
-        vec2 to_pos = entity.pos + direction_to_vec2(conveyor->to);
-        // TODO: might need to switch to get_entities_at_pos(),
-        // to check if a player is standing on some conveyor
-        auto* to_entity = get_entity_at_pos(store, to_pos, entity.world, {1, 1});
-        if (to_entity && !is<Player>(*to_entity)) {
+      auto& old_item = old_conveyor->items[0];
+      auto& item     = conveyor->items[0];
+
+      if (old_item.t >= 1.0f) {
+        vec2 to_pos         = old_entity.pos + direction_to_vec2(old_conveyor->to);
+        auto* old_to_entity = get_entity_at_pos(store, to_pos, old_entity.world, {1, 1});
+        if (old_to_entity && !is<Player>(*old_to_entity)) {
           bool success = false;
 
-          if (auto* to_conveyor = get_data<Conveyor>(*to_entity)) {
-            if (conveyor_points_from(*to_entity, entity.pos)) {
+          if (const auto* old_to_conveyor = get_data<Conveyor>(*old_to_entity)) {
+            if (conveyor_points_from(*old_to_entity, old_entity.pos)) {
               for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-                auto& to_item = to_conveyor->items[i];
-                if (!to_item.slot) {
-                  swap_slots(item.slot, to_item.slot);
-                  to_item.t = 0;
-                  success   = true;
+                const auto& old_to_item = old_to_conveyor->items[i];
+                if (!old_to_item.slot) {
+                  assign_slot(item.slot, old_to_item.slot);
+                  item.t  = 0;
+                  success = true;
                   break;
                 }
               }
             }
-          } else if (auto* to_inv = get_inventory(*to_entity)) {
+          } else if (auto* to_inv = get_inventory(*old_to_entity)) {
             success = transfer_items(*to_inv, item.slot, ITEM_TRANSFER_MACHINE);
           }
 
@@ -593,6 +619,10 @@ void system_move_items(EntityStore& store, f32 dt) {
         }
       }
     }
+  }
+
+  for (auto& [entity, old_entity] : buffer) {
+    old_entity = entity;
   }
 }
 

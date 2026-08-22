@@ -22,6 +22,7 @@ concept HasMaintenance = requires(T t) {
   T::POSSIBLE_MAINTENANCE;
 };
 
+// TODO: should i have an InputsItems concept?
 template <typename T>
 concept OutputsItems = HasInventory<T> && requires(T t) {
   // NOTE: ordered in a row major fashion fashion

@@ -17,8 +17,12 @@
   - [x] proper from and to directions
   - [x] make extraction from inventories slower than full conveyor throughput
   - [x] make multiple conveyors extracting from a single inventory extract items in a round robin fashion
-  - [ ] fix the todos in the comment over system_move_items()
-        (add them here after fixing to say what issues i encountered)
+  - [x] stored order independent updates
+    - order dependent updates meant two systems could behave differently just,
+      because internally they were stored different
+    - fixed with a double bufffering approach,
+      update into a buffer based on the original,
+      then copy everything back into the original
   - [ ] mergers and splitters
 - [x] movement system
   - dont know if its perfect, might still want to try some other things

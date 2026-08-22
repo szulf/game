@@ -84,6 +84,7 @@ struct ItemSlot {
   }
 };
 
+void assign_slot(ItemSlot& to, const ItemSlot& from);
 void swap_slots(ItemSlot& a, ItemSlot& b);
 void swap_slot_flags(std::span<ItemSlot> inventory);
 TextureType get_texture_type(ItemType item);

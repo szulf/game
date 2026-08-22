@@ -1,14 +1,15 @@
 #include "items.h"
 
+void assign_slot(ItemSlot& to, const ItemSlot& from) {
+  to.type   = from.type;
+  to.count  = from.count;
+  to.damage = from.damage;
+}
+
 void swap_slots(ItemSlot& a, ItemSlot& b) {
   ItemSlot temp = a;
-  a.type        = b.type;
-  a.count       = b.count;
-  a.damage      = b.damage;
-
-  b.type   = temp.type;
-  b.count  = temp.count;
-  b.damage = temp.damage;
+  assign_slot(a, b);
+  assign_slot(b, temp);
 }
 
 void swap_slot_flags(std::span<ItemSlot> inventory) {

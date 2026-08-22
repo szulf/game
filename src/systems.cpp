@@ -1,10 +1,13 @@
 #include "systems.h"
+
+#include <array>
+#include <algorithm>
+
 #include "core.h"
+#include "utils.h"
 #include "entity.h"
 #include "input.h"
 #include "items.h"
-
-#include <algorithm>
 
 static bool pos_in_radius(const vec2& pos, const vec2& start_pos, f32 radius) {
   auto diff2 = length2(pos - start_pos);
@@ -129,10 +132,7 @@ void system_hand_slot_interactions(
     if (hovered_inv) {
       auto& slot = (*hovered_inv)[hovered_slot.slot_idx];
       auto& hand = player->hand;
-      ASSERT(
-        hand.flags == (ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT),
-        "player hand has to be input and output"
-      );
+      ASSERT(hand.flags == ITEM_SLOT_FLAGS_ALL, "player hand has to be input and output");
 
       if (slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && hand && slot.type == hand.type) {
         auto max_count = item_info(slot.type).max_count;
@@ -385,6 +385,12 @@ void system_place_entity(
   if (auto* rotation = get_rotation(*entity)) {
     *rotation = place_rotation;
   }
+  // TODO: maybe just setup some before/after place hooks, instead of this shit
+  if (auto* conveyor = get_data<Conveyor>(*entity)) {
+    // TODO: this is kind of weird, but i dont know what else to do
+    conveyor->to = conveyor->rotation;
+    set_conveyor_from_direction(store, *entity);
+  }
   add_entity(store, *entity);
   --player->hand.count;
 }
@@ -489,7 +495,7 @@ void system_output_items(EntityStore& store, f32 dt) {
             if (!conveyor) {
               continue;
             }
-            if (output_pos + direction_to_vec2(conveyor_from(*conveyor)) != pos) {
+            if (!conveyor_points_from(*output_entity, pos)) {
               continue;
             }
 
@@ -558,19 +564,23 @@ void system_move_items(EntityStore& store, f32 dt) {
     {
       auto& item = conveyor->items[0];
       if (item.t >= 1) {
-        vec2 to_pos     = entity.pos + direction_to_vec2(conveyor_to(*conveyor));
+        vec2 to_pos = entity.pos + direction_to_vec2(conveyor->to);
+        // TODO: might need to switch to get_entities_at_pos(),
+        // to check if a player is standing on some conveyor
         auto* to_entity = get_entity_at_pos(store, to_pos, entity.world, {1, 1});
         if (to_entity && !is<Player>(*to_entity)) {
           bool success = false;
 
           if (auto* to_conveyor = get_data<Conveyor>(*to_entity)) {
-            for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-              auto& to_item = to_conveyor->items[i];
-              if (!to_item.slot) {
-                swap_slots(item.slot, to_item.slot);
-                to_item.t = 0;
-                success   = true;
-                break;
+            if (conveyor_points_from(*to_entity, entity.pos)) {
+              for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+                auto& to_item = to_conveyor->items[i];
+                if (!to_item.slot) {
+                  swap_slots(item.slot, to_item.slot);
+                  to_item.t = 0;
+                  success   = true;
+                  break;
+                }
               }
             }
           } else if (auto* to_inv = get_inventory(*to_entity)) {

@@ -41,6 +41,27 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
   return result;
 }
 
+static void conveyor_data_edit_gui(UI_Layout& layout, Entity& entity) {
+  auto* conveyor = get_data<Conveyor>(entity);
+  ASSERT(conveyor, "entity is not a conveyor");
+  bool clicked{};
+
+  ui_element_begin(layout, UI_AUTO_ID);
+  {
+    ui_text(layout, "to: ", 20, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+    {
+      ui_text(layout, direction_to_string(conveyor->to), 20, BLACK);
+    }
+    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
+  }
+  ui_element_end(layout, {});
+
+  if (clicked) {
+    conveyor->to = next_direction(conveyor->to);
+  }
+}
+
 static void rotation_data_edit_gui(UI_Layout& layout, Entity& entity) {
   auto* rotation = get_rotation(entity);
   ASSERT(rotation, "entity has no rotation to edit");
@@ -320,6 +341,9 @@ static void entity_data_edit_gui(
   if (has_maintenance(entity)) {
     maintenance_data_edit_gui(layout, entity);
   }
+  if (is<Conveyor>(entity)) {
+    conveyor_data_edit_gui(layout, entity);
+  }
   if (is<WorldTunnel>(entity)) {
     world_tunnel_destination_data_edit_gui(layout, entity);
   }
@@ -384,13 +408,14 @@ EditorGUIResult editor_gui(
 
     if (editor.selected_entity_id) {
       auto* selected = get_entity(store, editor.selected_entity_id);
-      ASSERT_NO_MSG(selected);
-      ui_text(layout, "selected entity data:", 25, WHITE);
-      ui_element_begin(layout, UI_AUTO_ID);
-      {
-        entity_data_edit_gui(editor, layout, assets, input, *selected);
+      if (selected) {
+        ui_text(layout, "selected entity data:", 25, WHITE);
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          entity_data_edit_gui(editor, layout, assets, input, *selected);
+        }
+        ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
       }
-      ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
     }
 
     ui_element_begin(layout, UI_AUTO_ID);

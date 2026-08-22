@@ -14,12 +14,12 @@
 - [x] bigger machines
 - [ ] conveyors
   - [x] basic item movement on conveyors
-  - [ ] proper from/to directions
-  - [ ] mergers and splitters
+  - [x] proper from and to directions
   - [x] make extraction from inventories slower than full conveyor throughput
   - [x] make multiple conveyors extracting from a single inventory extract items in a round robin fashion
   - [ ] fix the todos in the comment over system_move_items()
         (add them here after fixing to say what issues i encountered)
+  - [ ] mergers and splitters
 - [x] movement system
   - dont know if its perfect, might still want to try some other things
 - [ ] placing system

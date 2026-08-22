@@ -1,4 +1,6 @@
 #include "entity.h"
+
+#include "core.h"
 #include "utils.h"
 
 std::string_view world_to_string(World world) {
@@ -585,18 +587,6 @@ ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx) {
   return assembler.inventory[idx + Recipe::MAX_INPUT_SLOTS];
 }
 
-vec2 player_actual_pos(Entity& entity) {
-  vec2 pos     = entity.pos;
-  auto* player = get_data<Player>(entity);
-  ASSERT_NO_MSG(player);
-  if (player->current_movement) {
-    auto& movement = *player->current_movement;
-    vec2 move_dir  = direction_to_vec2(movement.direction);
-    pos += move_dir * (movement.t / PLAYER_MOVE_ACTION_DURATION);
-  }
-  return pos;
-}
-
 EntityIterator begin(EntityStore& store) {
   EntityIterator iter{};
   iter.curr = store.entities.data();
@@ -1080,33 +1070,41 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
     } else {
       texture = &assets.textures[get_texture_type(entity)];
     }
-    vec2 dims = dims_from_texture(*texture);
+    // TODO: this makes rendering item entities even worse
+    vec2 dims = get_dims(entity) * GRID_DIMS;
+    vec2 source_pos{};
+    vec2 source_dims = dims;
 
-    auto source_rect = rect_from_vec2x2({}, dims);
-    // TODO: because of the change in origin rendering item entities is now wrong
+    // TODO: probably it would be better to just suck it up, and draw all the variants
+    if (auto* conveyor = get_data<Conveyor>(entity)) {
+      bool is_corner = conveyor->to != opposite_direction(conveyor->rotation);
+      if (is_corner) {
+        bool flip = conveyor->to == next_direction(conveyor->rotation);
+        if (flip) {
+          source_dims.x *= -1;
+        }
+        source_pos = vec2{conveyor->DIMS.x * GRID_DIMS.x, 0};
+      }
+    }
+
+    auto source_rect    = rect_from_vec2x2(source_pos, source_dims);
     Rectangle dest_rect = {
-      .x      = entity.pos.x * GRID_DIMS.x,
-      .y      = entity.pos.y * GRID_DIMS.y,
+      .x      = entity.pos.x * GRID_DIMS.x + (GRID_DIMS.x * 0.5f),
+      .y      = entity.pos.y * GRID_DIMS.y + (GRID_DIMS.y * 0.5f),
       .width  = dims.x,
       .height = dims.y,
     };
-    Vector2 origin = {};
+    auto origin = vec2_to_raylib(dims * 0.5f);
 
     if (is<Player>(entity)) {
       auto actual_pos = player_actual_pos(entity);
-      dest_rect.x     = actual_pos.x * GRID_DIMS.x;
-      dest_rect.y     = actual_pos.y * GRID_DIMS.y;
+      dest_rect.x     = actual_pos.x * GRID_DIMS.x + (GRID_DIMS.x * 0.5f);
+      dest_rect.y     = actual_pos.y * GRID_DIMS.y + (GRID_DIMS.y * 0.5f);
     }
 
     f32 rotation = 0;
     if (auto* rot = get_rotation(entity)) {
       rotation = rotation_degrees(*rot);
-      // TODO: no idea how to properly rotate when origin is top left corner
-      // and dont want to think about it right now
-      // (origin cannot be always center, because of entities that are bigger than 1x1)
-      dest_rect.x += GRID_DIMS.x * 0.5f;
-      dest_rect.y += GRID_DIMS.y * 0.5f;
-      origin = vec2_to_raylib(dims * 0.5f);
     }
 
     DrawTexturePro(*texture, source_rect, dest_rect, origin, rotation, WHITE);
@@ -1128,22 +1126,70 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
             .height = on_dims.y * ON_CONVEYOR_SCALE,
           };
 
-          on_dest_rect.x += (direction_to_vec2(conveyor_from(*conveyor)).x * 0.5f) * GRID_DIMS.x;
-          on_dest_rect.y += (direction_to_vec2(conveyor_from(*conveyor)).y * 0.5f) * GRID_DIMS.y;
-
-          on_dest_rect.x -=
-            (direction_to_vec2(conveyor_from(*conveyor)).x * 0.5f * item.t) * GRID_DIMS.x;
-          on_dest_rect.y -=
-            (direction_to_vec2(conveyor_from(*conveyor)).y * 0.5f * item.t) * GRID_DIMS.y;
-
-          on_dest_rect.x +=
-            (direction_to_vec2(conveyor_to(*conveyor)).x * 0.5f * item.t) * GRID_DIMS.x;
-          on_dest_rect.y +=
-            (direction_to_vec2(conveyor_to(*conveyor)).y * 0.5f * item.t) * GRID_DIMS.y;
+          if (item.t < 0.5f) {
+            f32 t = 0.5f - item.t;
+            on_dest_rect.x += (direction_to_vec2(conveyor->rotation).x * t) * GRID_DIMS.x;
+            on_dest_rect.y += (direction_to_vec2(conveyor->rotation).y * t) * GRID_DIMS.y;
+          } else {
+            f32 t = item.t - 0.5f;
+            on_dest_rect.x += (direction_to_vec2(conveyor->to).x * t) * GRID_DIMS.x;
+            on_dest_rect.y += (direction_to_vec2(conveyor->to).y * t) * GRID_DIMS.y;
+          }
 
           DrawTexturePro(on_texture, on_source_rect, on_dest_rect, on_origin, 0, WHITE);
         }
       }
+    }
+  }
+}
+
+vec2 player_actual_pos(Entity& entity) {
+  vec2 pos     = entity.pos;
+  auto* player = get_data<Player>(entity);
+  ASSERT_NO_MSG(player);
+  if (player->current_movement) {
+    auto& movement = *player->current_movement;
+    vec2 move_dir  = direction_to_vec2(movement.direction);
+    pos += move_dir * (movement.t / PLAYER_MOVE_ACTION_DURATION);
+  }
+  return pos;
+}
+
+bool conveyor_points_to(Entity& entity, const vec2& pos) {
+  auto* conveyor = get_data<Conveyor>(entity);
+  ASSERT_NO_MSG(conveyor);
+  return entity.pos + direction_to_vec2(conveyor->to) == pos;
+}
+
+bool conveyor_points_from(Entity& entity, const vec2& pos) {
+  auto* conveyor = get_data<Conveyor>(entity);
+  ASSERT_NO_MSG(conveyor);
+  return entity.pos + direction_to_vec2(conveyor->rotation) == pos;
+}
+
+void set_conveyor_from_direction(EntityStore& store, Entity& entity) {
+  auto* conveyor = get_data<Conveyor>(entity);
+  ASSERT_NO_MSG(conveyor);
+  conveyor->rotation = opposite_direction(conveyor->to);
+
+  std::array<Direction, 3> side_directions = {
+    next_direction(conveyor->to),
+    opposite_direction(next_direction(conveyor->to)),
+    opposite_direction(conveyor->to),
+  };
+
+  for (auto dir : side_directions) {
+    auto neighbour_pos = entity.pos + direction_to_vec2(dir);
+    auto* neighbour    = get_entity_at_pos(store, neighbour_pos, entity.world, Conveyor::DIMS);
+    if (!neighbour) {
+      continue;
+    }
+    auto* neighbour_conveyor = get_data<Conveyor>(*neighbour);
+    if (!neighbour_conveyor) {
+      continue;
+    }
+    if (conveyor_points_to(*neighbour, entity.pos)) {
+      conveyor->rotation = opposite_direction(neighbour_conveyor->to);
     }
   }
 }

@@ -149,6 +149,7 @@ void to_json(json& j, const EntityData& data) {
         j = json{
           {"type", "conveyor"},
           {"rotation", v.rotation},
+          {"to", v.to},
           {"items", v.items},
         };
       },
@@ -212,6 +213,7 @@ void from_json(const json& j, EntityData& d) {
   } else if (type == "conveyor") {
     Conveyor v{};
     j.at("rotation").get_to(v.rotation);
+    j.at("to").get_to(v.to);
     j.at("items").get_to(v.items);
     d = v;
   } else if (type == "item") {

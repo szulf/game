@@ -140,18 +140,13 @@ static constexpr u32 CONVEYOR_THROUGHPUT = 10;
 struct Conveyor {
   static constexpr vec2 DIMS = {1, 1};
 
-  Direction rotation{};
+  // NOTE: acts as the from direction
+  Direction rotation = DIR_DOWN;
+  Direction to       = DIR_UP;
+
   std::vector<ConveyorItem> items = std::vector<ConveyorItem>(CONVEYOR_THROUGHPUT);
 };
 static_assert(Rotatable<Conveyor>);
-
-inline Direction conveyor_from(const Conveyor& conveyor) {
-  return opposite_direction(conveyor.rotation);
-}
-
-inline Direction conveyor_to(const Conveyor& conveyor) {
-  return conveyor.rotation;
-}
 
 struct Item {
   static constexpr vec2 DIMS = {1, 1};
@@ -659,8 +654,6 @@ struct Entity {
   EntityData data{};
 };
 
-vec2 player_actual_pos(Entity& entity);
-
 static const std::array PLACEABLE = std::to_array<Entity>({
   {.data = Block{}},
   {.data = Player{}},
@@ -889,3 +882,8 @@ void for_each_active_slot(Entity& entity, Func&& func) {
 }
 
 void render_entities(EntityStore& store, World world, const AssetManager& assets);
+
+vec2 player_actual_pos(Entity& entity);
+bool conveyor_points_to(Entity& entity, const vec2& pos);
+bool conveyor_points_from(Entity& entity, const vec2& pos);
+void set_conveyor_from_direction(EntityStore& store, Entity& conveyor);

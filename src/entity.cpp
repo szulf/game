@@ -2,6 +2,7 @@
 
 #include "core.h"
 #include "utils.h"
+#include "items.h"
 
 std::string_view world_to_string(World world) {
   switch (world) {
@@ -111,10 +112,12 @@ bool maintenance_update_minigame(MaintenanceLubrication& state, const Input& inp
   bool done = true;
   for (auto& point : state.points) {
     vec2 origin = point.dims / 2.0f;
-    if (input.lmb.down && CheckCollisionRecs(
-                            rect_from_vec2x2(point.pos + state.window_offset - origin, point.dims),
-                            rect_from_vec2x2(input.mouse_pos, {1, 1})
-                          )) {
+    if (
+      input.lmb.down && CheckCollisionRecs(
+                          rect_from_vec2x2(point.pos + state.window_offset - origin, point.dims),
+                          rect_from_vec2x2(input.mouse_pos, {1, 1})
+                        )
+    ) {
       if (point.progress < 1.0f) {
         point.progress += dt * (1.0f / LubricationPoint::TIME_TO_LUBRICATE);
       }
@@ -187,8 +190,10 @@ bool maintenance_update_minigame(MaintenanceCleaning& state, const Input& input,
     dirty_rect_check.x += state.window_offset.x;
     dirty_rect_check.y += state.window_offset.y;
 
-    if (input.lmb.down &&
-        CheckCollisionRecs(dirty_rect_check, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
+    if (
+      input.lmb.down &&
+      CheckCollisionRecs(dirty_rect_check, rect_from_vec2x2(input.mouse_pos, {1, 1}))
+    ) {
       auto moved_dist = length(state.last_mouse_pos - input.mouse_pos);
       dirty_rect.progress += moved_dist * 0.003f;
       // NOTE: clamping to 1.0f to avoid weird rendering glitches with the opacity
@@ -245,10 +250,12 @@ static void update_component(
   const vec2& window_offset
 ) {
   auto origin = comp.DIMS * 0.5f;
-  if (input.lmb.pressed() && CheckCollisionRecs(
-                               rect_from_vec2x2(comp.pos + window_offset - origin, comp.DIMS),
-                               rect_from_vec2x2(input.mouse_pos, {1, 1})
-                             )) {
+  if (
+    input.lmb.pressed() && CheckCollisionRecs(
+                             rect_from_vec2x2(comp.pos + window_offset - origin, comp.DIMS),
+                             rect_from_vec2x2(input.mouse_pos, {1, 1})
+                           )
+  ) {
     comp.dragging = true;
   }
   if (comp.dragging) {
@@ -259,11 +266,13 @@ static void update_component(
       for (u32 slot_idx = 0; slot_idx < slots.size(); ++slot_idx) {
         auto& slot       = slots[slot_idx];
         auto slot_origin = slot.DIMS * 0.5f;
-        if (other.slot != slot_idx &&
-            CheckCollisionRecs(
-              rect_from_vec2x2(slot.pos + window_offset - slot_origin, slot.DIMS),
-              rect_from_vec2x2(input.mouse_pos, {1, 1})
-            )) {
+        if (
+          other.slot != slot_idx &&
+          CheckCollisionRecs(
+            rect_from_vec2x2(slot.pos + window_offset - slot_origin, slot.DIMS),
+            rect_from_vec2x2(input.mouse_pos, {1, 1})
+          )
+        ) {
           comp.slot = ComponentSlotType(slot_idx);
         }
       }
@@ -330,16 +339,19 @@ bool maintenance_update_minigame(MaintenanceCalibration& state, const Input& inp
     vec2{state.add_rect.x, state.add_rect.y} + state.window_offset - origin,
     {state.add_rect.width, state.add_rect.height}
   );
-  if (input.lmb.down &&
-      CheckCollisionRecs(check_add_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
+  if (
+    input.lmb.down && CheckCollisionRecs(check_add_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))
+  ) {
     state.value += 0.1f;
   }
   auto check_remove_rect = rect_from_vec2x2(
     vec2{state.remove_rect.x, state.remove_rect.y} + state.window_offset - origin,
     {state.remove_rect.width, state.remove_rect.height}
   );
-  if (input.lmb.down &&
-      CheckCollisionRecs(check_remove_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))) {
+  if (
+    input.lmb.down &&
+    CheckCollisionRecs(check_remove_rect, rect_from_vec2x2(input.mouse_pos, {1, 1}))
+  ) {
     state.value -= 0.1f;
   }
   state.value = std::round(state.value * 10.0f) / 10.0f;
@@ -587,6 +599,14 @@ ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx) {
   return assembler.inventory[idx + Recipe::MAX_INPUT_SLOTS];
 }
 
+Rectangle get_rect(Entity& entity) {
+  Direction rotation = DIR_UP;
+  if (auto* rot = get_rotation(entity)) {
+    rotation = *rot;
+  }
+  return rect(entity.pos, get_dims(entity), rotation);
+}
+
 EntityIterator begin(EntityStore& store) {
   EntityIterator iter{};
   iter.curr = store.entities.data();
@@ -616,9 +636,11 @@ static EntityId get_next_entity_id(EntityStore& store) {
 }
 
 EntityId add_entity(EntityStore& store, const Entity& entity) {
-  store.command_buffer.push_back(AddCommand{
-    .entity = entity,
-  });
+  store.command_buffer.push_back(
+    AddCommand{
+      .entity = entity,
+    }
+  );
   auto* cmd = std::get_if<AddCommand>(&store.command_buffer.back());
   ASSERT_NO_MSG(cmd);
   cmd->entity.id = get_next_entity_id(store);
@@ -626,9 +648,11 @@ EntityId add_entity(EntityStore& store, const Entity& entity) {
 }
 
 void remove_entity(EntityStore& store, EntityId id) {
-  store.command_buffer.push_back(RemoveCommand{
-    .id = id,
-  });
+  store.command_buffer.push_back(
+    RemoveCommand{
+      .id = id,
+    }
+  );
 }
 
 bool contains_entity(EntityStore& store, EntityId id) {
@@ -650,12 +674,21 @@ Entity* get_entity(EntityStore& store, EntityId id) {
   return &entity;
 }
 
-Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims) {
+Entity* get_entity_at_pos(
+  EntityStore& store,
+  World world,
+  const vec2& pos,
+  const vec2& dims,
+  Direction rotation
+) {
   for (auto& entity : store) {
-    auto entity_dims = get_dims(entity);
+    auto entity_rect = get_rect(entity);
+    auto check_rect  = rect(pos, dims, rotation);
     bool same_world  = world == entity.world;
-    bool x_in_range  = pos.x < entity.pos.x + entity_dims.x && pos.x + dims.x > entity.pos.x;
-    bool y_in_range  = pos.y < entity.pos.y + entity_dims.y && pos.y + dims.y > entity.pos.y;
+    bool x_in_range  = check_rect.x < entity_rect.x + entity_rect.width &&
+                       check_rect.x + check_rect.width > entity_rect.x;
+    bool y_in_range  = check_rect.y < entity_rect.y + entity_rect.height &&
+                       check_rect.y + check_rect.height > entity_rect.y;
     if (same_world && x_in_range && y_in_range) {
       return &entity;
     }
@@ -663,14 +696,22 @@ Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world, cons
   return nullptr;
 }
 
-std::vector<Entity*>
-get_entities_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims) {
+std::vector<Entity*> get_entities_at_pos(
+  EntityStore& store,
+  World world,
+  const vec2& pos,
+  const vec2& dims,
+  Direction rotation
+) {
   std::vector<Entity*> entities{};
   for (auto& entity : store) {
-    auto entity_dims = get_dims(entity);
+    auto entity_rect = get_rect(entity);
+    auto check_rect  = rect(pos, dims, rotation);
     bool same_world  = world == entity.world;
-    bool x_in_range  = pos.x < entity.pos.x + entity_dims.x && pos.x + dims.x > entity.pos.x;
-    bool y_in_range  = pos.y < entity.pos.y + entity_dims.y && pos.y + dims.y > entity.pos.y;
+    bool x_in_range  = check_rect.x < entity_rect.x + entity_rect.width &&
+                       check_rect.x + check_rect.width > entity_rect.x;
+    bool y_in_range  = check_rect.y < entity_rect.y + entity_rect.height &&
+                       check_rect.y + check_rect.height > entity_rect.y;
     if (same_world && x_in_range && y_in_range) {
       entities.push_back(&entity);
     }
@@ -1070,7 +1111,7 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
     } else {
       texture = &assets.textures[get_texture_type(entity)];
     }
-    // TODO: this makes rendering item entities even worse
+    // TODO: this kind of breaks drawing item entities
     vec2 dims = get_dims(entity) * GRID_DIMS;
     vec2 source_pos{};
     vec2 source_dims = dims;
@@ -1094,7 +1135,8 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
       .width  = dims.x,
       .height = dims.y,
     };
-    auto origin = vec2_to_raylib(dims * 0.5f);
+
+    auto origin = vec2_to_raylib(GRID_DIMS * 0.5f);
 
     if (is<Player>(entity)) {
       auto actual_pos = player_actual_pos(entity);
@@ -1180,7 +1222,7 @@ void set_conveyor_from_direction(EntityStore& store, Entity& entity) {
 
   for (auto dir : side_directions) {
     auto neighbour_pos = entity.pos + direction_to_vec2(dir);
-    auto* neighbour    = get_entity_at_pos(store, neighbour_pos, entity.world, Conveyor::DIMS);
+    auto* neighbour    = get_entity_at_pos(store, entity.world, neighbour_pos, Conveyor::DIMS);
     if (!neighbour) {
       continue;
     }

@@ -40,6 +40,8 @@ Direction opposite_direction(Direction direction);
 vec2 direction_to_vec2(Direction direction);
 std::string_view direction_to_string(Direction direction);
 f32 rotation_degrees(Direction rotation);
+vec2 rotate_vec2(const vec2& v, Direction rotation);
+Rectangle rect(const vec2& pos, const vec2& dims, Direction rotation);
 
 // TODO: should this really be here?
 static constexpr vec2 GRID_DIMS   = {32, 32};

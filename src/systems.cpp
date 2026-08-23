@@ -46,8 +46,8 @@ void system_move_player(EntityStore& store, EntityId player_id, const Input& inp
     bool can_move = true;
     auto collided = get_entities_at_pos(
       store,
-      player_entity->pos + direction_to_vec2(movement->direction),
       player_entity->world,
+      player_entity->pos + direction_to_vec2(movement->direction),
       Player::DIMS
     );
 
@@ -98,7 +98,7 @@ void system_open_gui(
     action_state(input, ACTION_INTERACT).pressed() &&
     pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
+    auto hovered = get_entity_at_pos(store, player_entity->world, mouse_grid_pos, CURSOR_DIMS);
     if (hovered && has_gui(*hovered)) {
       player->open_gui = hovered->id;
     }
@@ -175,7 +175,7 @@ void system_drop_items(
     input.lmb.pressed() && player->hand &&
     pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
+    auto hovered = get_entity_at_pos(store, player_entity->world, mouse_grid_pos, CURSOR_DIMS);
     if (!hovered || is<Item>(*hovered)) {
       Entity entity = {
         .pos   = mouse_grid_pos,
@@ -385,7 +385,7 @@ void system_place_entity(
     return;
   }
   auto dims = get_dims(*entity);
-  if (get_entity_at_pos(store, mouse_grid_pos, player_entity->world, dims)) {
+  if (get_entity_at_pos(store, player_entity->world, mouse_grid_pos, dims, place_rotation)) {
     return;
   }
 
@@ -418,7 +418,7 @@ void system_remove_entity(
     input.lmb.pressed() &&
     pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, mouse_grid_pos, player_entity->world, CURSOR_DIMS);
+    auto hovered = get_entity_at_pos(store, player_entity->world, mouse_grid_pos, CURSOR_DIMS);
     if (hovered && breakable(*hovered)) {
       auto item_type = entity_to_item(*hovered);
       ASSERT(item_type, "broken breakable item doesnt have an item_type");
@@ -487,18 +487,19 @@ void system_output_items(EntityStore& store, f32 dt) {
     if (*output_properties.item_output_accumulator >= (1.0f / output_properties.output_rate)) {
       auto* from_inv = get_inventory(entity);
       ASSERT(from_inv, "entities with OutputsItems must satisfy HasInventory");
-      auto dims = get_dims(entity);
+      // TODO: is this enough to take rotation into account?
+      auto rect = get_rect(entity);
 
-      for (u32 y = 0; y < u32(dims.y); ++y) {
-        for (u32 x = 0; x < u32(dims.x); ++x) {
+      for (u32 y = 0; y < u32(rect.height); ++y) {
+        for (u32 x = 0; x < u32(rect.width); ++x) {
           auto pos = entity.pos + vec2{f32(x), f32(y)};
           for (auto [side, side_vector] : SIDES) {
-            if (!(output_properties.output_sides[(dims.x * y) + x] & side)) {
+            if (!(output_properties.output_sides[(rect.width * y) + x] & side)) {
               continue;
             }
             auto output_pos = pos + side_vector;
             auto* output_entity =
-              get_entity_at_pos(store, output_pos, entity.world, Conveyor::DIMS);
+              get_entity_at_pos(store, entity.world, output_pos, Conveyor::DIMS);
             if (!output_entity) {
               continue;
             }
@@ -540,6 +541,7 @@ void system_output_items(EntityStore& store, f32 dt) {
 
 void system_move_items(EntityStore& store, f32 dt) {
   static constexpr f32 ITEM_GAP = 1.0f / CONVEYOR_THROUGHPUT;
+  // TODO: maybe i should preserve this vector somehow to not allocate/deallocate all the time
   std::vector<std::pair<Entity, Entity&>> buffer{};
   for (auto& entity : store) {
     if (is<Conveyor>(entity)) {
@@ -567,7 +569,7 @@ void system_move_items(EntityStore& store, f32 dt) {
     // NOTE: take items on
     {
       vec2 from_pos         = old_entity.pos + direction_to_vec2(old_conveyor->rotation);
-      auto* old_from_entity = get_entity_at_pos(store, from_pos, old_entity.world, {1, 1});
+      auto* old_from_entity = get_entity_at_pos(store, old_entity.world, from_pos, {1, 1});
       if (old_from_entity && is<Conveyor>(*old_from_entity)) {
         const auto* old_from_conveyor = get_data<Conveyor>(*old_from_entity);
         ASSERT_NO_MSG(old_from_conveyor);
@@ -593,7 +595,7 @@ void system_move_items(EntityStore& store, f32 dt) {
 
       if (old_item.t >= 1.0f) {
         vec2 to_pos         = old_entity.pos + direction_to_vec2(old_conveyor->to);
-        auto* old_to_entity = get_entity_at_pos(store, to_pos, old_entity.world, {1, 1});
+        auto* old_to_entity = get_entity_at_pos(store, old_entity.world, to_pos, {1, 1});
         if (old_to_entity && !is<Player>(*old_to_entity)) {
           bool success = false;
 

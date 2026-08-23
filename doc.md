@@ -31,16 +31,6 @@
 - [ ] crafting system
   - [x] basic functionality
   - [ ] take items in any order in recipes or slot locking
-- [ ] UI library
-  - [x] stack elements layout direction
-    - elements on top of each other
-  - [ ] borders
-  - [ ] justify-content: space-between from css
-  - [ ] better element api (the UI_Scope thing probably)
-  - [ ] floating elements (?)
-  - [ ] components (?)
-    - button, slider, movable window
-  - [ ] animations
 - [ ] map editor
   - [x] placing
   - [x] destroying
@@ -62,10 +52,21 @@
     - [ ] no more than one entity per tile
       - exceptions: item entities, player in world tunnel
   - [ ] undo/redo (???)
+- [ ] UI library
+  - [x] stack elements layout direction
+    - elements on top of each other
+  - [ ] borders
+  - [ ] justify-content: space-between from css
+  - [ ] better element api (the UI_Scope thing probably)
+  - [ ] floating elements (?)
+  - [ ] components (?)
+    - button, slider, movable window
+  - [ ] animations
 
 ### after refined demo:
 
 - [ ] tests
+- [ ] profiler tools
 - [ ] message sending system
   - [x] sender block
     - displays the current message queue

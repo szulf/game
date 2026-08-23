@@ -715,9 +715,20 @@ bool contains_entity(EntityStore& store, EntityId id);
 // NOTE: DO NOT save the pointer for longer than a single system!
 // It will break things when the entities vector reallocates
 Entity* get_entity(EntityStore& store, EntityId id);
-Entity* get_entity_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims);
-std::vector<Entity*>
-get_entities_at_pos(EntityStore& store, const vec2& pos, World world, const vec2& dims);
+Entity* get_entity_at_pos(
+  EntityStore& store,
+  World world,
+  const vec2& pos,
+  const vec2& dims,
+  Direction rotation = DIR_UP
+);
+std::vector<Entity*> get_entities_at_pos(
+  EntityStore& store,
+  World world,
+  const vec2& pos,
+  const vec2& dims,
+  Direction rotation = DIR_UP
+);
 void emit(EntityStore& store, const Event& event);
 
 struct EventView {
@@ -833,6 +844,7 @@ OutputsItemsProperties get_outputs_items_properties(Entity& entity);
 OutputsItemsProperties get_outputs_items_properties(EntityStore& store, EntityId id);
 vec2 get_dims(const Entity& entity);
 vec2 get_dims(EntityStore& store, EntityId id);
+Rectangle get_rect(Entity& entity);
 
 // TODO: think about what is the real purpose of this function
 template <typename Func>
@@ -870,7 +882,9 @@ void for_each_active_slot(Entity& entity, Func&& func) {
       [](ResourceMessageSender&) {},
       [&](ResourceMessageReceiver& receiver) {
         for (auto& slot : receiver.inventory) {
-          func(slot);
+          if (slot) {
+            func(slot);
+          }
         }
       },
       [](Assembler&) {

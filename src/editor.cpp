@@ -9,7 +9,7 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
   EditorUpdateResult result{};
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
   auto* entity_at_mouse_pos =
-    get_entity_at_pos(store, mouse_grid_pos, editor.current_world, CURSOR_DIMS);
+    get_entity_at_pos(store, editor.current_world, mouse_grid_pos, CURSOR_DIMS);
 
   if (input.lmb.down && entity_at_mouse_pos) {
     if (entity_at_mouse_pos->id == editor.selected_entity_id) {
@@ -18,10 +18,11 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
     remove_entity(store, entity_at_mouse_pos->id);
   }
 
+  // TODO: implement place rotation
   if (input.rmb.down) {
     const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
     auto dims             = get_dims(placeable);
-    if (!get_entity_at_pos(store, mouse_grid_pos, editor.current_world, dims)) {
+    if (!get_entity_at_pos(store, editor.current_world, mouse_grid_pos, dims)) {
       Entity entity = placeable;
       entity.pos    = mouse_grid_pos;
       entity.world  = editor.current_world;

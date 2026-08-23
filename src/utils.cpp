@@ -95,6 +95,29 @@ f32 rotation_degrees(Direction rotation) {
   ASSERT(false, "invalid rotation: {}\n", i32(rotation));
 }
 
+vec2 rotate_vec2(const vec2& v, Direction rotation) {
+  switch (rotation) {
+    case DIR_UP:
+      return {v.x, v.y};
+    case DIR_RIGHT:
+      return {-v.y, v.x};
+    case DIR_DOWN:
+      return {-v.x, v.y};
+    case DIR_LEFT:
+      return {v.y, -v.x};
+  }
+  ASSERT(false, "invalid rotation: {}\n", i32(rotation));
+}
+
+Rectangle rect(const vec2& pos, const vec2& dims, Direction rotation) {
+  vec2 origin = pos + vec2{0.5f, 0.5f};
+  vec2 a      = rotate_vec2({-0.5f, -0.5f}, rotation);
+  vec2 b      = rotate_vec2(dims - vec2{0.5f, 0.5f}, rotation);
+  vec2 lo     = {std::min(a.x, b.x), std::min(a.y, b.y)};
+  vec2 hi     = {std::max(a.x, b.x), std::max(a.y, b.y)};
+  return rect_from_vec2x2(origin + lo, hi - lo);
+}
+
 // TODO: seed it always in the same way in debug builds?
 std::mt19937 g_random_mt = random_generate();
 

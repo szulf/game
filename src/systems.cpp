@@ -2,6 +2,7 @@
 
 #include <array>
 #include <algorithm>
+#include <variant>
 
 #include "core.h"
 #include "utils.h"
@@ -480,6 +481,13 @@ void system_output_items(EntityStore& store, f32 dt) {
     auto output_properties = get_outputs_items_properties(entity);
     if (!output_properties.item_output_accumulator) {
       continue;
+    }
+
+    if (has_maintenance(entity)) {
+      auto [maintenance, _] = get_maintenance(entity);
+      if (!std::holds_alternative<std::monostate>(*maintenance)) {
+        continue;
+      }
     }
 
     *output_properties.item_output_accumulator += dt;

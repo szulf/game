@@ -23,7 +23,7 @@
     - fixed with a double bufffering approach,
       update into a buffer based on the original,
       then copy everything back into the original
-  - [ ] balancer
+  - [x] balancer
 - [x] movement system
   - dont know if its perfect, might still want to try some other things
 - [ ] placing system

@@ -1,4 +1,5 @@
 #include "items.h"
+#include "assets.h"
 
 void assign_slot(ItemSlot& to, const ItemSlot& from) {
   to.type   = from.type;
@@ -64,6 +65,8 @@ TextureType get_texture_type(ItemType item) {
       return TEXTURE_TRANSISTOR_ITEM;
     case ITEM_CAPACITOR:
       return TEXTURE_CAPACITOR_ITEM;
+    case ITEM_BALANCER:
+      return TEXTURE_BALANCER_ITEM;
 
     case ITEM_COUNT:
       break;
@@ -117,6 +120,8 @@ std::string_view get_item_name(ItemType item) {
       return "Transistor";
     case ITEM_CAPACITOR:
       return "Capacitor";
+    case ITEM_BALANCER:
+      return "Balancer";
     case ITEM_COUNT:
       break;
   }
@@ -143,6 +148,7 @@ ItemInfo item_info(ItemType item) {
     case ITEM_BLANK_BOARD:
     case ITEM_TRANSISTOR:
     case ITEM_CAPACITOR:
+    case ITEM_BALANCER:
       return {.max_count = 100};
     case ITEM_OIL_CANISTER:
       return {.max_count = 20};

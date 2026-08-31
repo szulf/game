@@ -64,6 +64,10 @@ std::string_view get_texture_path(TextureType texture) {
       return "assets/transistor_item.png";
     case TEXTURE_CAPACITOR_ITEM:
       return "assets/capacitor_item.png";
+    case TEXTURE_BALANCER:
+      return "assets/balancer.png";
+    case TEXTURE_BALANCER_ITEM:
+      return "assets/balancer_item.png";
     case TEXTURE_COUNT:
       break;
   }

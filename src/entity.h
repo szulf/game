@@ -3,6 +3,7 @@
 #include <string_view>
 #include <vector>
 #include <variant>
+#include <mdspan>
 
 #include "core.h"
 #include "math.h"
@@ -37,6 +38,35 @@ struct OutputsItemsProperties {
   std::span<const Directions> output_sides{};
   f32 output_rate{};
   f32* item_output_accumulator{};
+};
+
+struct ConveyorItem {
+  ItemSlot slot{};
+  // NOTE: value in range [0; 1] that indicates how far along an item is
+  f32 t{};
+};
+
+// NOTE: items per second
+// NOTE: constant for now, might change in the future
+// (for example have multiple types of conveyors that have different speeds
+//  (they might be different entity types tho))
+static constexpr u32 CONVEYOR_THROUGHPUT = 10;
+
+template <typename T>
+concept MovesItems = requires(T t, const vec2& pos) {
+  t.conveyor_items;
+  t.moves_from;
+};
+
+using MoveItems =
+  std::mdspan<ConveyorItem, std::extents<std::size_t, std::dynamic_extent, CONVEYOR_THROUGHPUT>>;
+struct MovesItemsProperties {
+  MoveItems items{};
+  std::span<vec2> from{};
+
+  inline explicit operator bool() const {
+    return !from.empty();
+  }
 };
 
 // NOTE: i dont think i will have more than U16_MAX(65'536) entities
@@ -126,18 +156,6 @@ struct Storage {
 static_assert(OutputsItems<Storage>);
 static_assert(HasInventory<Storage>);
 
-struct ConveyorItem {
-  ItemSlot slot{};
-  // NOTE: value in range [0; 1] that indicates how far along an item is
-  f32 t{};
-};
-
-// NOTE: items per second
-// NOTE: constant for now, might change in the future
-// (for example have multiple types of conveyors that have different speeds
-//  (they might be different entity types tho))
-static constexpr u32 CONVEYOR_THROUGHPUT = 10;
-
 struct Conveyor {
   static constexpr vec2 DIMS = {1, 1};
 
@@ -145,9 +163,12 @@ struct Conveyor {
   Direction rotation = DIR_DOWN;
   Direction to       = DIR_UP;
 
-  std::vector<ConveyorItem> items = std::vector<ConveyorItem>(CONVEYOR_THROUGHPUT);
+  // NOTE: weird but i want the same api for conveyor and balancer
+  std::array<std::array<ConveyorItem, CONVEYOR_THROUGHPUT>, 1> conveyor_items{};
+  std::array<vec2, 1> moves_from{};
 };
 static_assert(Rotatable<Conveyor>);
+static_assert(MovesItems<Conveyor>);
 
 struct Item {
   static constexpr vec2 DIMS = {1, 1};
@@ -634,6 +655,19 @@ static_assert(HasInventory<Assembler>);
 ItemSlot& assembler_input_slot(Assembler& assembler, u32 idx);
 ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx);
 
+struct Balancer {
+  static constexpr vec2 DIMS = {2, 1};
+
+  Direction rotation = DIR_UP;
+
+  std::array<std::array<ConveyorItem, CONVEYOR_THROUGHPUT>, 2> conveyor_items{};
+  std::array<vec2, 2> moves_from{};
+
+  std::array<u32, 2> last_lane = {0, 1};
+};
+static_assert(Rotatable<Balancer>);
+static_assert(MovesItems<Balancer>);
+
 // NOTE: keep a type with no heap allocations as the first one,
 // because std::variant by default initializes to the first type
 // so i dont want "entity = {}" to do any heap allocations
@@ -646,7 +680,8 @@ using EntityData = std::variant<
   WorldTunnel,
   ResourceMessageSender,
   ResourceMessageReceiver,
-  Assembler>;
+  Assembler,
+  Balancer>;
 
 struct Entity {
   EntityId id{};
@@ -664,6 +699,7 @@ static const std::array PLACEABLE = std::to_array<Entity>({
   {.data = ResourceMessageSender{}},
   {.data = ResourceMessageReceiver{}},
   {.data = Assembler{}},
+  {.data = Balancer{}},
 });
 
 struct AddCommand {
@@ -790,6 +826,7 @@ bool breakable(const Entity& entity);
 bool has_gui(const Entity& entity);
 bool has_inventory(const Entity& entity);
 bool has_maintenance(const Entity& entity);
+bool moves_items(const Entity& entity);
 std::optional<ItemType> entity_to_item(const Entity& entity);
 std::optional<Entity> entity_from_item(ItemType item);
 TextureType get_texture_type(const Entity& entity);
@@ -845,6 +882,8 @@ OutputsItemsProperties get_outputs_items_properties(EntityStore& store, EntityId
 vec2 get_dims(const Entity& entity);
 vec2 get_dims(EntityStore& store, EntityId id);
 Rectangle get_rect(Entity& entity);
+MovesItemsProperties get_moves_items_properties(Entity& entity);
+MovesItemsProperties get_moves_items_properties(EntityStore& store, EntityId id);
 
 // TODO: think about what is the real purpose of this function
 template <typename Func>
@@ -867,7 +906,7 @@ void for_each_active_slot(Entity& entity, Func&& func) {
         }
       },
       [&](Conveyor& conveyor) {
-        for (auto& item : conveyor.items) {
+        for (auto& item : conveyor.conveyor_items[0]) {
           if (item.slot) {
             func(item.slot);
           }
@@ -890,6 +929,15 @@ void for_each_active_slot(Entity& entity, Func&& func) {
       [](Assembler&) {
         // TODO: put the thing here
         ASSERT(false, "TODO");
+      },
+      [&](Balancer& balancer) {
+        for (auto& side : balancer.conveyor_items) {
+          for (auto& item : side) {
+            if (item.slot) {
+              func(item.slot);
+            }
+          }
+        }
       }
     },
     entity.data
@@ -898,7 +946,14 @@ void for_each_active_slot(Entity& entity, Func&& func) {
 
 void render_entities(EntityStore& store, World world, const AssetManager& assets);
 
+vec2 mover_to_pos(Entity& entity, u32 cell_idx);
+vec2 mover_cell_pos(Entity& entity, u32 cell_idx);
+bool mover_points_to(Entity& mover, u32 cell_idx, Entity& points_to);
+bool mover_points_from(Entity& mover, u32 cell_idx, Entity& points_from);
+
+u32 mover_choose_lane_idx(Entity& mover, u32 cell_idx);
+void mover_update_lane_idx(Entity& mover, u32 cell_idx);
+
 vec2 player_actual_pos(Entity& entity);
-bool conveyor_points_to(Entity& entity, const vec2& pos);
-bool conveyor_points_from(Entity& entity, const vec2& pos);
 void set_conveyor_from_direction(EntityStore& store, Entity& conveyor);
+void set_balancer_moves_from_position(Entity& entity);

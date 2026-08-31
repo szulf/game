@@ -33,6 +33,7 @@ enum ItemType {
   ITEM_STORAGE,
   ITEM_CONVEYOR,
   ITEM_ASSEMBLER,
+  ITEM_BALANCER,
 
   // NOTE: tool items
   ITEM_BRUSH,

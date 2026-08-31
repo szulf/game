@@ -1,5 +1,7 @@
 #include "entity.h"
 
+#include <span>
+
 #include "core.h"
 #include "utils.h"
 #include "items.h"
@@ -599,14 +601,6 @@ ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx) {
   return assembler.inventory[idx + Recipe::MAX_INPUT_SLOTS];
 }
 
-Rectangle get_rect(Entity& entity) {
-  Direction rotation = DIR_UP;
-  if (auto* rot = get_rotation(entity)) {
-    rotation = *rot;
-  }
-  return rect(entity.pos, get_dims(entity), rotation);
-}
-
 EntityIterator begin(EntityStore& store) {
   EntityIterator iter{};
   iter.curr = store.entities.data();
@@ -768,6 +762,8 @@ std::optional<bool> rotatable(ItemType type) {
       return {Rotatable<Conveyor>};
     case ITEM_ASSEMBLER:
       return {Rotatable<Assembler>};
+    case ITEM_BALANCER:
+      return {Rotatable<Balancer>};
     case ITEM_COPPER:
     case ITEM_PLASTIC:
     case ITEM_ALUMINIUM:
@@ -797,13 +793,16 @@ bool solid(const Entity& entity) {
   return std::visit(
     [](auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (is_any_of<
-                      T,
-                      Block,
-                      Storage,
-                      ResourceMessageSender,
-                      ResourceMessageReceiver,
-                      Assembler>) {
+      if constexpr (
+        is_any_of<
+          T,
+          Block,
+          Storage,
+          ResourceMessageSender,
+          ResourceMessageReceiver,
+          Assembler,
+          Balancer>
+      ) {
         return true;
       } else if constexpr (is_any_of<T, Player, Conveyor, Item, WorldTunnel>) {
         return false;
@@ -819,16 +818,18 @@ bool breakable(const Entity& entity) {
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (is_any_of<T, Storage, Conveyor, Assembler>) {
+      if constexpr (is_any_of<T, Storage, Conveyor, Assembler, Balancer>) {
         return true;
-      } else if constexpr (is_any_of<
-                             T,
-                             Block,
-                             Player,
-                             Item,
-                             WorldTunnel,
-                             ResourceMessageSender,
-                             ResourceMessageReceiver>) {
+      } else if constexpr (
+        is_any_of<
+          T,
+          Block,
+          Player,
+          Item,
+          WorldTunnel,
+          ResourceMessageSender,
+          ResourceMessageReceiver>
+      ) {
         return false;
       } else {
         static_assert(false);
@@ -842,15 +843,17 @@ bool has_gui(const Entity& entity) {
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (is_any_of<
-                      T,
-                      Storage,
-                      WorldTunnel,
-                      ResourceMessageSender,
-                      ResourceMessageReceiver,
-                      Assembler>) {
+      if constexpr (
+        is_any_of<
+          T,
+          Storage,
+          WorldTunnel,
+          ResourceMessageSender,
+          ResourceMessageReceiver,
+          Assembler>
+      ) {
         return true;
-      } else if constexpr (is_any_of<T, Block, Player, Conveyor, Item>) {
+      } else if constexpr (is_any_of<T, Block, Player, Conveyor, Item, Balancer>) {
         return false;
       } else {
         static_assert(false);
@@ -879,6 +882,16 @@ bool has_maintenance(const Entity& entity) {
     entity.data
   );
 };
+
+bool moves_items(const Entity& entity) {
+  return std::visit(
+    [](const auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      return MovesItems<T>;
+    },
+    entity.data
+  );
+}
 
 std::optional<ItemType> entity_to_item(const Entity& entity) {
   return std::visit(
@@ -909,6 +922,9 @@ std::optional<ItemType> entity_to_item(const Entity& entity) {
       },
       [](const Assembler&) -> std::optional<ItemType> {
         return {ITEM_ASSEMBLER};
+      },
+      [](const Balancer&) -> std::optional<ItemType> {
+        return {ITEM_BALANCER};
       }
     },
     entity.data
@@ -925,6 +941,8 @@ std::optional<Entity> entity_from_item(ItemType item) {
       return {{.data = Conveyor{}}};
     case ITEM_ASSEMBLER:
       return {{.data = Assembler{}}};
+    case ITEM_BALANCER:
+      return {{.data = Balancer{}}};
     case ITEM_COPPER:
     case ITEM_PLASTIC:
     case ITEM_ALUMINIUM:
@@ -982,7 +1000,10 @@ TextureType get_texture_type(const Entity& entity) {
       },
       [](const Assembler&) {
         return TEXTURE_ASSEMBLER;
-      }
+      },
+      [](const Balancer&) {
+        return TEXTURE_BALANCER;
+      },
     },
     entity.data
   );
@@ -1097,6 +1118,38 @@ vec2 get_dims(EntityStore& store, EntityId id) {
   return {};
 }
 
+Rectangle get_rect(Entity& entity) {
+  Direction rotation = DIR_UP;
+  if (auto* rot = get_rotation(entity)) {
+    rotation = *rot;
+  }
+  return rect(entity.pos, get_dims(entity), rotation);
+}
+
+MovesItemsProperties get_moves_items_properties(Entity& entity) {
+  return std::visit(
+    [&](auto& value) -> MovesItemsProperties {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (MovesItems<T>) {
+        return {
+          .items = MoveItems(value.conveyor_items[0].data(), value.conveyor_items.size()),
+          .from  = value.moves_from,
+        };
+      }
+      return {};
+    },
+    entity.data
+  );
+}
+
+MovesItemsProperties get_moves_items_properties(EntityStore& store, EntityId id) {
+  auto* entity = get_entity(store, id);
+  if (entity) {
+    return get_moves_items_properties(*entity);
+  }
+  return {};
+}
+
 void render_entities(EntityStore& store, World world, const AssetManager& assets) {
   static constexpr f32 ON_CONVEYOR_SCALE = 0.375f;
 
@@ -1153,7 +1206,7 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
 
     if (auto* conveyor = get_data<Conveyor>(entity)) {
       for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-        auto& item = conveyor->items[i];
+        auto& item = conveyor->conveyor_items[0][i];
         if (item.slot) {
           auto& on_texture  = assets.textures[get_texture_type(item.slot.type)];
           vec2 on_dims      = dims_from_texture(on_texture);
@@ -1185,6 +1238,86 @@ void render_entities(EntityStore& store, World world, const AssetManager& assets
   }
 }
 
+vec2 mover_to_pos(Entity& entity, u32 cell_idx) {
+  ASSERT_NO_MSG(moves_items(entity));
+  if (auto* conveyor = get_data<Conveyor>(entity)) {
+    ASSERT(cell_idx == 0, "invalid cell_idx: {}", cell_idx);
+    return entity.pos + direction_to_vec2(conveyor->to);
+  } else if (auto* balancer = get_data<Balancer>(entity)) {
+    ASSERT(cell_idx < balancer->moves_from.size(), "invalid cell_idx: {}", cell_idx);
+    return balancer->moves_from[cell_idx] + (direction_to_vec2(balancer->rotation) * 2);
+  }
+  ASSERT(false, "entity with MovesItems of unknown type");
+}
+
+vec2 mover_cell_pos(Entity& entity, u32 cell_idx) {
+  ASSERT_NO_MSG(moves_items(entity));
+  if (is<Conveyor>(entity)) {
+    ASSERT(cell_idx == 0, "invalid cell_idx: {}", cell_idx);
+    return entity.pos;
+  } else if (auto* balancer = get_data<Balancer>(entity)) {
+    ASSERT(cell_idx < balancer->moves_from.size(), "invalid cell_idx: {}", cell_idx);
+    return balancer->moves_from[cell_idx] + direction_to_vec2(balancer->rotation);
+  }
+  ASSERT(false, "entity with MovesItems of unknown type");
+}
+
+bool mover_points_to(Entity& mover, u32 cell_idx, Entity& points_to) {
+  auto to_rect        = rect_from_vec2x2(mover_to_pos(mover, cell_idx), {1, 1});
+  auto points_to_rect = get_rect(points_to);
+  bool same_world     = mover.world == points_to.world;
+  bool x_in_range     = to_rect.x < points_to_rect.x + points_to_rect.width &&
+                        to_rect.x + to_rect.width > points_to_rect.x;
+  bool y_in_range     = to_rect.y < points_to_rect.y + points_to_rect.height &&
+                        to_rect.y + to_rect.height > points_to_rect.y;
+
+  return same_world && x_in_range && y_in_range;
+}
+
+bool mover_points_from(Entity& mover, u32 cell_idx, Entity& points_from) {
+  auto props            = get_moves_items_properties(mover);
+  auto from_rect        = rect_from_vec2x2(props.from[cell_idx], {1, 1});
+  auto points_from_rect = get_rect(points_from);
+  bool same_world       = mover.world == points_from.world;
+  bool x_in_range       = from_rect.x < points_from_rect.x + points_from_rect.width &&
+                          from_rect.x + from_rect.width > points_from_rect.x;
+  bool y_in_range       = from_rect.y < points_from_rect.y + points_from_rect.height &&
+                          from_rect.y + from_rect.height > points_from_rect.y;
+
+  return same_world && x_in_range && y_in_range;
+}
+
+u32 mover_choose_lane_idx(Entity& mover, u32 cell_idx) {
+  ASSERT_NO_MSG(moves_items(mover));
+  if (is<Conveyor>(mover)) {
+    ASSERT(cell_idx == 0, "invalid cell_idx: {}", cell_idx);
+    return 0;
+  } else if (auto* balancer = get_data<Balancer>(mover)) {
+    ASSERT(cell_idx < balancer->last_lane.size(), "invalid cell_idx: {}", cell_idx);
+    u32 lane = balancer->last_lane[cell_idx];
+    for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+      if (!balancer->conveyor_items[lane][i].slot) {
+        return lane;
+      }
+    }
+    return 1 - lane;
+  }
+  ASSERT(false, "entity with MovesItems of unknown type");
+}
+
+void mover_update_lane_idx(Entity& mover, u32 cell_idx) {
+  ASSERT_NO_MSG(moves_items(mover));
+  if (is<Conveyor>(mover)) {
+    ASSERT(cell_idx == 0, "invalid cell_idx: {}", cell_idx);
+    return;
+  } else if (auto* balancer = get_data<Balancer>(mover)) {
+    ASSERT(cell_idx < balancer->last_lane.size(), "invalid cell_idx: {}", cell_idx);
+    balancer->last_lane[cell_idx] = 1 - balancer->last_lane[cell_idx];
+    return;
+  }
+  ASSERT(false, "entity with MovesItems of unknown type");
+}
+
 vec2 player_actual_pos(Entity& entity) {
   vec2 pos     = entity.pos;
   auto* player = get_data<Player>(entity);
@@ -1195,18 +1328,6 @@ vec2 player_actual_pos(Entity& entity) {
     pos += move_dir * (movement.t / PLAYER_MOVE_ACTION_DURATION);
   }
   return pos;
-}
-
-bool conveyor_points_to(Entity& entity, const vec2& pos) {
-  auto* conveyor = get_data<Conveyor>(entity);
-  ASSERT_NO_MSG(conveyor);
-  return entity.pos + direction_to_vec2(conveyor->to) == pos;
-}
-
-bool conveyor_points_from(Entity& entity, const vec2& pos) {
-  auto* conveyor = get_data<Conveyor>(entity);
-  ASSERT_NO_MSG(conveyor);
-  return entity.pos + direction_to_vec2(conveyor->rotation) == pos;
 }
 
 void set_conveyor_from_direction(EntityStore& store, Entity& entity) {
@@ -1230,8 +1351,39 @@ void set_conveyor_from_direction(EntityStore& store, Entity& entity) {
     if (!neighbour_conveyor) {
       continue;
     }
-    if (conveyor_points_to(*neighbour, entity.pos)) {
+    if (mover_points_to(*neighbour, 0, entity)) {
       conveyor->rotation = opposite_direction(neighbour_conveyor->to);
     }
+  }
+
+  conveyor->moves_from[0] = entity.pos + direction_to_vec2(conveyor->rotation);
+}
+
+void set_balancer_moves_from_position(Entity& entity) {
+  auto* balancer = get_data<Balancer>(entity);
+  ASSERT_NO_MSG(balancer);
+
+  // TODO: i dont really like this
+  switch (balancer->rotation) {
+    case DIR_UP:
+      balancer->moves_from = {
+        {{entity.pos.x, entity.pos.y + 1}, {entity.pos.x + 1, entity.pos.y + 1}}
+      };
+      break;
+    case DIR_RIGHT:
+      balancer->moves_from = {
+        {{entity.pos.x - 1, entity.pos.y}, {entity.pos.x - 1, entity.pos.y + 1}}
+      };
+      break;
+    case DIR_DOWN:
+      balancer->moves_from = {
+        {{entity.pos.x - 1, entity.pos.y - 1}, {entity.pos.x, entity.pos.y - 1}}
+      };
+      break;
+    case DIR_LEFT:
+      balancer->moves_from = {
+        {{entity.pos.x + 1, entity.pos.y - 1}, {entity.pos.x + 1, entity.pos.y}}
+      };
+      break;
   }
 }

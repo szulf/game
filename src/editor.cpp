@@ -1,6 +1,7 @@
 #include "editor.h"
 
 #include "gui.h"
+#include "input.h"
 #include "items.h"
 #include "ui.h"
 
@@ -226,10 +227,18 @@ static void inventory_data_edit_gui(
         );
 
         if (dec_clicked && selected_slot.count > 0) {
-          --selected_slot.count;
+          if (input.keys[GKEY_LSHIFT].down) {
+            selected_slot.count -= 10;
+          } else {
+            --selected_slot.count;
+          }
         }
         if (inc_clicked && selected_slot.count < item_info(selected_slot.type).max_count) {
-          ++selected_slot.count;
+          if (input.keys[GKEY_LSHIFT].down) {
+            selected_slot.count += 10;
+          } else {
+            ++selected_slot.count;
+          }
         }
       }
       ui_element_end(layout, {.child_gap = 4});

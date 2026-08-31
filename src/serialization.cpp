@@ -150,7 +150,8 @@ void to_json(json& j, const EntityData& data) {
           {"type", "conveyor"},
           {"rotation", v.rotation},
           {"to", v.to},
-          {"items", v.items},
+          {"conveyor_items", v.conveyor_items},
+          {"moves_from", v.moves_from},
         };
       },
       [&](const Item& v) {
@@ -190,6 +191,15 @@ void to_json(json& j, const EntityData& data) {
           {"t", v.t},
         };
       },
+      [&](const Balancer& v) {
+        j = json{
+          {"type", "balancer"},
+          {"rotation", v.rotation},
+          {"conveyor_items", v.conveyor_items},
+          {"moves_from", v.moves_from},
+          {"last_lane", v.last_lane},
+        };
+      },
     },
     data
   );
@@ -214,7 +224,8 @@ void from_json(const json& j, EntityData& d) {
     Conveyor v{};
     j.at("rotation").get_to(v.rotation);
     j.at("to").get_to(v.to);
-    j.at("items").get_to(v.items);
+    j.at("conveyor_items").get_to(v.conveyor_items);
+    j.at("moves_from").get_to(v.moves_from);
     d = v;
   } else if (type == "item") {
     Item v{};
@@ -242,6 +253,13 @@ void from_json(const json& j, EntityData& d) {
     j.at("selected_recipe_idx").get_to(v.selected_recipe_idx);
     j.at("inventory").get_to(v.inventory);
     j.at("t").get_to(v.t);
+    d = v;
+  } else if (type == "balancer") {
+    Balancer v{};
+    j.at("rotation").get_to(v.rotation);
+    j.at("conveyor_items").get_to(v.conveyor_items);
+    j.at("moves_from").get_to(v.moves_from);
+    j.at("last_lane").get_to(v.last_lane);
     d = v;
   } else {
     ASSERT(false, "invalid entity data type");

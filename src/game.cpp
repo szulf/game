@@ -318,10 +318,10 @@ void render(State& state) {
     if (!state.frame.hovered_slot) {
       auto mouse_grid_pos = grid_pos(state.frame.mouse_world_pos);
       Rectangle rect      = {
-             .x      = f32(mouse_grid_pos.x * GRID_DIMS.x),
-             .y      = f32(mouse_grid_pos.y * GRID_DIMS.y),
-             .width  = GRID_DIMS.x,
-             .height = GRID_DIMS.y,
+        .x      = f32(mouse_grid_pos.x * GRID_DIMS.x),
+        .y      = f32(mouse_grid_pos.y * GRID_DIMS.y),
+        .width  = GRID_DIMS.x,
+        .height = GRID_DIMS.y,
       };
       DrawRectangleLinesEx(rect, 2, {80, 60, 0, 255});
     }

@@ -1,8 +1,10 @@
 #include "systems.h"
 
 #include <array>
+#include <ranges>
 #include <algorithm>
 #include <variant>
+#include <cmath>
 
 #include "core.h"
 #include "utils.h"
@@ -395,11 +397,15 @@ void system_place_entity(
   if (auto* rotation = get_rotation(*entity)) {
     *rotation = place_rotation;
   }
-  // TODO: maybe just setup some before/after place hooks, instead of this shit
+  // TODO: setup before/after place hooks, instead of this shit
+  // or maybe apply these through events?
   if (auto* conveyor = get_data<Conveyor>(*entity)) {
     // TODO: this is kind of weird, but i dont know what else to do
     conveyor->to = conveyor->rotation;
     set_conveyor_from_direction(store, *entity);
+  }
+  if (is<Balancer>(*entity)) {
+    set_balancer_moves_from_position(*entity);
   }
   add_entity(store, *entity);
   --player->hand.count;
@@ -469,12 +475,7 @@ static ItemSlot* find_first_extractable_slot(std::vector<ItemSlot>& inventory) {
 }
 
 void system_output_items(EntityStore& store, f32 dt) {
-  static constexpr std::array<std::pair<Direction, vec2>, 4> SIDES = {{
-    {DIR_RIGHT, {1, 0}},
-    {DIR_DOWN, {0, 1}},
-    {DIR_LEFT, {-1, 0}},
-    {DIR_UP, {0, -1}},
-  }};
+  static constexpr std::array<Direction, 4> SIDES = {{DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT}};
 
   // TODO: only do anything if a conveyor is attached?
   for (auto& entity : store) {
@@ -501,41 +502,46 @@ void system_output_items(EntityStore& store, f32 dt) {
       for (u32 y = 0; y < u32(rect.height); ++y) {
         for (u32 x = 0; x < u32(rect.width); ++x) {
           auto pos = entity.pos + vec2{f32(x), f32(y)};
-          for (auto [side, side_vector] : SIDES) {
+          for (auto side : SIDES) {
             if (!(output_properties.output_sides[(rect.width * y) + x] & side)) {
               continue;
             }
-            auto output_pos = pos + side_vector;
-            auto* output_entity =
-              get_entity_at_pos(store, entity.world, output_pos, Conveyor::DIMS);
+            auto output_pos     = pos + direction_to_vec2(side);
+            auto* output_entity = get_entity_at_pos(store, entity.world, output_pos, {1, 1});
             if (!output_entity) {
               continue;
             }
-            auto* conveyor = get_data<Conveyor>(*output_entity);
-            if (!conveyor) {
-              continue;
-            }
-            if (!conveyor_points_from(*output_entity, pos)) {
+            auto props = get_moves_items_properties(*output_entity);
+            if (!props) {
               continue;
             }
 
-            for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-              auto& item    = conveyor->items[i];
-              bool can_pull = !item.slot;
-              if (can_pull) {
-                auto* first_extractable = find_first_extractable_slot(*from_inv);
-                if (first_extractable) {
-                  // TODO: do i extract this into some function?
-                  // like somehow use transfer_items() here?
-                  item.slot.type  = first_extractable->type;
-                  item.slot.count = 1;
-                  if (item_info(first_extractable->type).has_durability) {
-                    item.slot.damage          = first_extractable->damage;
-                    first_extractable->damage = 0;
+            for (u32 cell_idx = 0; cell_idx < props.from.size(); ++cell_idx) {
+              auto from_pos = props.from[cell_idx];
+              if (from_pos != pos) {
+                continue;
+              }
+
+              for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+                auto lane_idx = mover_choose_lane_idx(*output_entity, cell_idx);
+                auto& item    = props.items[lane_idx, i];
+                bool can_pull = !item.slot;
+                if (can_pull) {
+                  auto* first_extractable = find_first_extractable_slot(*from_inv);
+                  if (first_extractable) {
+                    // TODO: do i extract this into some function?
+                    // like somehow use transfer_items() here?
+                    item.slot.type  = first_extractable->type;
+                    item.slot.count = 1;
+                    if (item_info(first_extractable->type).has_durability) {
+                      item.slot.damage          = first_extractable->damage;
+                      first_extractable->damage = 0;
+                    }
+                    mover_update_lane_idx(*output_entity, cell_idx);
+                    --first_extractable->count;
                   }
-                  --first_extractable->count;
+                  break;
                 }
-                break;
               }
             }
           }
@@ -547,92 +553,122 @@ void system_output_items(EntityStore& store, f32 dt) {
   }
 }
 
-void system_move_items(EntityStore& store, f32 dt) {
+static f32 conveyor_item_max_t(u32 idx) {
   static constexpr f32 ITEM_GAP = 1.0f / CONVEYOR_THROUGHPUT;
-  // TODO: maybe i should preserve this vector somehow to not allocate/deallocate all the time
-  std::vector<std::pair<Entity, Entity&>> buffer{};
+  return 1.0f - (idx * ITEM_GAP);
+}
+
+void system_move_items(EntityStore& store, f32 dt) {
+  // NOTE: move items that are already on the conveyor
   for (auto& entity : store) {
-    if (is<Conveyor>(entity)) {
-      buffer.push_back({entity, entity});
+    auto props = get_moves_items_properties(entity);
+    if (!props) {
+      continue;
+    }
+
+    for (u32 lane_idx = 0; lane_idx < props.from.size(); ++lane_idx) {
+      for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+        auto& item = props.items[lane_idx, i];
+        if (item.slot) {
+          if (item.t < conveyor_item_max_t(i)) {
+            item.t += dt;
+          }
+        } else {
+          item.t = 0;
+        }
+      }
     }
   }
 
-  for (auto& [entity, old_entity] : buffer) {
-    const auto* old_conveyor = get_data<Conveyor>(old_entity);
-    auto* conveyor           = get_data<Conveyor>(entity);
-    ASSERT_NO_MSG(old_conveyor && conveyor);
+  struct ConsumedSlot {
+    EntityId entity_id{};
+    u32 cell_idx{};
 
-    // NOTE: move items that are already on the conveyor
-    for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-      auto& item = conveyor->items[i];
-      if (item.slot) {
-        if (item.t < 1 - (i * ITEM_GAP)) {
-          item.t += dt;
-        }
-      } else {
-        item.t = 0;
-      }
+    bool operator==(const ConsumedSlot& other) const {
+      return entity_id == other.entity_id && cell_idx == other.cell_idx;
+    }
+  };
+  std::vector<ConsumedSlot> consumed_slots{};
+
+  // NOTE: take items on
+  for (auto& entity : store) {
+    auto props = get_moves_items_properties(entity);
+    if (!props) {
+      continue;
     }
 
-    // NOTE: take items on
-    {
-      vec2 from_pos         = old_entity.pos + direction_to_vec2(old_conveyor->rotation);
-      auto* old_from_entity = get_entity_at_pos(store, old_entity.world, from_pos, {1, 1});
-      if (old_from_entity && is<Conveyor>(*old_from_entity)) {
-        const auto* old_from_conveyor = get_data<Conveyor>(*old_from_entity);
-        ASSERT_NO_MSG(old_from_conveyor);
-        const auto& old_from_item = old_from_conveyor->items[0];
-        if (conveyor_points_to(*old_from_entity, old_entity.pos) && old_from_item.t >= 1.0f) {
-          for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-            const auto& old_item = old_conveyor->items[i];
-            auto& item           = conveyor->items[i];
-            if (!old_item.slot) {
-              assign_slot(item.slot, old_from_item.slot);
-              item.t = 0;
-              break;
-            }
-          }
-        }
-      }
-    }
+    for (u32 cell_idx = 0; cell_idx < props.from.size(); ++cell_idx) {
+      auto from_pos     = props.from[cell_idx];
+      auto* from_entity = get_entity_at_pos(store, entity.world, from_pos, {1, 1});
 
-    // NOTE: push items off
-    {
-      auto& old_item = old_conveyor->items[0];
-      auto& item     = conveyor->items[0];
+      if (from_entity && moves_items(*from_entity)) {
+        const auto& from_props = get_moves_items_properties(*from_entity);
+        ASSERT_NO_MSG(from_props);
 
-      if (old_item.t >= 1.0f) {
-        vec2 to_pos         = old_entity.pos + direction_to_vec2(old_conveyor->to);
-        auto* old_to_entity = get_entity_at_pos(store, old_entity.world, to_pos, {1, 1});
-        if (old_to_entity && !is<Player>(*old_to_entity)) {
-          bool success = false;
+        for (u32 from_cell_idx = 0; from_cell_idx < from_props.from.size(); ++from_cell_idx) {
+          const auto& from_item = from_props.items[from_cell_idx, 0];
 
-          if (const auto* old_to_conveyor = get_data<Conveyor>(*old_to_entity)) {
-            if (conveyor_points_from(*old_to_entity, old_entity.pos)) {
-              for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-                const auto& old_to_item = old_to_conveyor->items[i];
-                if (!old_to_item.slot) {
-                  assign_slot(item.slot, old_to_item.slot);
-                  item.t  = 0;
-                  success = true;
-                  break;
-                }
+          if (
+            mover_to_pos(*from_entity, from_cell_idx) == mover_cell_pos(entity, cell_idx) &&
+            from_item.t >= 1.0f
+          ) {
+            u32 lane_idx = mover_choose_lane_idx(entity, cell_idx);
+
+            for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+              auto& item = props.items[lane_idx, i];
+
+              if (!item.slot) {
+                assign_slot(item.slot, from_item.slot);
+                item.t = 0;
+                mover_update_lane_idx(entity, cell_idx);
+                consumed_slots.push_back({
+                  .entity_id = from_entity->id,
+                  .cell_idx  = from_cell_idx,
+                });
+                break;
               }
             }
-          } else if (auto* to_inv = get_inventory(*old_to_entity)) {
-            success = transfer_items(*to_inv, item.slot, ITEM_TRANSFER_MACHINE);
-          }
-
-          if (success) {
-            std::ranges::rotate(conveyor->items, conveyor->items.begin() + 1);
           }
         }
       }
     }
   }
 
-  for (auto& [entity, old_entity] : buffer) {
-    old_entity = entity;
+  // NOTE: push items off
+  for (auto& entity : store) {
+    auto props = get_moves_items_properties(entity);
+    if (!props) {
+      continue;
+    }
+
+    for (u32 cell_idx = 0; cell_idx < props.from.size(); ++cell_idx) {
+      auto& item = props.items[cell_idx, 0];
+      if (item.t < 1.0f) {
+        continue;
+      }
+
+      bool success = false;
+      if (std::ranges::contains(consumed_slots, ConsumedSlot{entity.id, cell_idx})) {
+        item.slot = {};
+        success   = true;
+      } else {
+        auto to_pos    = mover_to_pos(entity, cell_idx);
+        auto to_entity = get_entity_at_pos(store, entity.world, to_pos, {1, 1});
+        if (to_entity && !is<Player>(*to_entity) && !moves_items(*to_entity)) {
+          if (auto* inv = get_inventory(*to_entity)) {
+            success = transfer_items(*inv, item.slot, ITEM_TRANSFER_MACHINE);
+          }
+        }
+      }
+
+      if (success) {
+        auto row = std::span<ConveyorItem>(
+          props.items.data_handle() + (cell_idx * props.items.extent(1)),
+          props.items.extent(1)
+        );
+        std::ranges::rotate(row, row.begin() + 1);
+      }
+    }
   }
 }
 

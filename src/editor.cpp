@@ -225,7 +225,7 @@ static void inventory_data_edit_gui(
       ui_element_begin(layout, UI_AUTO_ID);
       {
         u32 decrement = value_button_gui(layout, input, "-");
-        if (i32(selected_slot.count) + decrement >= 0) {
+        if (i32(selected_slot.count) - i32(decrement) >= 0) {
           selected_slot.count -= decrement;
         }
 
@@ -242,34 +242,16 @@ static void inventory_data_edit_gui(
         ui_text(layout, "damage:", 15, WHITE);
         ui_element_begin(layout, UI_AUTO_ID);
         {
-          bool dec_clicked{};
-          bool inc_clicked{};
-
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &dec_clicked});
-          ui_text(layout, "-", 10, BLACK);
-          ui_element_end(
-            layout,
-            {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-             .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-             .bg_color        = LIGHTGRAY}
-          );
+          u32 decrement = value_button_gui(layout, input, "-");
+          if (i32(selected_slot.damage) - i32(decrement) >= 0) {
+            selected_slot.damage -= decrement;
+          }
 
           ui_text(layout, std::format("{}", selected_slot.damage), 15, WHITE);
 
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &inc_clicked});
-          ui_text(layout, "+", 10, BLACK);
-          ui_element_end(
-            layout,
-            {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-             .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-             .bg_color        = LIGHTGRAY}
-          );
-
-          if (dec_clicked && selected_slot.damage > 0) {
-            --selected_slot.damage;
-          }
-          if (inc_clicked && selected_slot.damage < item_info(selected_slot.type).max_damage) {
-            ++selected_slot.damage;
+          u32 increment = value_button_gui(layout, input, "+");
+          if (selected_slot.damage + increment <= item_info(selected_slot.type).max_damage) {
+            selected_slot.damage += increment;
           }
         }
         ui_element_end(layout, {.child_gap = 4});

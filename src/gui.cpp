@@ -43,7 +43,7 @@ static bool item_slot_icon_ui(
             auto usage_percent =
               (f32(item_slot_info.max_damage - item_slot.damage) / f32(item_slot_info.max_damage)) *
               100.0f;
-            ui_text(layout, std::format("{:2}", usage_percent), 15);
+            ui_text(layout, std::format("{:2.0f}", usage_percent), 15);
           } else {
             ui_text(layout, std::format("{}", item_slot.count), 15);
           }

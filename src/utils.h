@@ -69,3 +69,5 @@ inline T random_get(T min, T max) {
 }
 
 vec2 grid_pos(const vec2& pos);
+
+std::string get_time_string(u64 time);

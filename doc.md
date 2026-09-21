@@ -30,7 +30,7 @@
 - [ ] destroying system
 - [ ] crafting system
   - [x] basic functionality
-  - [ ] take items in any order in recipes or slot locking
+  - [ ] slot locking
 - [ ] map editor
   - [x] placing
   - [x] destroying
@@ -40,7 +40,7 @@
     - [x] maintenance
     - [x] inventories
     - [ ] conveyor items
-    - [ ] time
+    - [x] time
   - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
   - [x] switch between worlds

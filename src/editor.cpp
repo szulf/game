@@ -124,6 +124,27 @@ static void maintenance_data_edit_gui(UI_Layout& layout, Entity& entity) {
   }
 }
 
+static u32 value_button_gui(UI_Layout& layout, const Input& input, std::string_view text) {
+  bool clicked{};
+
+  ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+  ui_text(layout, text, 10, BLACK);
+  ui_element_end(
+    layout,
+    {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+     .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+     .bg_color        = LIGHTGRAY}
+  );
+
+  if (clicked) {
+    if (input.keys[GKEY_LSHIFT].down) {
+      return 10;
+    }
+    return 1;
+  }
+  return 0;
+}
+
 static void inventory_data_edit_gui(
   Editor& editor,
   UI_Layout& layout,
@@ -203,42 +224,16 @@ static void inventory_data_edit_gui(
       ui_text(layout, "count:", 15, WHITE);
       ui_element_begin(layout, UI_AUTO_ID);
       {
-        bool dec_clicked{};
-        bool inc_clicked{};
-
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &dec_clicked});
-        ui_text(layout, "-", 10, BLACK);
-        ui_element_end(
-          layout,
-          {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-           .bg_color        = LIGHTGRAY}
-        );
+        u32 decrement = value_button_gui(layout, input, "-");
+        if (i32(selected_slot.count) + decrement >= 0) {
+          selected_slot.count -= decrement;
+        }
 
         ui_text(layout, std::format("{}", selected_slot.count), 15, WHITE);
 
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &inc_clicked});
-        ui_text(layout, "+", 10, BLACK);
-        ui_element_end(
-          layout,
-          {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-           .bg_color        = LIGHTGRAY}
-        );
-
-        if (dec_clicked && selected_slot.count > 0) {
-          if (input.keys[GKEY_LSHIFT].down) {
-            selected_slot.count -= 10;
-          } else {
-            --selected_slot.count;
-          }
-        }
-        if (inc_clicked && selected_slot.count < item_info(selected_slot.type).max_count) {
-          if (input.keys[GKEY_LSHIFT].down) {
-            selected_slot.count += 10;
-          } else {
-            ++selected_slot.count;
-          }
+        u32 increment = value_button_gui(layout, input, "+");
+        if (selected_slot.count + increment <= item_info(selected_slot.type).max_count) {
+          selected_slot.count += increment;
         }
       }
       ui_element_end(layout, {.child_gap = 4});
@@ -364,7 +359,8 @@ EditorGUIResult editor_gui(
   UI_Layout& layout,
   const Input& input,
   EntityStore& store,
-  const AssetManager& assets
+  const AssetManager& assets,
+  u64& time
 ) {
   EditorGUIResult result{};
   bool save_clicked{};
@@ -372,6 +368,29 @@ EditorGUIResult editor_gui(
   ui_element_begin(layout, UI_AUTO_ID);
   ui_element_begin(layout, UI_AUTO_ID);
   {
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      ui_text(layout, "time: ", 25, WHITE);
+
+      u32 decrement = value_button_gui(layout, input, "-");
+      if (i32(time) - i32(decrement) >= 0) {
+        time -= decrement;
+      }
+
+      ui_text(layout, get_time_string(time), 15, WHITE);
+
+      u32 increment = value_button_gui(layout, input, "+");
+      time += increment;
+    }
+    ui_element_end(
+      layout,
+      {
+        .padding         = ui_padding_all(2),
+        .child_gap       = 2,
+        .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
+      }
+    );
+
     ui_text(layout, "placeables:", 25, WHITE);
     ui_element_begin(layout, UI_AUTO_ID);
     {

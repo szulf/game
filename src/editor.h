@@ -31,6 +31,7 @@ EditorGUIResult editor_gui(
   UI_Layout& layout,
   const Input& input,
   EntityStore& store,
-  const AssetManager& assets
+  const AssetManager& assets,
+  u64& time
 );
 void editor_render(Editor& editor, EntityStore& store, const AssetManager& assets);

@@ -203,8 +203,14 @@ void update_frame(State& state) {
       }
     } break;
     case MODE_EDITOR: {
-      auto result =
-        editor_gui(state.editor, root_layout, state.frame_input, state.store, state.assets);
+      auto result = editor_gui(
+        state.editor,
+        root_layout,
+        state.frame_input,
+        state.store,
+        state.assets,
+        state.minutes
+      );
       if (result.save_requested) {
         save_state_to_file(state, DEFAULT_MAP_FILEPATH);
         std::println("saved state to '{}'", DEFAULT_MAP_FILEPATH);
@@ -347,13 +353,8 @@ void render(State& state) {
 
   // NOTE: ui
   ui_render(state.ui_system);
-  auto time_str = std::format(
-    "{:02}:{:02} DAY: {}",
-    (state.minutes / 60) % 24,
-    state.minutes % 60,
-    (state.minutes / 60) / 24
-  );
-  DrawText(time_str.c_str(), 5, 25, 20, DARKGREEN);
+  // TODO: render time as a ui element
+  DrawText(get_time_string(state.minutes).c_str(), 5, 25, 20, DARKGREEN);
   DrawFPS(5, 5);
 
   EndDrawing();

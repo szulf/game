@@ -124,3 +124,7 @@ std::mt19937 g_random_mt = random_generate();
 vec2 grid_pos(const vec2& pos) {
   return {std::floor(pos.x / GRID_DIMS.x), std::floor(pos.y / GRID_DIMS.y)};
 }
+
+std::string get_time_string(u64 time) {
+  return std::format("{:02}:{:02} DAY: {}", (time / 60) % 24, time % 60, (time / 60) / 24);
+}

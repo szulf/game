@@ -122,14 +122,12 @@ KeyState get_key_state(GKey key) {
   if (IsKeyPressed(raylib_key)) {
     state.transition_count += 1;
   }
-  // if (IsKeyReleased(raylib_key)) {
-  //   state.transition_count += 1;
-  // }
+  if (IsKeyReleased(raylib_key)) {
+    state.transition_count += 1;
+  }
   return state;
 }
 
-// TODO: not accounting for key release in transition_count
-// TODO: not sure whether the tick_input is fully correct
 void gather_input(Input& input) {
   clear(input);
 

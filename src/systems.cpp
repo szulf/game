@@ -194,54 +194,68 @@ void system_drop_items(
 enum ItemTransferMode {
   ITEM_TRANSFER_HAND,
   ITEM_TRANSFER_MACHINE,
+
+  ITEM_TRANSFER_MODE_COUNT,
 };
+
+static constexpr std::array<std::pair<ItemSlotFlag, ItemSlotFlag>, ITEM_TRANSFER_MODE_COUNT>
+  TRANSFER_MODE_FLAGS = []() {
+    std::array<std::pair<ItemSlotFlag, ItemSlotFlag>, ITEM_TRANSFER_MODE_COUNT> out{};
+    out[ITEM_TRANSFER_HAND]    = {ITEM_SLOT_HAND_INPUT, ITEM_SLOT_HAND_OUTPUT};
+    out[ITEM_TRANSFER_MACHINE] = {ITEM_SLOT_MACHINE_INPUT, ITEM_SLOT_MACHINE_OUTPUT};
+    return out;
+  }();
+
+static bool transfer_items(
+  ItemSlot& to,
+  ItemSlot& from,
+  ItemTransferMode mode,
+  std::optional<u32> count = std::nullopt
+) {
+  auto [input_flag, output_flag] = TRANSFER_MODE_FLAGS[mode];
+  if (!count) {
+    count = from.count;
+  }
+
+  if (!(from.flags & output_flag)) {
+    return false;
+  }
+
+  if (!(to.flags & input_flag)) {
+    return false;
+  }
+
+  if (!to) {
+    swap_slots(to, from);
+    return true;
+  }
+
+  if (to && from && to.type == from.type) {
+    auto info = item_info(to.type);
+    if (to.count + from.count > info.max_count) {
+      from.count = (to.count + from.count) - info.max_count;
+      to.count   = info.max_count;
+      return false;
+    } else {
+      to.count += from.count;
+      from.count = 0;
+      return true;
+    }
+  }
+
+  return false;
+}
 
 // NOTE: returns whether it succeeded in transfering all items from the slot into the inventory
 // also modified the slot to contain the left amount of items after the transfer
 // so if it succeeded slot.count == 0
 static bool
-transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& slot, ItemTransferMode mode) {
-  ItemSlotFlag input_flag;
-  ItemSlotFlag output_flag;
-  switch (mode) {
-    case ITEM_TRANSFER_HAND:
-      input_flag  = ITEM_SLOT_HAND_INPUT;
-      output_flag = ITEM_SLOT_HAND_OUTPUT;
-      break;
-    case ITEM_TRANSFER_MACHINE:
-      input_flag  = ITEM_SLOT_MACHINE_INPUT;
-      output_flag = ITEM_SLOT_MACHINE_OUTPUT;
-      break;
-    default:
-      ASSERT_NO_MSG(false);
+transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& from, ItemTransferMode mode) {
+  for (auto& to : inventory) {
+    transfer_items(to, from, mode);
   }
 
-  if (!(slot.flags & output_flag)) {
-    return false;
-  }
-
-  for (u32 i = 0; i < inventory.size(); ++i) {
-    if (!(inventory[i].flags & input_flag)) {
-      continue;
-    }
-
-    // TODO: do i need to check (inventory[i] && slot) here?
-    if (inventory[i].type == slot.type) {
-      auto max_count = item_info(slot.type).max_count;
-      if (inventory[i].count + slot.count > max_count) {
-        slot.count         = (inventory[i].count + slot.count) - max_count;
-        inventory[i].count = max_count;
-      } else {
-        inventory[i].count += slot.count;
-        slot.count = 0;
-        return true;
-      }
-    } else if (!inventory[i]) {
-      swap_slots(inventory[i], slot);
-      return true;
-    }
-  }
-  return false;
+  return !from;
 }
 
 static bool
@@ -255,7 +269,7 @@ transfer_items(std::vector<ItemSlot>& to, std::span<ItemSlot> from, ItemTransfer
 }
 
 // NOTE: currently voiding items that cannot fit into the message receivers inventory
-// is that really the behaviour i want?
+// is that really the behaviour i want? (its not)
 void system_transfer_resource_messages(
   EntityStore& store,
   EntityId message_receiver_id,

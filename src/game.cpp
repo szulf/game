@@ -218,6 +218,12 @@ void update_frame(State& state) {
     } break;
   }
 
+  ui_element_begin(root_layout, UI_AUTO_ID);
+  {
+    ui_text(root_layout, get_time_string(state.minutes), 20, DARKGREEN);
+  }
+  ui_element_end(root_layout, {.padding = {.top = 25, .left = 5}});
+
   ui_element_end(
     root_layout,
     {
@@ -353,8 +359,6 @@ void render(State& state) {
 
   // NOTE: ui
   ui_render(state.ui_system);
-  // TODO: render time as a ui element
-  DrawText(get_time_string(state.minutes).c_str(), 5, 25, 20, DARKGREEN);
   DrawFPS(5, 5);
 
   EndDrawing();

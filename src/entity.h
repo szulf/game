@@ -457,14 +457,8 @@ struct ResourceMessageReceiver {
   static constexpr f32 OUTPUT_RATE = 5;
   f32 item_output_accumulator{};
 
-  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(REQUESTABLE_ITEMS.size());
-
-  // TODO: this is not really needed
-  constexpr ResourceMessageReceiver() {
-    for (auto& slot : inventory) {
-      slot.flags = ITEM_SLOT_FLAGS_OUTPUT;
-    }
-  }
+  std::vector<ItemSlot> inventory =
+    std::vector<ItemSlot>(REQUESTABLE_ITEMS.size(), {.flags = ITEM_SLOT_FLAGS_OUTPUT});
 };
 static_assert(HasMaintenance<ResourceMessageReceiver>);
 static_assert(OutputsItems<ResourceMessageReceiver>);
@@ -831,7 +825,6 @@ std::optional<ItemType> entity_to_item(const Entity& entity);
 std::optional<Entity> entity_from_item(ItemType item);
 TextureType get_texture_type(const Entity& entity);
 
-// TODO: better name?
 template <typename T>
 T* get_data(Entity& entity) {
   return std::get_if<T>(&entity.data);
@@ -915,8 +908,12 @@ void for_each_active_slot(Entity& entity, Func&& func) {
       [](Item&) {
         // TODO: should i put the item here?
       },
-      [](WorldTunnel&) {
-        // TODO: should i put the inventory here?
+      [&](WorldTunnel& tunnel) {
+        for (auto& slot : tunnel.inventory) {
+          if (slot) {
+            func(slot);
+          }
+        }
       },
       [](ResourceMessageSender&) {},
       [&](ResourceMessageReceiver& receiver) {
@@ -926,9 +923,12 @@ void for_each_active_slot(Entity& entity, Func&& func) {
           }
         }
       },
-      [](Assembler&) {
-        // TODO: put the thing here
-        ASSERT(false, "TODO");
+      [&](Assembler& assembler) {
+        for (auto& slot : assembler.inventory) {
+          if (slot) {
+            func(slot);
+          }
+        }
       },
       [&](Balancer& balancer) {
         for (auto& side : balancer.conveyor_items) {

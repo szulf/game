@@ -2,9 +2,6 @@
 #include "entity.h"
 #include "ui.h"
 
-// TODO: this is bad now, the text is rendered on top of the texture, starting at the textures top
-// left corner, it should start at the cells top left corner instead, idk if its a limitation of the
-// ui library, or i just dont know how to do it, but yeah
 // TODO: i dont really like the display_count argument
 static bool item_slot_icon_ui(
   const AssetManager& assets,
@@ -18,23 +15,55 @@ static bool item_slot_icon_ui(
 
     ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
     {
-      if (display_count) {
-        auto item_slot_info = item_info(item_slot.type);
-        if (item_slot_info.has_durability) {
-          ASSERT(item_slot_info.max_count == 1, "items with durability cannot stack");
-          auto usage_percent =
-            (f32(item_slot_info.max_damage - item_slot.damage) / f32(item_slot_info.max_damage)) *
-            100.0f;
-          ui_text(layout, std::format("{:2}", usage_percent), 15);
-        } else {
-          ui_text(layout, std::format("{}", item_slot.count), 15);
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_element_begin(layout, UI_AUTO_ID);
+        ui_element_end(
+          layout,
+          {
+            .sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+            .texture = &texture,
+          }
+        );
+      }
+      ui_element_end(
+        layout,
+        {
+          .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+          .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
         }
+      );
+
+      if (display_count) {
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          auto item_slot_info = item_info(item_slot.type);
+          if (item_slot_info.has_durability) {
+            ASSERT(item_slot_info.max_count == 1, "items with durability cannot stack");
+            auto usage_percent =
+              (f32(item_slot_info.max_damage - item_slot.damage) / f32(item_slot_info.max_damage)) *
+              100.0f;
+            ui_text(layout, std::format("{:2}", usage_percent), 15);
+          } else {
+            ui_text(layout, std::format("{}", item_slot.count), 15);
+          }
+        }
+        ui_element_end(
+          layout,
+          {
+            .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+            .padding         = {.right = 2},
+            .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_END},
+          }
+        );
       }
     }
     ui_element_end(
       layout,
-      {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
-       .texture = &texture}
+      {
+        .layout_direction = UI_LAYOUT_DIRECTION_STACK,
+        .sizing           = {ui_sizing_fill(), ui_sizing_fill()},
+      }
     );
   }
   return hovered;

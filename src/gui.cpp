@@ -70,11 +70,11 @@ static bool item_slot_icon_ui(
 }
 
 // TODO: render if the slot is input/output only
-static bool item_slot_ui(
+bool gui_item_slot(
   const AssetManager& assets,
   UI_Layout& layout,
   const ItemSlot& item_slot,
-  bool display_count = true
+  bool display_count
 ) {
   bool hovered = false;
 
@@ -110,7 +110,7 @@ ItemSlotIdx gui_inventory(
       if (slot_idx >= inv.size()) {
         break;
       }
-      bool hovered = item_slot_ui(assets, layout, inv[slot_idx]);
+      bool hovered = gui_item_slot(assets, layout, inv[slot_idx]);
       if (hovered) {
         hovered_slot.entity   = entity_id;
         hovered_slot.slot_idx = slot_idx;
@@ -236,7 +236,7 @@ static void maintenance_ui(
       ui_element_begin(layout, UI_AUTO_ID);
       {
         ui_text(layout, "Fix item: ", 15, WHITE);
-        item_slot_ui(assets, layout, {.type = fix_item, .count = 1}, false);
+        gui_item_slot(assets, layout, {.type = fix_item, .count = 1}, false);
       }
       ui_element_end(
         layout,
@@ -666,7 +666,7 @@ ItemSlotIdx gui_message_receiver(
       ui_element_begin(layout, UI_AUTO_ID);
       for (u32 i = 0; i < msg_receiver->inventory.size(); ++i) {
         auto& slot   = msg_receiver->inventory[i];
-        bool hovered = item_slot_ui(assets, layout, slot);
+        bool hovered = gui_item_slot(assets, layout, slot);
         if (hovered) {
           hovered_slot.entity   = player->open_gui;
           hovered_slot.slot_idx = i;
@@ -775,13 +775,13 @@ ItemSlotIdx gui_assembler(
     {
       for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
         if (selected_recipe.input_slots[i]) {
-          item_slot_ui(assets, layout, selected_recipe.input_slots[i]);
+          gui_item_slot(assets, layout, selected_recipe.input_slots[i]);
         }
       }
       ui_text(layout, "->", 20, WHITE);
       for (u32 i = 0; i < Recipe::MAX_OUTPUT_SLOTS; ++i) {
         if (selected_recipe.output_slots[i]) {
-          item_slot_ui(assets, layout, selected_recipe.output_slots[i]);
+          gui_item_slot(assets, layout, selected_recipe.output_slots[i]);
         }
       }
     }
@@ -797,7 +797,7 @@ ItemSlotIdx gui_assembler(
     {
       for (u32 i = 0; i < Recipe::MAX_INPUT_SLOTS; ++i) {
         if (selected_recipe.input_slots[i]) {
-          bool slot_hovered = item_slot_ui(assets, layout, assembler_input_slot(*assembler, i));
+          bool slot_hovered = gui_item_slot(assets, layout, assembler_input_slot(*assembler, i));
           if (slot_hovered) {
             hovered.entity   = player->open_gui;
             hovered.slot_idx = i;
@@ -807,7 +807,7 @@ ItemSlotIdx gui_assembler(
       ui_text(layout, "->", 20, WHITE);
       for (u32 i = 0; i < Recipe::MAX_OUTPUT_SLOTS; ++i) {
         if (selected_recipe.output_slots[i]) {
-          bool slot_hovered = item_slot_ui(assets, layout, assembler_output_slot(*assembler, i));
+          bool slot_hovered = gui_item_slot(assets, layout, assembler_output_slot(*assembler, i));
           if (slot_hovered) {
             hovered.entity = player->open_gui;
             // TODO: dont like this addition here (it was supposed to be an implementation detail)

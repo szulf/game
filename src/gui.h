@@ -7,6 +7,12 @@
 #include "assets.h"
 #include "entity.h"
 
+bool gui_item_slot(
+  const AssetManager& assets,
+  UI_Layout& layout,
+  const ItemSlot& item_slot,
+  bool display_count = true
+);
 ItemSlotIdx gui_inventory(
   UI_Layout& layout,
   const AssetManager& assets,

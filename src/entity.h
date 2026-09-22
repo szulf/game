@@ -62,7 +62,7 @@ using MoveItems =
   std::mdspan<ConveyorItem, std::extents<std::size_t, std::dynamic_extent, CONVEYOR_THROUGHPUT>>;
 struct MovesItemsProperties {
   MoveItems items{};
-  std::span<vec2> from{};
+  std::span<const vec2> from{};
 
   inline explicit operator bool() const {
     return !from.empty();
@@ -957,3 +957,8 @@ void mover_update_lane_idx(Entity& mover, u32 cell_idx);
 vec2 player_actual_pos(Entity& entity);
 void set_conveyor_from_direction(EntityStore& store, Entity& conveyor);
 void set_balancer_moves_from_position(Entity& entity);
+
+inline f32 conveyor_item_max_t(u32 idx) {
+  static constexpr f32 ITEM_GAP = 1.0f / CONVEYOR_THROUGHPUT;
+  return 1.0f - (idx * ITEM_GAP);
+}

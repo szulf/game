@@ -1,5 +1,6 @@
 #include "editor.h"
 
+#include "entity.h"
 #include "gui.h"
 #include "input.h"
 #include "items.h"
@@ -145,6 +146,195 @@ static u32 value_button_gui(UI_Layout& layout, const Input& input, std::string_v
   return 0;
 }
 
+static void
+item_edit_gui(UI_Layout& layout, const Input& input, const AssetManager& assets, ItemSlot& slot) {
+  ui_element_begin(layout, UI_AUTO_ID);
+  {
+    ui_text(layout, "selected inventory slot:", 20, WHITE);
+
+    ui_text(layout, "item type:", 15, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      static constexpr u32 ROW_SIZE = 8;
+      static constexpr u32 ROW_COUNT =
+        ITEM_COUNT % ROW_SIZE == 0 ? ITEM_COUNT / ROW_SIZE : (ITEM_COUNT / ROW_SIZE) + 1;
+
+      for (u32 i = 0; i < ROW_COUNT; ++i) {
+        ui_element_begin(layout, UI_AUTO_ID);
+        for (u32 j = 0; j < ROW_SIZE; ++j) {
+          auto idx = i * ROW_SIZE + j;
+          if (idx >= ITEM_COUNT) {
+            break;
+          }
+
+          auto item_type = ItemType(idx);
+          bool clicked{};
+          Color color = LIGHTGRAY;
+          if (slot.type == item_type) {
+            color = GRAY;
+          }
+
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+          {
+            const auto& texture = assets.textures[get_texture_type(item_type)];
+            ui_element_begin(layout, UI_AUTO_ID);
+            ui_element_end(
+              layout,
+              {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
+               .texture = &texture}
+            );
+          }
+          ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+
+          if (clicked) {
+            slot.type = item_type;
+            if (slot.count > item_info(slot.type).max_count) {
+              slot.count = item_info(slot.type).max_count;
+            }
+          }
+        }
+        ui_element_end(layout, {.child_gap = 2});
+      }
+    }
+    ui_element_end(
+      layout,
+      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+       .padding          = ui_padding_all(2),
+       .child_gap        = 2}
+    );
+
+    ui_text(layout, "count:", 15, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      u32 decrement = value_button_gui(layout, input, "-");
+      if (i32(slot.count) - i32(decrement) >= 0) {
+        slot.count -= decrement;
+      }
+
+      ui_text(layout, std::format("{}", slot.count), 15, WHITE);
+
+      u32 increment = value_button_gui(layout, input, "+");
+      if (slot.count + increment <= item_info(slot.type).max_count) {
+        slot.count += increment;
+      }
+    }
+    ui_element_end(layout, {.child_gap = 4});
+
+    if (item_info(slot.type).has_durability) {
+      ui_text(layout, "damage:", 15, WHITE);
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        u32 decrement = value_button_gui(layout, input, "-");
+        if (i32(slot.damage) - i32(decrement) >= 0) {
+          slot.damage -= decrement;
+        }
+
+        ui_text(layout, std::format("{}", slot.damage), 15, WHITE);
+
+        u32 increment = value_button_gui(layout, input, "+");
+        if (slot.damage + increment <= item_info(slot.type).max_damage) {
+          slot.damage += increment;
+        }
+      }
+      ui_element_end(layout, {.child_gap = 4});
+    }
+
+    ui_text(layout, "flags:", 15, WHITE);
+    ui_element_begin(layout, UI_AUTO_ID);
+    {
+      struct FlagsUiData {
+        std::string_view text{};
+        ItemSlotFlag flag{};
+      };
+      static constexpr std::array FLAGS_UI_DATA = std::to_array<FlagsUiData>({
+        {.text = "hand in", .flag = ITEM_SLOT_HAND_INPUT},
+        {.text = "hand out", .flag = ITEM_SLOT_HAND_OUTPUT},
+        {.text = "mach in", .flag = ITEM_SLOT_MACHINE_INPUT},
+        {.text = "mach out", .flag = ITEM_SLOT_MACHINE_OUTPUT},
+      });
+
+      for (const auto& data : FLAGS_UI_DATA) {
+        bool clicked{};
+        Color color = slot.flags & data.flag ? GRAY : LIGHTGRAY;
+
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
+        ui_text(layout, data.text, 15, BLACK);
+        ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+
+        if (clicked) {
+          slot.flags ^= data.flag;
+        }
+      }
+    }
+    ui_element_end(layout, {.child_gap = 4});
+  }
+  ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
+}
+
+static void mover_data_edit_gui(
+  Editor& editor,
+  UI_Layout& layout,
+  const Input& input,
+  const AssetManager& assets,
+  Entity& entity
+) {
+  auto props = get_moves_items_properties(entity);
+  ASSERT(props, "entity is not a mover");
+
+  ui_element_begin(layout, UI_AUTO_ID);
+  for (u32 lane_idx = 0; lane_idx < props.from.size(); ++lane_idx) {
+    ui_element_begin(layout, UI_AUTO_ID);
+    for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+      auto& item = props.items[lane_idx, i];
+
+      ui_element_begin(layout, UI_AUTO_ID);
+      {
+        ui_text(layout, std::format("{}.", i), 15, WHITE);
+
+        ui_text(layout, "t: ", 10, WHITE);
+
+        f32 decrement = f32(value_button_gui(layout, input, "-")) * 0.01f;
+        if (item.t - decrement >= 0.0f) {
+          item.t -= decrement;
+        }
+
+        ui_text(layout, std::format("{:.2f}", item.t), 10, WHITE);
+
+        f32 increment = f32(value_button_gui(layout, input, "+")) * 0.01f;
+        if (item.t + increment <= conveyor_item_max_t(i)) {
+          item.t += increment;
+        }
+
+        // TODO: should get whether it was clicked or not from gui_item_slot
+        bool hovered = gui_item_slot(assets, layout, item.slot);
+        if (hovered && input.lmb.pressed()) {
+          // TODO: i dont really like how im encoding the lane_idx here, but ig it works for now
+          editor.selected_inventory_edit_slot = {
+            .entity   = entity.id,
+            .slot_idx = i + (lane_idx * 100),
+          };
+        }
+      }
+      ui_element_end(layout, {.child_gap = 4});
+    }
+    ui_element_end(
+      layout,
+      {
+        .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+        .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
+      }
+    );
+  }
+  ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_HORIZONTAL});
+
+  if (editor.selected_inventory_edit_slot.entity == entity.id) {
+    u32 lane_idx        = editor.selected_inventory_edit_slot.slot_idx / 100;
+    u32 slot_idx        = editor.selected_inventory_edit_slot.slot_idx % 100;
+    auto& selected_slot = props.items[lane_idx, slot_idx];
+    item_edit_gui(layout, input, assets, selected_slot.slot);
+  }
+}
+
 static void inventory_data_edit_gui(
   Editor& editor,
   UI_Layout& layout,
@@ -165,128 +355,7 @@ static void inventory_data_edit_gui(
 
   if (editor.selected_inventory_edit_slot.entity == entity.id) {
     auto& selected_slot = (*inventory)[editor.selected_inventory_edit_slot.slot_idx];
-
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
-      ui_text(layout, "selected inventory slot:", 20, WHITE);
-
-      ui_text(layout, "item type:", 15, WHITE);
-      ui_element_begin(layout, UI_AUTO_ID);
-      {
-        static constexpr u32 ROW_SIZE = 8;
-        static constexpr u32 ROW_COUNT =
-          ITEM_COUNT % ROW_SIZE == 0 ? ITEM_COUNT / ROW_SIZE : (ITEM_COUNT / ROW_SIZE) + 1;
-
-        for (u32 i = 0; i < ROW_COUNT; ++i) {
-          ui_element_begin(layout, UI_AUTO_ID);
-          for (u32 j = 0; j < ROW_SIZE; ++j) {
-            auto idx = i * ROW_SIZE + j;
-            if (idx >= ITEM_COUNT) {
-              break;
-            }
-
-            auto item_type = ItemType(idx);
-            bool clicked{};
-            Color color = LIGHTGRAY;
-            if (selected_slot.type == item_type) {
-              color = GRAY;
-            }
-
-            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-            {
-              const auto& texture = assets.textures[get_texture_type(item_type)];
-              ui_element_begin(layout, UI_AUTO_ID);
-              ui_element_end(
-                layout,
-                {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
-                 .texture = &texture}
-              );
-            }
-            ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
-
-            if (clicked) {
-              selected_slot.type = item_type;
-              if (selected_slot.count > item_info(selected_slot.type).max_count) {
-                selected_slot.count = item_info(selected_slot.type).max_count;
-              }
-            }
-          }
-          ui_element_end(layout, {.child_gap = 2});
-        }
-      }
-      ui_element_end(
-        layout,
-        {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-         .padding          = ui_padding_all(2),
-         .child_gap        = 2}
-      );
-
-      ui_text(layout, "count:", 15, WHITE);
-      ui_element_begin(layout, UI_AUTO_ID);
-      {
-        u32 decrement = value_button_gui(layout, input, "-");
-        if (i32(selected_slot.count) - i32(decrement) >= 0) {
-          selected_slot.count -= decrement;
-        }
-
-        ui_text(layout, std::format("{}", selected_slot.count), 15, WHITE);
-
-        u32 increment = value_button_gui(layout, input, "+");
-        if (selected_slot.count + increment <= item_info(selected_slot.type).max_count) {
-          selected_slot.count += increment;
-        }
-      }
-      ui_element_end(layout, {.child_gap = 4});
-
-      if (item_info(selected_slot.type).has_durability) {
-        ui_text(layout, "damage:", 15, WHITE);
-        ui_element_begin(layout, UI_AUTO_ID);
-        {
-          u32 decrement = value_button_gui(layout, input, "-");
-          if (i32(selected_slot.damage) - i32(decrement) >= 0) {
-            selected_slot.damage -= decrement;
-          }
-
-          ui_text(layout, std::format("{}", selected_slot.damage), 15, WHITE);
-
-          u32 increment = value_button_gui(layout, input, "+");
-          if (selected_slot.damage + increment <= item_info(selected_slot.type).max_damage) {
-            selected_slot.damage += increment;
-          }
-        }
-        ui_element_end(layout, {.child_gap = 4});
-      }
-
-      ui_text(layout, "flags:", 15, WHITE);
-      ui_element_begin(layout, UI_AUTO_ID);
-      {
-        struct FlagsUiData {
-          std::string_view text{};
-          ItemSlotFlag flag{};
-        };
-        static constexpr std::array FLAGS_UI_DATA = std::to_array<FlagsUiData>({
-          {.text = "hand in", .flag = ITEM_SLOT_HAND_INPUT},
-          {.text = "hand out", .flag = ITEM_SLOT_HAND_OUTPUT},
-          {.text = "mach in", .flag = ITEM_SLOT_MACHINE_INPUT},
-          {.text = "mach out", .flag = ITEM_SLOT_MACHINE_OUTPUT},
-        });
-
-        for (const auto& data : FLAGS_UI_DATA) {
-          bool clicked{};
-          Color color = selected_slot.flags & data.flag ? GRAY : LIGHTGRAY;
-
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-          ui_text(layout, data.text, 15, BLACK);
-          ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
-
-          if (clicked) {
-            selected_slot.flags ^= data.flag;
-          }
-        }
-      }
-      ui_element_end(layout, {.child_gap = 4});
-    }
-    ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
+    item_edit_gui(layout, input, assets, selected_slot);
   }
 }
 
@@ -322,14 +391,17 @@ static void entity_data_edit_gui(
   if (rotatable(entity)) {
     rotation_data_edit_gui(layout, entity);
   }
+  if (is<Conveyor>(entity)) {
+    conveyor_data_edit_gui(layout, entity);
+  }
   if (has_inventory(entity)) {
     inventory_data_edit_gui(editor, layout, assets, input, entity);
   }
   if (has_maintenance(entity)) {
     maintenance_data_edit_gui(layout, entity);
   }
-  if (is<Conveyor>(entity)) {
-    conveyor_data_edit_gui(layout, entity);
+  if (moves_items(entity)) {
+    mover_data_edit_gui(editor, layout, input, assets, entity);
   }
   if (is<WorldTunnel>(entity)) {
     world_tunnel_destination_data_edit_gui(layout, entity);

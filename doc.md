@@ -39,7 +39,7 @@
     - [x] rotation
     - [x] maintenance
     - [x] inventories
-    - [ ] conveyor items
+    - [x] conveyor items
     - [x] time
   - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever

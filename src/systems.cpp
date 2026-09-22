@@ -567,11 +567,6 @@ void system_output_items(EntityStore& store, f32 dt) {
   }
 }
 
-static f32 conveyor_item_max_t(u32 idx) {
-  static constexpr f32 ITEM_GAP = 1.0f / CONVEYOR_THROUGHPUT;
-  return 1.0f - (idx * ITEM_GAP);
-}
-
 void system_move_items(EntityStore& store, f32 dt) {
   // NOTE: move items that are already on the conveyor
   for (auto& entity : store) {

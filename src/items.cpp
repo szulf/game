@@ -1,24 +1,6 @@
 #include "items.h"
 #include "assets.h"
 
-void assign_slot(ItemSlot& to, const ItemSlot& from) {
-  to.type   = from.type;
-  to.count  = from.count;
-  to.damage = from.damage;
-}
-
-void swap_slots(ItemSlot& a, ItemSlot& b) {
-  ItemSlot temp = a;
-  assign_slot(a, b);
-  assign_slot(b, temp);
-}
-
-void swap_slot_flags(std::span<ItemSlot> inventory) {
-  for (auto& slot : inventory) {
-    slot.flags ^= ITEM_SLOT_FLAGS_ALL;
-  }
-}
-
 TextureType get_texture_type(ItemType item) {
   switch (item) {
     case ITEM_BLOCK:
@@ -162,4 +144,117 @@ ItemInfo item_info(ItemType item) {
       break;
   }
   ASSERT_NO_MSG(false);
+}
+
+void assign_slot(ItemSlot& to, const ItemSlot& from) {
+  to.type   = from.type;
+  to.count  = from.count;
+  to.damage = from.damage;
+}
+
+void swap_slots(ItemSlot& a, ItemSlot& b) {
+  ItemSlot temp = a;
+  assign_slot(a, b);
+  assign_slot(b, temp);
+}
+
+void swap_slot_flags(std::span<ItemSlot> inventory) {
+  for (auto& slot : inventory) {
+    slot.flags ^= ITEM_SLOT_FLAGS_ALL;
+  }
+}
+
+static constexpr std::array<std::pair<ItemSlotFlag, ItemSlotFlag>, ITEM_TRANSFER_MODE_COUNT>
+  TRANSFER_MODE_FLAGS = []() {
+    std::array<std::pair<ItemSlotFlag, ItemSlotFlag>, ITEM_TRANSFER_MODE_COUNT> out{};
+    out[ITEM_TRANSFER_HAND]    = {ITEM_SLOT_HAND_INPUT, ITEM_SLOT_HAND_OUTPUT};
+    out[ITEM_TRANSFER_MACHINE] = {ITEM_SLOT_MACHINE_INPUT, ITEM_SLOT_MACHINE_OUTPUT};
+    return out;
+  }();
+
+bool transfer_items(ItemSlot& to, ItemSlot& from, ItemTransferMode mode, std::optional<u32> count) {
+  if (!count) {
+    count = from.count;
+  }
+
+  ASSERT(*count < item_info(from.type).max_count, "count bigger than max_count");
+  // TODO: should this really be an assert?
+  ASSERT(from.count >= *count, "count bigger than from.count");
+
+  if (!from) {
+    return true;
+  }
+
+  auto [input_flag, output_flag] = TRANSFER_MODE_FLAGS[mode];
+  if (!(from.flags & output_flag) || !(to.flags & input_flag)) {
+    return false;
+  }
+
+  if (!to) {
+    to.type   = from.type;
+    to.count  = *count;
+    to.damage = from.damage;
+    from.count -= *count;
+    if (from.count == 0) {
+      from.damage = 0;
+    }
+    return true;
+  }
+
+  if (to && from && to.type == from.type) {
+    auto info = item_info(to.type);
+    if (to.count + *count > info.max_count) {
+      to.count   = info.max_count;
+      from.count = (to.count + from.count) - info.max_count;
+      return false;
+    } else {
+      to.count += *count;
+      from.count -= *count;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool transfer_items(std::span<ItemSlot> inventory, ItemSlot& from, ItemTransferMode mode) {
+  for (auto& to : inventory) {
+    transfer_items(to, from, mode);
+  }
+
+  return !from;
+}
+
+bool transfer_items(std::span<ItemSlot> to, std::span<ItemSlot> from, ItemTransferMode mode) {
+  for (auto& slot : from) {
+    if (!transfer_items(to, slot, mode)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void swap_items(ItemSlot& a, ItemSlot& b, ItemTransferMode mode) {
+  auto [input_flag, output_flag] = TRANSFER_MODE_FLAGS[mode];
+
+  bool a_input  = a.flags & input_flag;
+  bool a_output = a.flags & output_flag;
+  bool b_input  = b.flags & input_flag;
+  bool b_output = b.flags & output_flag;
+
+  if (a && a_input && b && b_output && a.type == b.type) {
+    auto max_count = item_info(a.type).max_count;
+    if (a.count + b.count > max_count) {
+      b.count = (a.count + b.count) - max_count;
+      a.count = max_count;
+    } else {
+      a.count += b.count;
+      b = {};
+    }
+  } else if (
+    (a && a_input && a_output && b && b_input && b_output) || (a && a_output && !b && b_input) ||
+    (!a && a_input && b && b_output)
+  ) {
+    swap_slots(a, b);
+  }
 }

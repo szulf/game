@@ -12,7 +12,7 @@
    - [x] game camera
 - [x] containers that can output only from a single side
 - [x] bigger machines
-- [ ] conveyors
+- [x] conveyors
   - [x] basic item movement on conveyors
   - [x] proper from and to directions
   - [x] make extraction from inventories slower than full conveyor throughput

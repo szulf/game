@@ -85,9 +85,6 @@ struct ItemSlot {
   }
 };
 
-void assign_slot(ItemSlot& to, const ItemSlot& from);
-void swap_slots(ItemSlot& a, ItemSlot& b);
-void swap_slot_flags(std::span<ItemSlot> inventory);
 TextureType get_texture_type(ItemType item);
 std::string_view get_item_name(ItemType item);
 
@@ -99,3 +96,26 @@ struct ItemInfo {
 };
 
 ItemInfo item_info(ItemType item);
+
+void assign_slot(ItemSlot& to, const ItemSlot& from);
+void swap_slots(ItemSlot& a, ItemSlot& b);
+void swap_slot_flags(std::span<ItemSlot> inventory);
+
+enum ItemTransferMode {
+  ITEM_TRANSFER_HAND,
+  ITEM_TRANSFER_MACHINE,
+
+  ITEM_TRANSFER_MODE_COUNT,
+};
+
+// NOTE: return whether the item transfer was fully successful
+bool transfer_items(
+  ItemSlot& to,
+  ItemSlot& from,
+  ItemTransferMode mode,
+  std::optional<u32> count = std::nullopt
+);
+bool transfer_items(std::span<ItemSlot> to, ItemSlot& from, ItemTransferMode mode);
+bool transfer_items(std::span<ItemSlot> to, std::span<ItemSlot> from, ItemTransferMode mode);
+
+void swap_items(ItemSlot& a, ItemSlot& b, ItemTransferMode mode);

@@ -141,24 +141,7 @@ void system_hand_slot_interactions(
       auto& hand = player->hand;
       ASSERT(hand.flags == ITEM_SLOT_FLAGS_ALL, "player hand has to be input and output");
 
-      if (slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && hand && slot.type == hand.type) {
-        auto max_count = item_info(slot.type).max_count;
-        if (slot.count + hand.count > max_count) {
-          hand.count = (slot.count + hand.count) - max_count;
-          slot.count = max_count;
-        } else {
-          slot.count += hand.count;
-          hand = {};
-        }
-      } else if (
-        slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && (slot.flags & ITEM_SLOT_HAND_OUTPUT) && hand
-      ) {
-        swap_slots(slot, hand);
-      } else if (slot && (slot.flags & ITEM_SLOT_HAND_OUTPUT) && !hand) {
-        swap_slots(slot, hand);
-      } else if (!slot && (slot.flags & ITEM_SLOT_HAND_INPUT) && hand) {
-        swap_slots(slot, hand);
-      }
+      swap_items(slot, hand, ITEM_TRANSFER_HAND);
     }
   }
 }
@@ -189,83 +172,6 @@ void system_drop_items(
       player->hand = {};
     }
   }
-}
-
-enum ItemTransferMode {
-  ITEM_TRANSFER_HAND,
-  ITEM_TRANSFER_MACHINE,
-
-  ITEM_TRANSFER_MODE_COUNT,
-};
-
-static constexpr std::array<std::pair<ItemSlotFlag, ItemSlotFlag>, ITEM_TRANSFER_MODE_COUNT>
-  TRANSFER_MODE_FLAGS = []() {
-    std::array<std::pair<ItemSlotFlag, ItemSlotFlag>, ITEM_TRANSFER_MODE_COUNT> out{};
-    out[ITEM_TRANSFER_HAND]    = {ITEM_SLOT_HAND_INPUT, ITEM_SLOT_HAND_OUTPUT};
-    out[ITEM_TRANSFER_MACHINE] = {ITEM_SLOT_MACHINE_INPUT, ITEM_SLOT_MACHINE_OUTPUT};
-    return out;
-  }();
-
-static bool transfer_items(
-  ItemSlot& to,
-  ItemSlot& from,
-  ItemTransferMode mode,
-  std::optional<u32> count = std::nullopt
-) {
-  auto [input_flag, output_flag] = TRANSFER_MODE_FLAGS[mode];
-  if (!count) {
-    count = from.count;
-  }
-
-  if (!(from.flags & output_flag)) {
-    return false;
-  }
-
-  if (!(to.flags & input_flag)) {
-    return false;
-  }
-
-  if (!to) {
-    swap_slots(to, from);
-    return true;
-  }
-
-  if (to && from && to.type == from.type) {
-    auto info = item_info(to.type);
-    if (to.count + from.count > info.max_count) {
-      from.count = (to.count + from.count) - info.max_count;
-      to.count   = info.max_count;
-      return false;
-    } else {
-      to.count += from.count;
-      from.count = 0;
-      return true;
-    }
-  }
-
-  return false;
-}
-
-// NOTE: returns whether it succeeded in transfering all items from the slot into the inventory
-// also modified the slot to contain the left amount of items after the transfer
-// so if it succeeded slot.count == 0
-static bool
-transfer_items(std::vector<ItemSlot>& inventory, ItemSlot& from, ItemTransferMode mode) {
-  for (auto& to : inventory) {
-    transfer_items(to, from, mode);
-  }
-
-  return !from;
-}
-
-static bool
-transfer_items(std::vector<ItemSlot>& to, std::span<ItemSlot> from, ItemTransferMode mode) {
-  for (auto& slot : from) {
-    if (!transfer_items(to, slot, mode)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 // NOTE: currently voiding items that cannot fit into the message receivers inventory
@@ -543,16 +449,8 @@ void system_output_items(EntityStore& store, f32 dt) {
                 if (can_pull) {
                   auto* first_extractable = find_first_extractable_slot(*from_inv);
                   if (first_extractable) {
-                    // TODO: do i extract this into some function?
-                    // like somehow use transfer_items() here?
-                    item.slot.type  = first_extractable->type;
-                    item.slot.count = 1;
-                    if (item_info(first_extractable->type).has_durability) {
-                      item.slot.damage          = first_extractable->damage;
-                      first_extractable->damage = 0;
-                    }
+                    transfer_items(item.slot, *first_extractable, ITEM_TRANSFER_MACHINE, 1);
                     mover_update_lane_idx(*output_entity, cell_idx);
-                    --first_extractable->count;
                   }
                   break;
                 }
@@ -567,6 +465,9 @@ void system_output_items(EntityStore& store, f32 dt) {
   }
 }
 
+// NOTE: cannot use transfer_items() in this function,
+// because taking on an item and then clearing the from slot happen at two different points in time,
+// and transfer_items() does both at once
 void system_move_items(EntityStore& store, f32 dt) {
   // NOTE: move items that are already on the conveyor
   for (auto& entity : store) {

@@ -23,7 +23,7 @@ void from_json(const json& j, ItemType& t) {
   ASSERT(false, "invalid json item type");
 }
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ItemSlot, flags, type, count, damage);
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ItemSlot, flags, type, count, damage, locked);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EntityId, idx, gen);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ConveyorItem, slot, t);
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Cogwheel, pos, radius, color);

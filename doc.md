@@ -28,9 +28,9 @@
   - dont know if its perfect, might still want to try some other things
 - [ ] placing system
 - [ ] destroying system
-- [ ] crafting system
+- [x] crafting system
   - [x] basic functionality
-  - [ ] slot locking
+  - [x] slot locking
 - [ ] map editor
   - [x] placing
   - [x] destroying

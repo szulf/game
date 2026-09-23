@@ -138,10 +138,14 @@ void system_hand_slot_interactions(
     auto* hovered_inv = get_inventory(store, hovered_slot.entity);
     if (hovered_inv) {
       auto& slot = (*hovered_inv)[hovered_slot.slot_idx];
-      auto& hand = player->hand;
-      ASSERT(hand.flags == ITEM_SLOT_FLAGS_ALL, "player hand has to be input and output");
+      if (input.keys[GKEY_LCTRL].down) {
+        slot.locked = !slot.locked;
+      } else {
+        auto& hand = player->hand;
+        ASSERT(hand.flags == ITEM_SLOT_FLAGS_ALL, "player hand has to be input and output");
 
-      swap_items(slot, hand, ITEM_TRANSFER_HAND);
+        swap_items(slot, hand, ITEM_TRANSFER_HAND);
+      }
     }
   }
 }
@@ -559,8 +563,8 @@ void system_move_items(EntityStore& store, f32 dt) {
 
       bool success = false;
       if (std::ranges::contains(consumed_slots, ConsumedSlot{entity.id, cell_idx})) {
-        item.slot = {};
-        success   = true;
+        clear_slot(item.slot);
+        success = true;
       } else {
         auto to_pos    = mover_to_pos(entity, cell_idx);
         auto to_entity = get_entity_at_pos(store, entity.world, to_pos, {1, 1});

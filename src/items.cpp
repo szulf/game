@@ -152,6 +152,11 @@ void assign_slot(ItemSlot& to, const ItemSlot& from) {
   to.damage = from.damage;
 }
 
+void clear_slot(ItemSlot& slot) {
+  slot.count  = 0;
+  slot.damage = 0;
+}
+
 void swap_slots(ItemSlot& a, ItemSlot& b) {
   ItemSlot temp = a;
   assign_slot(a, b);
@@ -186,7 +191,9 @@ bool transfer_items(ItemSlot& to, ItemSlot& from, ItemTransferMode mode, std::op
   }
 
   auto [input_flag, output_flag] = TRANSFER_MODE_FLAGS[mode];
-  if (!(from.flags & output_flag) || !(to.flags & input_flag)) {
+  if (
+    !(from.flags & output_flag) || !(to.flags & input_flag) || (to.locked && to.type != from.type)
+  ) {
     return false;
   }
 
@@ -242,6 +249,10 @@ void swap_items(ItemSlot& a, ItemSlot& b, ItemTransferMode mode) {
   bool b_input  = b.flags & input_flag;
   bool b_output = b.flags & output_flag;
 
+  if ((a.locked && b && a.type != b.type) || (b.locked && a && b.type != a.type)) {
+    return;
+  }
+
   if (a && a_input && b && b_output && a.type == b.type) {
     auto max_count = item_info(a.type).max_count;
     if (a.count + b.count > max_count) {
@@ -249,12 +260,15 @@ void swap_items(ItemSlot& a, ItemSlot& b, ItemTransferMode mode) {
       a.count = max_count;
     } else {
       a.count += b.count;
-      b = {};
+      clear_slot(b);
     }
-  } else if (
-    (a && a_input && a_output && b && b_input && b_output) || (a && a_output && !b && b_input) ||
-    (!a && a_input && b && b_output)
-  ) {
+  } else if (a && a_input && a_output && b && b_input && b_output) {
     swap_slots(a, b);
+  } else if (a && a_output && !b && b_input) {
+    assign_slot(b, a);
+    clear_slot(a);
+  } else if (!a && a_input && b && b_output) {
+    assign_slot(a, b);
+    clear_slot(b);
   }
 }

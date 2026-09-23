@@ -104,6 +104,8 @@ i32 gkey_to_raylib_key(GKey key) {
       return KEY_SPACE;
     case GKEY_LSHIFT:
       return KEY_LEFT_SHIFT;
+    case GKEY_LCTRL:
+      return KEY_LEFT_CONTROL;
     case GKEY_TAB:
       return KEY_TAB;
     case GKEY_ESCAPE:

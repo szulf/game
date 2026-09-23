@@ -478,6 +478,8 @@ struct Recipe {
   std::array<ItemSlot, MAX_OUTPUT_SLOTS> output_slots{};
 };
 
+// TODO: items should not go into inactive inventory slots
+// an inactive inventory slot is a slot that is not used for the currently selected recipe
 struct Assembler {
   static constexpr vec2 DIMS = {1, 1};
 

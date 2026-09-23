@@ -1,5 +1,4 @@
 #pragma once
-
 #include "core.h"
 #include "math.h"
 
@@ -54,6 +53,7 @@ enum GKey {
   GKEY_F12,
   GKEY_SPACE,
   GKEY_LSHIFT,
+  GKEY_LCTRL,
   GKEY_TAB,
   GKEY_ESCAPE,
   GKEY_COUNT,

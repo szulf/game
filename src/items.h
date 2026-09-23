@@ -79,6 +79,7 @@ struct ItemSlot {
   u32 count{};
   // NOTE: ignored for items with item_data(type).has_durability == false
   u32 damage{};
+  bool locked{};
 
   explicit inline operator bool() const {
     return count > 0;
@@ -97,7 +98,10 @@ struct ItemInfo {
 
 ItemInfo item_info(ItemType item);
 
+// NOTE: 'low level' item slot handling, use *_items functions when possible
+// these do not account for flags and slot locking and flags
 void assign_slot(ItemSlot& to, const ItemSlot& from);
+void clear_slot(ItemSlot& slot);
 void swap_slots(ItemSlot& a, ItemSlot& b);
 void swap_slot_flags(std::span<ItemSlot> inventory);
 

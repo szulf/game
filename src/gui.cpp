@@ -10,7 +10,7 @@ static bool item_slot_icon_ui(
   bool display_count = true
 ) {
   bool hovered = false;
-  if (item_slot) {
+  if (item_slot || item_slot.locked) {
     auto& texture = assets.textures[get_texture_type(item_slot.type)];
 
     ui_element_begin(layout, UI_AUTO_ID, {.hovered = &hovered});
@@ -54,6 +54,21 @@ static bool item_slot_icon_ui(
             .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
             .padding         = {.right = 2},
             .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_END},
+          }
+        );
+      }
+
+      if (item_slot.locked) {
+        ui_element_begin(layout, UI_AUTO_ID);
+        {
+          ui_text(layout, "L", 15);
+        }
+        ui_element_end(
+          layout,
+          {
+            .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+            .padding         = {.left = 2},
+            .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_END},
           }
         );
       }

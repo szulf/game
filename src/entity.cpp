@@ -818,22 +818,7 @@ bool breakable(const Entity& entity) {
   return std::visit(
     [](const auto& value) {
       using T = std::decay_t<decltype(value)>;
-      if constexpr (is_any_of<T, Storage, Conveyor, Assembler, Balancer>) {
-        return true;
-      } else if constexpr (
-        is_any_of<
-          T,
-          Block,
-          Player,
-          Item,
-          WorldTunnel,
-          ResourceMessageSender,
-          ResourceMessageReceiver>
-      ) {
-        return false;
-      } else {
-        static_assert(false);
-      }
+      return Breakable<T>;
     },
     entity.data
   );
@@ -1029,6 +1014,27 @@ Direction* get_rotation(EntityStore& store, EntityId id) {
     return get_rotation(*entity);
   }
   return nullptr;
+}
+
+std::optional<f32> get_break_time(Entity& entity) {
+  return std::visit(
+    [](auto& value) -> std::optional<f32> {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (Breakable<T>) {
+        return {value.BREAK_TIME};
+      }
+      return std::nullopt;
+    },
+    entity.data
+  );
+}
+
+std::optional<f32> get_break_time(EntityStore& store, EntityId id) {
+  auto* entity = get_entity(store, id);
+  if (entity) {
+    return get_break_time(*entity);
+  }
+  return std::nullopt;
 }
 
 std::vector<ItemSlot>* get_inventory(Entity& entity) {

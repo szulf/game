@@ -83,11 +83,12 @@ void update_tick(State& state, f32 dt) {
         state.frame.mouse_world_pos,
         state.current_place_rotation
       );
-      system_remove_entity(
+      system_destroy_entity(
         state.store,
         state.player_id,
         state.tick_input,
-        state.frame.mouse_world_pos
+        state.frame.mouse_world_pos,
+        dt
       );
       system_pickup_item(state.store, state.player_id);
       system_output_items(state.store, dt);

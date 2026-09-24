@@ -40,11 +40,12 @@ void system_place_entity(
   const vec2& mouse_world_pos,
   Direction place_rotation
 );
-void system_remove_entity(
+void system_destroy_entity(
   EntityStore& store,
   EntityId player_id,
   const Input& input,
-  const vec2& mouse_world_pos
+  const vec2& mouse_world_pos,
+  f32 dt
 );
 void system_pickup_item(EntityStore& store, EntityId player_id);
 void system_output_items(EntityStore& store, f32 dt);

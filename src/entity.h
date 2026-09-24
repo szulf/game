@@ -18,6 +18,9 @@ template <typename T>
 concept Rotatable = requires(T t) { t.rotation; };
 
 template <typename T>
+concept Breakable = requires(T t) { t.BREAK_TIME; };
+
+template <typename T>
 concept HasMaintenance = requires(T t) {
   t.maintenance;
   T::POSSIBLE_MAINTENANCE;
@@ -121,18 +124,18 @@ struct MovementAction {
 struct Player {
   static constexpr vec2 DIMS = {1, 1};
 
-  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(PLAYER_INVENTORY_SIZE);
+  std::vector<ItemSlot> inventory = std::vector<ItemSlot>(
+    PLAYER_INVENTORY_SIZE,
+    {.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT}
+  );
 
   i32 interaction_radius = 4;
   EntityId open_gui{};
   ItemSlot hand = {.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT};
   std::optional<MovementAction> current_movement{};
 
-  constexpr Player() {
-    for (auto& slot : inventory) {
-      slot.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT;
-    }
-  }
+  EntityId current_break_entity{};
+  f32 break_time_accumulator{};
 };
 static_assert(HasInventory<Player>);
 
@@ -145,6 +148,8 @@ static constexpr u32 STORAGE_INVENTORY_SIZE = 32;
 struct Storage {
   static constexpr vec2 DIMS = {1, 1};
 
+  static constexpr f32 BREAK_TIME = 0.5f;
+
   static constexpr std::array<Directions, 1> OUTPUT_SIDES = {
     DIR_UP | DIR_RIGHT | DIR_DOWN | DIR_LEFT,
   };
@@ -153,11 +158,14 @@ struct Storage {
 
   std::vector<ItemSlot> inventory = std::vector<ItemSlot>(STORAGE_INVENTORY_SIZE);
 };
+static_assert(Breakable<Storage>);
 static_assert(OutputsItems<Storage>);
 static_assert(HasInventory<Storage>);
 
 struct Conveyor {
   static constexpr vec2 DIMS = {1, 1};
+
+  static constexpr f32 BREAK_TIME = 0.2f;
 
   // NOTE: acts as the from direction
   Direction rotation = DIR_DOWN;
@@ -167,6 +175,7 @@ struct Conveyor {
   std::array<std::array<ConveyorItem, CONVEYOR_THROUGHPUT>, 1> conveyor_items{};
   std::array<vec2, 1> moves_from{};
 };
+static_assert(Breakable<Conveyor>);
 static_assert(Rotatable<Conveyor>);
 static_assert(MovesItems<Conveyor>);
 
@@ -483,6 +492,8 @@ struct Recipe {
 struct Assembler {
   static constexpr vec2 DIMS = {1, 1};
 
+  static constexpr f32 BREAK_TIME = 0.5f;
+
   static constexpr std::array POSSIBLE_MAINTENANCE = std::to_array<Maintenance>({
     MaintenanceLubrication{},
     MaintenanceCleaning{},
@@ -644,6 +655,7 @@ struct Assembler {
     },
   });
 };
+static_assert(Breakable<Assembler>);
 static_assert(HasMaintenance<Assembler>);
 static_assert(OutputsItems<Assembler>);
 static_assert(HasInventory<Assembler>);
@@ -654,6 +666,8 @@ ItemSlot& assembler_output_slot(Assembler& assembler, u32 idx);
 struct Balancer {
   static constexpr vec2 DIMS = {2, 1};
 
+  static constexpr f32 BREAK_TIME = 0.3f;
+
   Direction rotation = DIR_UP;
 
   std::array<std::array<ConveyorItem, CONVEYOR_THROUGHPUT>, 2> conveyor_items{};
@@ -661,6 +675,7 @@ struct Balancer {
 
   std::array<u32, 2> last_lane = {0, 1};
 };
+static_assert(Breakable<Balancer>);
 static_assert(Rotatable<Balancer>);
 static_assert(MovesItems<Balancer>);
 
@@ -866,6 +881,8 @@ bool is(EntityStore& store, EntityId id) {
 
 Direction* get_rotation(Entity& entity);
 Direction* get_rotation(EntityStore& store, EntityId id);
+std::optional<f32> get_break_time(Entity& entity);
+std::optional<f32> get_break_time(EntityStore& store, EntityId id);
 std::vector<ItemSlot>* get_inventory(Entity& entity);
 std::vector<ItemSlot>* get_inventory(EntityStore& store, EntityId id);
 // NOTE: both return a (maintenance, possible_maintenances) tuple

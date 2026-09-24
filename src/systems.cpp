@@ -160,9 +160,8 @@ void system_drop_items(
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
-  // TODO: not sure if lmb_pressed is the right keybind
   if (
-    input.lmb.pressed() && player->hand &&
+    input.rmb.pressed() && player->hand &&
     pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
     auto hovered = get_entity_at_pos(store, player_entity->world, mouse_grid_pos, CURSOR_DIMS);
@@ -301,7 +300,7 @@ void system_place_entity(
 
   // TODO: should check if im not hovering over an item slot
   if (
-    !input.rmb.pressed() || !player->hand ||
+    !input.lmb.pressed() || !player->hand ||
     !pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
     return;
@@ -335,44 +334,66 @@ void system_place_entity(
   --player->hand.count;
 }
 
-void system_remove_entity(
+void system_destroy_entity(
   EntityStore& store,
   EntityId player_id,
   const Input& input,
-  const vec2& mouse_world_pos
+  const vec2& mouse_world_pos,
+  f32 dt
 ) {
   auto [player_entity, player] = get_entity_and_data<Player>(store, player_id);
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
   if (
-    input.lmb.pressed() &&
-    pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
+    !input.rmb.down ||
+    !pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
-    auto hovered = get_entity_at_pos(store, player_entity->world, mouse_grid_pos, CURSOR_DIMS);
-    if (hovered && breakable(*hovered)) {
-      auto item_type = entity_to_item(*hovered);
-      ASSERT(item_type, "broken breakable item doesnt have an item_type");
-
-      Entity entity = {
-        .pos   = hovered->pos,
-        .world = player_entity->world,
-        .data  = Item{.slot = {.type = *item_type, .count = 1}},
-      };
-      add_entity(store, entity);
-
-      for_each_active_slot(*hovered, [&](const ItemSlot& slot) {
-        Entity item_entity = {
-          .pos   = hovered->pos,
-          .world = player_entity->world,
-          .data  = Item{.slot = slot},
-        };
-        add_entity(store, item_entity);
-      });
-
-      remove_entity(store, hovered->id);
-    }
+    player->break_time_accumulator = 0.0f;
+    return;
   }
+
+  auto hovered = get_entity_at_pos(store, player_entity->world, mouse_grid_pos, CURSOR_DIMS);
+  if (!hovered) {
+    return;
+  }
+
+  auto break_time = get_break_time(*hovered);
+  if (!break_time) {
+    return;
+  }
+
+  if (hovered->id != player->current_break_entity) {
+    player->break_time_accumulator = 0.0f;
+    player->current_break_entity   = hovered->id;
+  }
+
+  player->break_time_accumulator += dt;
+  if (player->break_time_accumulator < break_time) {
+    return;
+  }
+
+  auto item_type = entity_to_item(*hovered);
+  ASSERT(item_type, "broken breakable item doesnt have an item_type");
+
+  Entity entity = {
+    .pos   = hovered->pos,
+    .world = player_entity->world,
+    .data  = Item{.slot = {.type = *item_type, .count = 1}},
+  };
+  add_entity(store, entity);
+
+  for_each_active_slot(*hovered, [&](const ItemSlot& slot) {
+    Entity item_entity = {
+      .pos   = hovered->pos,
+      .world = player_entity->world,
+      .data  = Item{.slot = slot},
+    };
+    add_entity(store, item_entity);
+  });
+
+  remove_entity(store, hovered->id);
+  player->break_time_accumulator = 0.0f;
 }
 
 void system_pickup_item(EntityStore& store, EntityId player_id) {
@@ -694,6 +715,7 @@ void system_update_camera(
   camera.zoom = std::clamp(camera.zoom, 0.3f, 8.0f);
 }
 
+// TODO: render destorying progress on entities
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);

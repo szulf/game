@@ -27,7 +27,7 @@
 - [x] movement system
   - dont know if its perfect, might still want to try some other things
 - [ ] placing system
-- [ ] destroying system
+- [x] destroying system
 - [x] crafting system
   - [x] basic functionality
   - [x] slot locking

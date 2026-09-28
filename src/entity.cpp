@@ -1336,15 +1336,15 @@ vec2 player_actual_pos(Entity& entity) {
   return pos;
 }
 
-void set_conveyor_from_direction(EntityStore& store, Entity& entity) {
-  auto* conveyor = get_data<Conveyor>(entity);
-  ASSERT_NO_MSG(conveyor);
-  conveyor->rotation = opposite_direction(conveyor->to);
+void pre_place_hook(EntityStore& store, Entity& entity, Conveyor& conveyor) {
+  // TODO: this is kind of weird, but i dont know what else to do
+  conveyor.to       = conveyor.rotation;
+  conveyor.rotation = opposite_direction(conveyor.to);
 
   std::array<Direction, 3> side_directions = {
-    next_direction(conveyor->to),
-    opposite_direction(next_direction(conveyor->to)),
-    opposite_direction(conveyor->to),
+    next_direction(conveyor.to),
+    opposite_direction(next_direction(conveyor.to)),
+    opposite_direction(conveyor.to),
   };
 
   for (auto dir : side_directions) {
@@ -1358,38 +1358,47 @@ void set_conveyor_from_direction(EntityStore& store, Entity& entity) {
       continue;
     }
     if (mover_points_to(*neighbour, 0, entity)) {
-      conveyor->rotation = opposite_direction(neighbour_conveyor->to);
+      conveyor.rotation = opposite_direction(neighbour_conveyor->to);
     }
   }
 
-  conveyor->moves_from[0] = entity.pos + direction_to_vec2(conveyor->rotation);
+  conveyor.moves_from[0] = entity.pos + direction_to_vec2(conveyor.rotation);
 }
 
-void set_balancer_moves_from_position(Entity& entity) {
-  auto* balancer = get_data<Balancer>(entity);
-  ASSERT_NO_MSG(balancer);
-
+void pre_place_hook(EntityStore&, Entity& entity, Balancer& balancer) {
   // TODO: i dont really like this
-  switch (balancer->rotation) {
+  switch (balancer.rotation) {
     case DIR_UP:
-      balancer->moves_from = {
+      balancer.moves_from = {
         {{entity.pos.x, entity.pos.y + 1}, {entity.pos.x + 1, entity.pos.y + 1}}
       };
       break;
     case DIR_RIGHT:
-      balancer->moves_from = {
+      balancer.moves_from = {
         {{entity.pos.x - 1, entity.pos.y}, {entity.pos.x - 1, entity.pos.y + 1}}
       };
       break;
     case DIR_DOWN:
-      balancer->moves_from = {
+      balancer.moves_from = {
         {{entity.pos.x - 1, entity.pos.y - 1}, {entity.pos.x, entity.pos.y - 1}}
       };
       break;
     case DIR_LEFT:
-      balancer->moves_from = {
+      balancer.moves_from = {
         {{entity.pos.x + 1, entity.pos.y - 1}, {entity.pos.x + 1, entity.pos.y}}
       };
       break;
   }
+}
+
+void pre_place_hook(EntityStore& store, Entity& entity) {
+  std::visit(
+    [&](auto& value) {
+      using T = std::decay_t<decltype(value)>;
+      if constexpr (HasPrePlaceHook<T>) {
+        pre_place_hook(store, entity, value);
+      }
+    },
+    entity.data
+  );
 }

@@ -72,6 +72,13 @@ struct MovesItemsProperties {
   }
 };
 
+struct EntityStore;
+struct Entity;
+
+template <typename T>
+concept HasPrePlaceHook =
+  requires(EntityStore& store, Entity& entity, T t) { pre_place_hook(store, entity, t); };
+
 // NOTE: i dont think i will have more than U16_MAX(65'536) entities
 struct EntityId {
   u16 idx{};
@@ -129,7 +136,7 @@ struct Player {
     {.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT}
   );
 
-  i32 interaction_radius = 4;
+  i32 interaction_radius = 8;
   EntityId open_gui{};
   ItemSlot hand = {.flags = ITEM_SLOT_HAND_INPUT | ITEM_SLOT_HAND_OUTPUT};
   std::optional<MovementAction> current_movement{};
@@ -981,3 +988,9 @@ inline f32 conveyor_item_max_t(u32 idx) {
   static constexpr f32 ITEM_GAP = 1.0f / CONVEYOR_THROUGHPUT;
   return 1.0f - (idx * ITEM_GAP);
 }
+
+void pre_place_hook(EntityStore& store, Entity& entity, Conveyor& conveyor);
+static_assert(HasPrePlaceHook<Conveyor>);
+void pre_place_hook(EntityStore& store, Entity& entity, Balancer& balancer);
+static_assert(HasPrePlaceHook<Balancer>);
+void pre_place_hook(EntityStore& store, Entity& entity);

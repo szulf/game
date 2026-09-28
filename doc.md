@@ -23,11 +23,12 @@
     - fixed with a double bufffering approach,
       update into a buffer based on the original,
       then copy everything back into the original
+      (not true anymore)
   - [x] balancer
 - [x] movement system
   - dont know if its perfect, might still want to try some other things
-- [ ] placing system
-- [x] destroying system
+- [x] placement system
+- [x] destruction system
 - [x] crafting system
   - [x] basic functionality
   - [x] slot locking

@@ -298,9 +298,9 @@ void system_place_entity(
   ASSERT_NO_MSG(player_entity && player);
   auto mouse_grid_pos = grid_pos(mouse_world_pos);
 
-  // TODO: should check if im not hovering over an item slot
+  // TODO: should check if im not hovering over a gui
   if (
-    !input.lmb.pressed() || !player->hand ||
+    !input.lmb.down || !player->hand ||
     !pos_in_radius(mouse_grid_pos, player_entity->pos, player->interaction_radius)
   ) {
     return;
@@ -320,16 +320,7 @@ void system_place_entity(
   if (auto* rotation = get_rotation(*entity)) {
     *rotation = place_rotation;
   }
-  // TODO: setup before/after place hooks, instead of this shit
-  // or maybe apply these through events?
-  if (auto* conveyor = get_data<Conveyor>(*entity)) {
-    // TODO: this is kind of weird, but i dont know what else to do
-    conveyor->to = conveyor->rotation;
-    set_conveyor_from_direction(store, *entity);
-  }
-  if (is<Balancer>(*entity)) {
-    set_balancer_moves_from_position(*entity);
-  }
+  pre_place_hook(store, *entity);
   add_entity(store, *entity);
   --player->hand.count;
 }
@@ -715,7 +706,7 @@ void system_update_camera(
   camera.zoom = std::clamp(camera.zoom, 0.3f, 8.0f);
 }
 
-// TODO: render destorying progress on entities
+// TODO: render destruction progress on entities
 void system_render(EntityStore& store, EntityId player_id, const AssetManager& assets) {
   auto* player_entity = get_entity(store, player_id);
   ASSERT_NO_MSG(player_entity);

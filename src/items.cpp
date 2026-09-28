@@ -182,7 +182,7 @@ bool transfer_items(ItemSlot& to, ItemSlot& from, ItemTransferMode mode, std::op
     count = from.count;
   }
 
-  ASSERT(*count < item_info(from.type).max_count, "count bigger than max_count");
+  ASSERT(*count <= item_info(from.type).max_count, "count bigger than max_count");
   // TODO: should this really be an assert?
   ASSERT(from.count >= *count, "count bigger than from.count");
 

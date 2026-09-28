@@ -1638,7 +1638,7 @@
                         "locked": false,
                         "type": "Copper"
                     },
-                    "interaction_radius": 4,
+                    "interaction_radius": 8,
                     "inventory": [
                         {
                             "count": 0,

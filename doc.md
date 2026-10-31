@@ -51,8 +51,6 @@
     - [ ] one player
     - [ ] one resource message receiver
     - [ ] 1-1 world tunnels ratio
-    - [ ] no more than one entity per tile
-      - exceptions: item entities, player in world tunnel
   - [ ] undo/redo (???)
 - [ ] UI library
   - [x] stack elements layout direction

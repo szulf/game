@@ -567,7 +567,11 @@ void message_sender(
                   .child_alignment = {ui::CHILD_ALIGNMENT_END, ui::CHILD_ALIGNMENT_CENTER},
                 }
               ) {
-                UI(layout, {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY}) {
+                UI(
+                  layout,
+                  {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY},
+                  {.clicked = &create_clicked}
+                ) {
                   ui::text(layout, "CREATE", 20, BLACK);
                 }
               }

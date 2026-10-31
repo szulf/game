@@ -1,6 +1,8 @@
 #include "ui.h"
 
+#include "core.h"
 #include "utils.h"
+#include <variant>
 
 namespace ui {
 
@@ -58,8 +60,9 @@ static f32 total_padding_from_axis(ElementConfigNormal& config, Axis axis) {
 
 static void calculate_fit_fixed_sizing_axis(Layout& layout, ElementIdx idx, Axis axis) {
   auto& elem   = layout.elements[idx];
-  auto& config = elem.config.normal;
-  auto& sizing = sizing_from_axis(config, axis);
+  auto* config = config_normal(elem.config);
+  ASSERT_NO_MSG(config);
+  auto& sizing = sizing_from_axis(*config, axis);
   switch (sizing.type) {
     case SIZING_FIXED:
       dimension_from_axis(elem, axis) = sizing.fixed_px;
@@ -69,8 +72,8 @@ static void calculate_fit_fixed_sizing_axis(Layout& layout, ElementIdx idx, Axis
       for (ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx            = layout.elements[child_idx].next_sibling) {
         auto& child = layout.elements[child_idx];
-        if (config.layout_direction == layout_direction_from_axis[axis]) {
-          dimension_from_axis(elem, axis) += dimension_from_axis(child, axis) + config.child_gap;
+        if (config->layout_direction == layout_direction_from_axis[axis]) {
+          dimension_from_axis(elem, axis) += dimension_from_axis(child, axis) + config->child_gap;
         } else {
           f32& dim = dimension_from_axis(elem, axis);
           dim      = std::max(dim, dimension_from_axis(child, axis));
@@ -78,7 +81,7 @@ static void calculate_fit_fixed_sizing_axis(Layout& layout, ElementIdx idx, Axis
       }
       break;
   }
-  dimension_from_axis(elem, axis) += total_padding_from_axis(config, axis);
+  dimension_from_axis(elem, axis) += total_padding_from_axis(*config, axis);
 }
 
 // NOTE: fill sizing elements are treated as fit sizing when
@@ -94,54 +97,56 @@ static void calculate_text_fit_fixed_sizing(Layout& layout, ElementIdx idx = 0) 
     calculate_text_fit_fixed_sizing(layout, child_idx);
   }
 
-  switch (elem.config.type) {
-    case ELEMENT_NORMAL: {
-      calculate_fit_fixed_sizing_axis(layout, idx, AXIS_X);
-      calculate_fit_fixed_sizing_axis(layout, idx, AXIS_Y);
-      auto& config = elem.config.normal;
-      if (has_children) {
-        dimension_from_axis(elem, axis_from_layout_direction[config.layout_direction]) -=
-          config.child_gap;
-      }
-    } break;
-
-    case ELEMENT_TEXT: {
-      auto& config    = elem.config.text;
-      auto& str       = layout.strings[config.string_idx];
-      elem.dimensions = vec2_from_raylib(
-        MeasureTextEx(GetFontDefault(), str.c_str(), f32(config.size), TEXT_SPACING)
-      );
-    } break;
-  }
+  std::visit(
+    overloaded{
+      [&](ElementConfigNormal& config) {
+        calculate_fit_fixed_sizing_axis(layout, idx, AXIS_X);
+        calculate_fit_fixed_sizing_axis(layout, idx, AXIS_Y);
+        if (has_children) {
+          dimension_from_axis(elem, axis_from_layout_direction[config.layout_direction]) -=
+            config.child_gap;
+        }
+      },
+      [&](ElementConfigText& config) {
+        elem.dimensions = vec2_from_raylib(
+          MeasureTextEx(GetFontDefault(), config.text.c_str(), f32(config.size), TEXT_SPACING)
+        );
+      },
+    },
+    elem.config
+  );
 }
 
 static void calculate_fill_sizing_axis(Layout& layout, ElementIdx idx, Axis axis) {
   auto& elem   = layout.elements[idx];
-  auto& config = elem.config.normal;
+  auto* config = config_normal(elem.config);
+  ASSERT_NO_MSG(config);
   u32 fill_child_count{};
-  f32 available_space = dimension_from_axis(elem, axis) - total_padding_from_axis(config, axis);
-  if (config.layout_direction == layout_direction_from_axis[axis]) {
+  f32 available_space = dimension_from_axis(elem, axis) - total_padding_from_axis(*config, axis);
+  if (config->layout_direction == layout_direction_from_axis[axis]) {
     for (ElementIdx child_idx = elem.first_child; child_idx != 0;
          child_idx            = layout.elements[child_idx].next_sibling) {
-      auto& child = layout.elements[child_idx];
-      if (sizing_from_axis(child.config.normal, axis).type == SIZING_FILL) {
+      auto& child        = layout.elements[child_idx];
+      auto* child_config = config_normal(child.config);
+      if (child_config && sizing_from_axis(*child_config, axis).type == SIZING_FILL) {
         ++fill_child_count;
       } else {
         available_space -= dimension_from_axis(child, axis);
       }
-      available_space -= config.child_gap;
+      available_space -= config->child_gap;
     }
-    available_space += config.child_gap;
+    available_space += config->child_gap;
   }
   for (ElementIdx child_idx = elem.first_child; child_idx != 0;
        child_idx            = layout.elements[child_idx].next_sibling) {
-    auto& child = layout.elements[child_idx];
-    if (child.config.type == ELEMENT_TEXT) {
+    auto& child        = layout.elements[child_idx];
+    auto* child_config = config_normal(child.config);
+    if (!child_config) {
       continue;
     }
-    if (sizing_from_axis(child.config.normal, axis).type == SIZING_FILL) {
-      if (config.layout_direction == layout_direction_from_axis[axis]) {
-        if (sizing_from_axis(config, axis).type != SIZING_FIT) {
+    if (sizing_from_axis(*child_config, axis).type == SIZING_FILL) {
+      if (config->layout_direction == layout_direction_from_axis[axis]) {
+        if (sizing_from_axis(*config, axis).type != SIZING_FIT) {
           dimension_from_axis(child, axis) = available_space / f32(fill_child_count);
         }
       } else {
@@ -153,7 +158,7 @@ static void calculate_fill_sizing_axis(Layout& layout, ElementIdx idx, Axis axis
 
 static void calculate_fill_sizing(Layout& layout, ElementIdx idx = 0) {
   auto& elem = layout.elements[idx];
-  if (elem.config.type == ELEMENT_TEXT) {
+  if (is<ElementConfigText>(elem.config)) {
     return;
   }
   calculate_fill_sizing_axis(layout, idx, AXIS_X);
@@ -209,42 +214,43 @@ static void calculate_position_axis(
   Axis axis
 ) {
   auto& elem   = layout.elements[idx];
-  auto& config = elem.config.normal;
-  auto& child  = layout.elements[child_idx];
-  if (config.layout_direction == layout_direction_from_axis[axis]) {
-    switch (child_alignment_from_axis(config, axis)) {
+  auto* config = config_normal(elem.config);
+  ASSERT_NO_MSG(config);
+  auto& child = layout.elements[child_idx];
+  if (config->layout_direction == layout_direction_from_axis[axis]) {
+    switch (child_alignment_from_axis(*config, axis)) {
       case CHILD_ALIGNMENT_START:
         pos_from_axis(child, axis) =
-          pos_from_axis(elem, axis) + start_padding_from_axis(config, axis) + used_space;
-        used_space += dimension_from_axis(child, axis) + config.child_gap;
+          pos_from_axis(elem, axis) + start_padding_from_axis(*config, axis) + used_space;
+        used_space += dimension_from_axis(child, axis) + config->child_gap;
         break;
       case CHILD_ALIGNMENT_CENTER:
         pos_from_axis(child, axis) =
-          pos_from_axis(elem, axis) + start_padding_from_axis(config, axis) + used_space;
-        used_space += dimension_from_axis(child, axis) + config.child_gap;
+          pos_from_axis(elem, axis) + start_padding_from_axis(*config, axis) + used_space;
+        used_space += dimension_from_axis(child, axis) + config->child_gap;
         break;
       case CHILD_ALIGNMENT_END:
         pos_from_axis(child, axis) = pos_from_axis(elem, axis) + dimension_from_axis(elem, axis) -
-                                     end_padding_from_axis(config, axis) -
+                                     end_padding_from_axis(*config, axis) -
                                      dimension_from_axis(child, axis) - used_space;
-        used_space += dimension_from_axis(child, axis) + config.child_gap;
+        used_space += dimension_from_axis(child, axis) + config->child_gap;
         break;
     }
   } else {
-    switch (child_alignment_from_axis(config, axis)) {
+    switch (child_alignment_from_axis(*config, axis)) {
       case CHILD_ALIGNMENT_START:
         pos_from_axis(child, axis) =
-          pos_from_axis(elem, axis) + start_padding_from_axis(config, axis);
+          pos_from_axis(elem, axis) + start_padding_from_axis(*config, axis);
         break;
       case CHILD_ALIGNMENT_CENTER:
         pos_from_axis(child, axis) =
-          (pos_from_axis(elem, axis) + start_padding_from_axis(config, axis)) +
-          ((dimension_from_axis(elem, axis) - total_padding_from_axis(config, axis)) * 0.5f) -
+          (pos_from_axis(elem, axis) + start_padding_from_axis(*config, axis)) +
+          ((dimension_from_axis(elem, axis) - total_padding_from_axis(*config, axis)) * 0.5f) -
           (dimension_from_axis(child, axis) * 0.5f);
         break;
       case CHILD_ALIGNMENT_END:
         pos_from_axis(child, axis) = pos_from_axis(elem, axis) + dimension_from_axis(elem, axis) -
-                                     end_padding_from_axis(config, axis) -
+                                     end_padding_from_axis(*config, axis) -
                                      dimension_from_axis(child, axis);
         break;
     }
@@ -253,13 +259,14 @@ static void calculate_position_axis(
 
 static void adjust_centered_position(Layout& layout, ElementIdx idx, f32 used_space, Axis axis) {
   auto& elem   = layout.elements[idx];
-  auto& config = elem.config.normal;
+  auto* config = config_normal(elem.config);
+  ASSERT_NO_MSG(config);
   if (
-    config.layout_direction == layout_direction_from_axis[axis] &&
-    child_alignment_from_axis(config, axis) == CHILD_ALIGNMENT_CENTER
+    config->layout_direction == layout_direction_from_axis[axis] &&
+    child_alignment_from_axis(*config, axis) == CHILD_ALIGNMENT_CENTER
   ) {
-    f32 adjust_value = (dimension_from_axis(elem, axis) - start_padding_from_axis(config, axis) -
-                        end_padding_from_axis(config, axis) - used_space) *
+    f32 adjust_value = (dimension_from_axis(elem, axis) - start_padding_from_axis(*config, axis) -
+                        end_padding_from_axis(*config, axis) - used_space) *
                        0.5f;
     for (ElementIdx child_idx = elem.first_child; child_idx != 0;
          child_idx            = layout.elements[child_idx].next_sibling) {
@@ -274,18 +281,18 @@ static void calculate_positions(Layout& layout, ElementIdx idx = 0) {
   if (idx == 0) {
     elem.pos = {layout.pos.x, layout.pos.y};
   }
-  if (elem.config.type == ELEMENT_TEXT) {
+  auto* config = config_normal(elem.config);
+  if (!config) {
     return;
   }
-  auto& config   = elem.config.normal;
   f32 used_space = 0;
   for (ElementIdx child_idx = elem.first_child; child_idx != 0;
        child_idx            = layout.elements[child_idx].next_sibling) {
     auto& child = layout.elements[child_idx];
     calculate_position_axis(layout, idx, child_idx, used_space, AXIS_X);
     calculate_position_axis(layout, idx, child_idx, used_space, AXIS_Y);
-    if (config.scroll_value) {
-      child.pos.y += (f32) *config.scroll_value * SCROLL_SENSITIVITY;
+    if (config->scroll_value) {
+      child.pos.y += (f32) *config->scroll_value * SCROLL_SENSITIVITY;
     }
   }
   adjust_centered_position(layout, idx, used_space, AXIS_X);
@@ -302,49 +309,52 @@ static bool intersects(const Rectangle& a, const Rectangle& b) {
 
 static void calculate_scroll_value(Layout& layout, ElementIdx idx) {
   auto& elem   = layout.elements[idx];
-  auto& config = elem.config.normal;
+  auto* config = config_normal(elem.config);
+  ASSERT_NO_MSG(config);
   f32 max_height{};
-  switch (config.layout_direction) {
+  switch (config->layout_direction) {
     case LAYOUT_DIRECTION_STACK:
     case LAYOUT_DIRECTION_HORIZONTAL: {
       for (ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx            = layout.elements[child_idx].next_sibling) {
         auto& child = layout.elements[child_idx];
         max_height =
-          std::max(max_height, child.dimensions.y + config.padding.top + config.padding.down);
+          std::max(max_height, child.dimensions.y + config->padding.top + config->padding.down);
       }
     } break;
     case LAYOUT_DIRECTION_VERTICAL: {
       for (ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx            = layout.elements[child_idx].next_sibling) {
         auto& child = layout.elements[child_idx];
-        max_height += child.dimensions.y + config.child_gap;
+        max_height += child.dimensions.y + config->child_gap;
       }
-      max_height -= config.child_gap;
-      max_height += config.padding.top + config.padding.down;
+      max_height -= config->child_gap;
+      max_height += config->padding.top + config->padding.down;
     } break;
   }
 
-  *config.scroll_value += layout.input->mouse_scroll;
-  *config.scroll_value =
-    std::clamp(*config.scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
+  *config->scroll_value += layout.input->mouse_scroll;
+  *config->scroll_value =
+    std::clamp(*config->scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
 }
 
 static void handle_scroll(Layout& layout) {
   for (i32 idx = i32(layout.elements.size()) - 1; idx >= 0; --idx) {
-    auto& elem = layout.elements[idx];
-    if (elem.config.type != ELEMENT_NORMAL) {
+    auto& elem   = layout.elements[idx];
+    auto* config = config_normal(elem.config);
+    if (!config) {
       continue;
     }
-    auto& config = elem.config.normal;
     if (intersects(layout.input->mouse_pos, elem.pos, elem.dimensions)) {
-      if (config.scroll_value) {
+      if (config->scroll_value) {
         calculate_scroll_value(layout, (ElementIdx) idx);
       } else {
         for (ElementIdx parent_idx = elem.parent; parent_idx != 0;
              parent_idx            = layout.elements[parent_idx].parent) {
-          auto& parent = layout.elements[parent_idx];
-          if (parent.config.normal.scroll_value) {
+          auto& parent        = layout.elements[parent_idx];
+          auto* parent_config = config_normal(parent.config);
+          ASSERT_NO_MSG(parent_config);
+          if (parent_config->scroll_value) {
             calculate_scroll_value(layout, parent_idx);
             break;
           }
@@ -388,52 +398,53 @@ static void generate_render_cmds(Layout& layout, ElementIdx idx = 0) {
     }
     child.clip_rectangle =
       intersection_rectangle(rect_from_vec2x2(elem.pos, elem.dimensions), elem.clip_rectangle);
-    switch (child.config.type) {
-      case ELEMENT_NORMAL: {
-        auto& config = child.config.normal;
-        // TODO: this is not really render cmd generation, not sure if it belongs here
-        layout.system->last_frame_data[layout.id].id_map.insert_or_assign(child.id, child_idx);
-        if (config.texture) {
-          // TODO: this is not really the ideal solution,
-          // what if someone really wants to render a fully transparent texture?
-          // (good enough for now tho)
-          auto bg = config.bg_color != Color{} ? config.bg_color : WHITE;
+    std::visit(
+      overloaded{
+        [&](ElementConfigNormal& config) {
+          // TODO: this is not really render cmd generation, not sure if it belongs here
+          layout.system->last_frame_data[layout.id].id_map.insert_or_assign(child.id, child_idx);
+          if (config.texture) {
+            // TODO: this is not really the ideal solution,
+            // what if someone really wants to render a fully transparent texture?
+            // (good enough for now tho)
+            auto bg = config.bg_color != Color{} ? config.bg_color : WHITE;
 
-          layout.system->cmds.push_back(
-            TextureCommand{
-              .pos             = child.pos,
-              .dims            = child.dimensions,
-              .texture         = config.texture,
-              .flip_vertically = config.flip_texture_vertically,
-              .tint            = bg,
-              .clip_rectangle  = {child.clip_rectangle},
-            }
-          );
-        } else {
-          layout.system->cmds.push_back(
-            QuadCommand{
-              .pos            = child.pos,
-              .dims           = child.dimensions,
-              .corner_radius  = config.corner_radius,
-              .tint           = config.bg_color,
-              .clip_rectangle = {child.clip_rectangle},
-            }
-          );
-        }
-      } break;
-      case ELEMENT_TEXT: {
-        auto& config = child.config.text;
-        auto& str    = layout.strings[config.string_idx];
-        layout.system->cmds.push_back(
-          TextCommand{
-            .pos    = child.pos,
-            .string = str,
-            .size   = config.size,
-            .tint   = config.color,
+            layout.system->cmds.push_back(
+              TextureCommand{
+                .pos             = child.pos,
+                .dims            = child.dimensions,
+                .texture         = config.texture,
+                .flip_vertically = config.flip_texture_vertically,
+                .tint            = bg,
+                .clip_rectangle  = {child.clip_rectangle},
+              }
+            );
+          } else {
+            layout.system->cmds.push_back(
+              QuadCommand{
+                .pos            = child.pos,
+                .dims           = child.dimensions,
+                .corner_radius  = config.corner_radius,
+                .tint           = config.bg_color,
+                .clip_rectangle = {child.clip_rectangle},
+              }
+            );
           }
-        );
-      } break;
-    }
+        },
+
+        [&](ElementConfigText& config) {
+          layout.system->cmds.push_back(
+            TextCommand{
+              .pos    = child.pos,
+              .string = config.text,
+              .size   = config.size,
+              .tint   = config.color,
+            }
+          );
+        },
+      },
+      child.config
+    );
     generate_render_cmds(layout, child_idx);
   }
 }
@@ -491,7 +502,7 @@ void element_begin(Layout& layout, Id id, const ElementConfigNormal& config) {
   layout.elements.push_back({
     .id     = id_internal,
     .parent = layout._active_parent,
-    .config = {.type = ELEMENT_NORMAL, .normal = config},
+    .config = config,
   });
   set_first_child_or_next_sibling(layout);
   layout._active_parent = layout.elements.size() - 1;
@@ -513,18 +524,14 @@ vec2 element_get_pos(Layout& layout, Id id) {
 // TODO: separate element_set_style() function?
 void element_end(Layout& layout) {
   auto& elem = layout.elements[layout._active_parent];
-  ASSERT(elem.config.type == ELEMENT_NORMAL, "Cannot close a not normal element");
+  ASSERT(is<ElementConfigNormal>(elem.config), "Cannot close a not normal element");
   layout._active_parent = elem.parent;
 }
 
 void text(Layout& layout, std::string_view text, f32 size, Color color) {
-  layout.strings.push_back(std::string{text});
   layout.elements.push_back({
     .parent = layout._active_parent,
-    .config = {
-      .type = ELEMENT_TEXT,
-      .text = {.string_idx = u32(layout.strings.size() - 1), .size = size, .color = color}
-    },
+    .config = ElementConfigText{.text = std::string{text}, .size = size, .color = color},
   });
   set_first_child_or_next_sibling(layout);
 }

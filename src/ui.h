@@ -98,17 +98,22 @@ enum ElementType {
 // TODO: remove this?
 static constexpr f32 TEXT_SPACING = 2;
 
-struct ElementConfig {
-  ElementType type{};
-  union {
-    ElementConfigNormal normal{};
-    struct {
-      u32 string_idx{};
-      f32 size{};
-      Color color{};
-    } text;
-  };
+struct ElementConfigText {
+  std::string text{};
+  f32 size{};
+  Color color{};
 };
+
+using ElementConfig = std::variant<ElementConfigNormal, ElementConfigText>;
+
+inline ElementConfigNormal* config_normal(ElementConfig& config) {
+  return std::get_if<ElementConfigNormal>(&config);
+}
+
+template <typename T>
+inline bool is(const ElementConfig& config) {
+  return std::holds_alternative<T>(config);
+}
 
 struct StateOptions {
   bool* clicked{};

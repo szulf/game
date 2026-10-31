@@ -45,6 +45,7 @@
   - [x] save to a file
     - can be the same format as the game save file, but cannot be the actual save file, so that you can start a new playthrough whenever
   - [x] switch between worlds
+  - [ ] camera movement
   - [ ] copying
   - [ ] validation of the current save
     - [ ] one player
@@ -56,9 +57,9 @@
 - [ ] UI library
   - [x] stack elements layout direction
     - elements on top of each other
+  - [x] better element api
   - [ ] borders
   - [ ] justify-content: space-between from css
-  - [ ] better element api (the UI_Scope thing probably)
   - [ ] floating elements (?)
   - [ ] components (?)
     - button, slider, movable window

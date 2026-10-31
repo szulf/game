@@ -28,7 +28,7 @@ struct EditorGUIResult {
 
 EditorGUIResult editor_gui(
   Editor& editor,
-  UI_Layout& layout,
+  ui::Layout& layout,
   const Input& input,
   EntityStore& store,
   const AssetManager& assets,

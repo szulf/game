@@ -1,5 +1,6 @@
 main
 save_file.json
+debug_save.json
 build/
 .cache/
 

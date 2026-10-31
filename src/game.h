@@ -39,7 +39,7 @@ struct State {
 
   FrameData frame{};
   AssetManager assets{};
-  UI_System ui_system{};
+  ui::System ui_system{};
 
   f32 minutes_accumulator{};
   u64 minutes{};

@@ -13,7 +13,7 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
   auto* entity_at_mouse_pos =
     get_entity_at_pos(store, editor.current_world, mouse_grid_pos, CURSOR_DIMS);
 
-  if (input.rmb.down && entity_at_mouse_pos) {
+  if (input.lmb.down && entity_at_mouse_pos) {
     if (entity_at_mouse_pos->id == editor.selected_entity_id) {
       editor.selected_entity_id = {};
     }
@@ -21,7 +21,7 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
   }
 
   // TODO: implement place rotation
-  if (input.lmb.down) {
+  if (input.rmb.down) {
     const auto& placeable = PLACEABLE[editor.selected_placeable_idx];
     auto dims             = get_dims(placeable);
     if (!get_entity_at_pos(store, editor.current_world, mouse_grid_pos, dims)) {
@@ -38,49 +38,41 @@ editor_update(Editor& editor, EntityStore& store, const Input& input, const vec2
     }
   }
 
-  if (input.lmb.pressed() && entity_at_mouse_pos) {
+  if (input.rmb.pressed() && entity_at_mouse_pos) {
     editor.selected_entity_id = entity_at_mouse_pos->id;
   }
 
   return result;
 }
 
-static void conveyor_data_edit_gui(UI_Layout& layout, Entity& entity) {
+static void conveyor_data_edit_gui(ui::Layout& layout, Entity& entity) {
   auto* conveyor = get_data<Conveyor>(entity);
   ASSERT(conveyor, "entity is not a conveyor");
   bool clicked{};
 
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "to: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-    {
-      ui_text(layout, direction_to_string(conveyor->to), 20, BLACK);
+  UI(layout, {}) {
+    ui::text(layout, "to: ", 20, WHITE);
+    UI(layout, {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY}, {.clicked = &clicked}) {
+      ui::text(layout, direction_to_string(conveyor->to), 20, BLACK);
     }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
-  ui_element_end(layout, {});
 
   if (clicked) {
     conveyor->to = next_direction(conveyor->to);
   }
 }
 
-static void rotation_data_edit_gui(UI_Layout& layout, Entity& entity) {
+static void rotation_data_edit_gui(ui::Layout& layout, Entity& entity) {
   auto* rotation = get_rotation(entity);
   ASSERT(rotation, "entity has no rotation to edit");
   bool clicked{};
 
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "rotation: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-    {
-      ui_text(layout, direction_to_string(*rotation), 20, BLACK);
+  UI(layout, {}) {
+    ui::text(layout, "rotation: ", 20, WHITE);
+    UI(layout, {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY}, {.clicked = &clicked}) {
+      ui::text(layout, direction_to_string(*rotation), 20, BLACK);
     }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
-  ui_element_end(layout, {});
 
   if (clicked) {
     *rotation = next_direction(*rotation);
@@ -105,38 +97,37 @@ rotate_maintenace(Maintenance& maintenance, std::span<const Maintenance> possibl
   }
 }
 
-static void maintenance_data_edit_gui(UI_Layout& layout, Entity& entity) {
+static void maintenance_data_edit_gui(ui::Layout& layout, Entity& entity) {
   auto [maintenance, possible_maintenance] = get_maintenance(entity);
   ASSERT(maintenance, "entity has no maintenance to edit");
   bool clicked{};
 
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "maintenance: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-    {
-      ui_text(layout, maintenance_name(*maintenance), 20, BLACK);
+  UI(layout, {}) {
+    ui::text(layout, "maintenance: ", 20, WHITE);
+    UI(layout, {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY}, {.clicked = &clicked}) {
+      ui::text(layout, maintenance_name(*maintenance), 20, BLACK);
     }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
-  ui_element_end(layout, {});
 
   if (clicked) {
     rotate_maintenace(*maintenance, possible_maintenance);
   }
 }
 
-static u32 value_button_gui(UI_Layout& layout, const Input& input, std::string_view text) {
+static u32 value_button_gui(ui::Layout& layout, const Input& input, std::string_view text) {
   bool clicked{};
 
-  ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-  ui_text(layout, text, 10, BLACK);
-  ui_element_end(
+  UI(
     layout,
-    {.sizing          = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-     .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-     .bg_color        = LIGHTGRAY}
-  );
+    {
+      .sizing          = {ui::sizing_fixed(16), ui::sizing_fixed(16)},
+      .child_alignment = {ui::CHILD_ALIGNMENT_CENTER, ui::CHILD_ALIGNMENT_CENTER},
+      .bg_color        = LIGHTGRAY,
+    },
+    {.clicked = &clicked}
+  ) {
+    ui::text(layout, text, 10, BLACK);
+  }
 
   if (clicked) {
     if (input.keys[GKEY_LSHIFT].down) {
@@ -148,101 +139,88 @@ static u32 value_button_gui(UI_Layout& layout, const Input& input, std::string_v
 }
 
 static void
-item_edit_gui(UI_Layout& layout, const Input& input, const AssetManager& assets, ItemSlot& slot) {
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "selected inventory slot:", 20, WHITE);
+item_edit_gui(ui::Layout& layout, const Input& input, const AssetManager& assets, ItemSlot& slot) {
+  UI(layout, {.layout_direction = ui::LAYOUT_DIRECTION_VERTICAL}) {
+    ui::text(layout, "selected inventory slot:", 20, WHITE);
 
-    ui_text(layout, "item type:", 15, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
+    ui::text(layout, "item type:", 15, WHITE);
+    UI(
+      layout,
+      {
+        .layout_direction = ui::LAYOUT_DIRECTION_VERTICAL,
+        .padding          = ui::padding_all(2),
+        .child_gap        = 2,
+      }
+    ) {
       static constexpr u32 ROW_SIZE = 8;
       static constexpr u32 ROW_COUNT =
         ITEM_COUNT % ROW_SIZE == 0 ? ITEM_COUNT / ROW_SIZE : (ITEM_COUNT / ROW_SIZE) + 1;
 
       for (u32 i = 0; i < ROW_COUNT; ++i) {
-        ui_element_begin(layout, UI_AUTO_ID);
-        for (u32 j = 0; j < ROW_SIZE; ++j) {
-          auto idx = i * ROW_SIZE + j;
-          if (idx >= ITEM_COUNT) {
-            break;
-          }
+        UI(layout, {.child_gap = 2}) {
+          for (u32 j = 0; j < ROW_SIZE; ++j) {
+            auto idx = i * ROW_SIZE + j;
+            if (idx >= ITEM_COUNT) {
+              break;
+            }
 
-          auto item_type = ItemType(idx);
-          bool clicked{};
-          Color color = LIGHTGRAY;
-          if (slot.type == item_type) {
-            color = GRAY;
-          }
+            auto item_type = ItemType(idx);
+            bool clicked{};
+            Color color = LIGHTGRAY;
+            if (slot.type == item_type) {
+              color = GRAY;
+            }
 
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-          {
-            const auto& texture = assets.textures[get_texture_type(item_type)];
-            ui_element_begin(layout, UI_AUTO_ID);
-            ui_element_end(
-              layout,
-              {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
-               .texture = &texture}
-            );
-          }
-          ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+            UI(layout, {.padding = ui::padding_all(2), .bg_color = color}, {.clicked = &clicked}) {
+              const auto& texture = assets.textures[get_texture_type(item_type)];
+              ui::texture(layout, texture);
+            }
 
-          if (clicked) {
-            slot.type = item_type;
-            if (slot.count > item_info(slot.type).max_count) {
-              slot.count = item_info(slot.type).max_count;
+            if (clicked) {
+              slot.type = item_type;
+              if (slot.count > item_info(slot.type).max_count) {
+                slot.count = item_info(slot.type).max_count;
+              }
             }
           }
         }
-        ui_element_end(layout, {.child_gap = 2});
       }
     }
-    ui_element_end(
-      layout,
-      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-       .padding          = ui_padding_all(2),
-       .child_gap        = 2}
-    );
 
-    ui_text(layout, "count:", 15, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
+    ui::text(layout, "count:", 15, WHITE);
+    UI(layout, {.child_gap = 4}) {
       u32 decrement = value_button_gui(layout, input, "-");
       if (i32(slot.count) - i32(decrement) >= 0) {
         slot.count -= decrement;
       }
 
-      ui_text(layout, std::format("{}", slot.count), 15, WHITE);
+      ui::text(layout, std::format("{}", slot.count), 15, WHITE);
 
       u32 increment = value_button_gui(layout, input, "+");
       if (slot.count + increment <= item_info(slot.type).max_count) {
         slot.count += increment;
       }
     }
-    ui_element_end(layout, {.child_gap = 4});
 
     if (item_info(slot.type).has_durability) {
-      ui_text(layout, "damage:", 15, WHITE);
-      ui_element_begin(layout, UI_AUTO_ID);
-      {
+      ui::text(layout, "damage:", 15, WHITE);
+      UI(layout, {.child_gap = 4}) {
         u32 decrement = value_button_gui(layout, input, "-");
         if (i32(slot.damage) - i32(decrement) >= 0) {
           slot.damage -= decrement;
         }
 
-        ui_text(layout, std::format("{}", slot.damage), 15, WHITE);
+        ui::text(layout, std::format("{}", slot.damage), 15, WHITE);
 
         u32 increment = value_button_gui(layout, input, "+");
         if (slot.damage + increment <= item_info(slot.type).max_damage) {
           slot.damage += increment;
         }
       }
-      ui_element_end(layout, {.child_gap = 4});
     }
 
-    ui_text(layout, "flags:", 15, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
+    ui::text(layout, "flags:", 15, WHITE);
+    UI(layout, {.child_gap = 4}) {
       struct FlagsUiData {
         std::string_view text{};
         ItemSlotFlag flag{};
@@ -258,23 +236,21 @@ item_edit_gui(UI_Layout& layout, const Input& input, const AssetManager& assets,
         bool clicked{};
         Color color = slot.flags & data.flag ? GRAY : LIGHTGRAY;
 
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-        ui_text(layout, data.text, 15, BLACK);
-        ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
+        UI(layout, {.padding = ui::padding_all(2), .bg_color = color}, {.clicked = &clicked}) {
+          ui::text(layout, data.text, 15, BLACK);
+        }
 
         if (clicked) {
           slot.flags ^= data.flag;
         }
       }
     }
-    ui_element_end(layout, {.child_gap = 4});
   }
-  ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
 }
 
 static void mover_data_edit_gui(
   Editor& editor,
-  UI_Layout& layout,
+  ui::Layout& layout,
   const Input& input,
   const AssetManager& assets,
   Entity& entity
@@ -282,51 +258,49 @@ static void mover_data_edit_gui(
   auto props = get_moves_items_properties(entity);
   ASSERT(props, "entity is not a mover");
 
-  ui_element_begin(layout, UI_AUTO_ID);
-  for (u32 lane_idx = 0; lane_idx < props.from.size(); ++lane_idx) {
-    ui_element_begin(layout, UI_AUTO_ID);
-    for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
-      auto& item = props.items[lane_idx, i];
-
-      ui_element_begin(layout, UI_AUTO_ID);
-      {
-        ui_text(layout, std::format("{}.", i), 15, WHITE);
-
-        ui_text(layout, "t: ", 10, WHITE);
-
-        f32 decrement = f32(value_button_gui(layout, input, "-")) * 0.01f;
-        if (item.t - decrement >= 0.0f) {
-          item.t -= decrement;
+  UI(layout, {.layout_direction = ui::LAYOUT_DIRECTION_HORIZONTAL}) {
+    for (u32 lane_idx = 0; lane_idx < props.from.size(); ++lane_idx) {
+      UI(
+        layout,
+        {
+          .layout_direction = ui::LAYOUT_DIRECTION_VERTICAL,
+          .sizing           = {ui::sizing_fill(), ui::sizing_fit()},
         }
+      ) {
+        for (u32 i = 0; i < CONVEYOR_THROUGHPUT; ++i) {
+          auto& item = props.items[lane_idx, i];
 
-        ui_text(layout, std::format("{:.2f}", item.t), 10, WHITE);
+          UI(layout, {.child_gap = 4}) {
+            ui::text(layout, std::format("{}.", i), 15, WHITE);
 
-        f32 increment = f32(value_button_gui(layout, input, "+")) * 0.01f;
-        if (item.t + increment <= conveyor_item_max_t(i)) {
-          item.t += increment;
-        }
+            ui::text(layout, "t: ", 10, WHITE);
 
-        // TODO: should get whether it was clicked or not from gui_item_slot
-        bool hovered = gui_item_slot(assets, layout, item.slot);
-        if (hovered && input.lmb.pressed()) {
-          // TODO: i dont really like how im encoding the lane_idx here, but ig it works for now
-          editor.selected_inventory_edit_slot = {
-            .entity   = entity.id,
-            .slot_idx = i + (lane_idx * 100),
-          };
+            f32 decrement = f32(value_button_gui(layout, input, "-")) * 0.01f;
+            if (item.t - decrement >= 0.0f) {
+              item.t -= decrement;
+            }
+
+            ui::text(layout, std::format("{:.2f}", item.t), 10, WHITE);
+
+            f32 increment = f32(value_button_gui(layout, input, "+")) * 0.01f;
+            if (item.t + increment <= conveyor_item_max_t(i)) {
+              item.t += increment;
+            }
+
+            // TODO: should get whether it was clicked or not from gui::item_slot
+            bool hovered = gui::item_slot(assets, layout, item.slot);
+            if (hovered && input.lmb.pressed()) {
+              // TODO: i dont really like how im encoding the lane_idx here, but ig it works for now
+              editor.selected_inventory_edit_slot = {
+                .entity   = entity.id,
+                .slot_idx = i + (lane_idx * 100),
+              };
+            }
+          }
         }
       }
-      ui_element_end(layout, {.child_gap = 4});
     }
-    ui_element_end(
-      layout,
-      {
-        .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-        .sizing           = {ui_sizing_fill(), ui_sizing_fit()},
-      }
-    );
   }
-  ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_HORIZONTAL});
 
   if (editor.selected_inventory_edit_slot.entity == entity.id) {
     u32 lane_idx        = editor.selected_inventory_edit_slot.slot_idx / 100;
@@ -338,7 +312,7 @@ static void mover_data_edit_gui(
 
 static void inventory_data_edit_gui(
   Editor& editor,
-  UI_Layout& layout,
+  ui::Layout& layout,
   const AssetManager& assets,
   const Input& input,
   Entity& entity
@@ -346,7 +320,7 @@ static void inventory_data_edit_gui(
   auto* inventory = get_inventory(entity);
   ASSERT(inventory, "entity has no inventory to edit");
 
-  auto hovered_slot = gui_inventory(layout, assets, entity.id, *inventory);
+  auto hovered_slot = gui::inventory(layout, assets, entity.id, *inventory);
   // TODO: this is kind of bad, i should get the information about whether
   // it was clicked or not from the inventory_ui function
   // (and this is not the only place im doing it this way)
@@ -360,21 +334,17 @@ static void inventory_data_edit_gui(
   }
 }
 
-static void world_tunnel_destination_data_edit_gui(UI_Layout& layout, Entity& entity) {
+static void world_tunnel_destination_data_edit_gui(ui::Layout& layout, Entity& entity) {
   auto* tunnel = get_data<WorldTunnel>(entity);
   ASSERT(tunnel, "entity is not of type WorldTunnel");
   bool clicked{};
 
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_text(layout, "destination: ", 20, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-    {
-      ui_text(layout, world_to_string(tunnel->to), 20, BLACK);
+  UI(layout, {}) {
+    ui::text(layout, "destination: ", 20, WHITE);
+    UI(layout, {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY}, {.clicked = &clicked}) {
+      ui::text(layout, world_to_string(tunnel->to), 20, BLACK);
     }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
   }
-  ui_element_end(layout, {});
 
   if (clicked) {
     tunnel->to = World((tunnel->to + 1) % WORLD_COUNT);
@@ -384,7 +354,7 @@ static void world_tunnel_destination_data_edit_gui(UI_Layout& layout, Entity& en
 // TODO: move the ifs into the functions?
 static void entity_data_edit_gui(
   Editor& editor,
-  UI_Layout& layout,
+  ui::Layout& layout,
   const AssetManager& assets,
   const Input& input,
   Entity& entity
@@ -411,7 +381,7 @@ static void entity_data_edit_gui(
 
 EditorGUIResult editor_gui(
   Editor& editor,
-  UI_Layout& layout,
+  ui::Layout& layout,
   const Input& input,
   EntityStore& store,
   const AssetManager& assets,
@@ -420,117 +390,102 @@ EditorGUIResult editor_gui(
   EditorGUIResult result{};
   bool save_clicked{};
 
-  ui_element_begin(layout, UI_AUTO_ID);
-  ui_element_begin(layout, UI_AUTO_ID);
-  {
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
-      ui_text(layout, "time: ", 25, WHITE);
-
-      u32 decrement = value_button_gui(layout, input, "-");
-      if (i32(time) - i32(decrement) >= 0) {
-        time -= decrement;
-      }
-
-      ui_text(layout, get_time_string(time), 15, WHITE);
-
-      u32 increment = value_button_gui(layout, input, "+");
-      time += increment;
-    }
-    ui_element_end(
-      layout,
-      {
-        .padding         = ui_padding_all(2),
-        .child_gap       = 2,
-        .child_alignment = {UI_CHILD_ALIGNMENT_START, UI_CHILD_ALIGNMENT_CENTER},
-      }
-    );
-
-    ui_text(layout, "placeables:", 25, WHITE);
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
-      for (u32 i = 0; i < PLACEABLE.size(); ++i) {
-        const auto& placeable = PLACEABLE[i];
-        bool clicked{};
-        Color color = LIGHTGRAY;
-        if (i == editor.selected_placeable_idx) {
-          color = GRAY;
-        }
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked});
-        {
-          const auto& texture = assets.textures[get_texture_type(placeable)];
-          ui_element_begin(layout, UI_AUTO_ID);
-          ui_element_end(
-            layout,
-            {.sizing  = {ui_sizing_fixed(texture.width), ui_sizing_fixed(texture.height)},
-             .texture = &texture}
-          );
-        }
-        ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = color});
-
-        if (clicked) {
-          editor.selected_placeable_idx = i;
-        }
-      }
-    }
-    ui_element_end(layout, {.padding = ui_padding_all(2), .child_gap = 2});
-
-    bool current_world_clicked{};
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
-      ui_text(layout, "current world: ", 20, WHITE);
-      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &current_world_clicked});
-      {
-        ui_text(layout, world_to_string(editor.current_world), 20, BLACK);
-      }
-      ui_element_end(layout, {.padding = ui_padding_all(2), .bg_color = LIGHTGRAY});
-    }
-    ui_element_end(layout, {});
-    if (current_world_clicked) {
-      editor.current_world = World((editor.current_world + 1) % WORLD_COUNT);
-    }
-
-    if (editor.selected_entity_id) {
-      auto* selected = get_entity(store, editor.selected_entity_id);
-      if (selected) {
-        ui_text(layout, "selected entity data:", 25, WHITE);
-        ui_element_begin(layout, UI_AUTO_ID);
-        {
-          entity_data_edit_gui(editor, layout, assets, input, *selected);
-        }
-        ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL});
-      }
-    }
-
-    ui_element_begin(layout, UI_AUTO_ID);
-    {
-      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &save_clicked});
-      ui_text(layout, "SAVE", 25, BLACK);
-      ui_element_end(layout, {.bg_color = LIGHTGRAY});
-    }
-    ui_element_end(
-      layout,
-      {.sizing          = {ui_sizing_fill(), ui_sizing_fit()},
-       .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER}}
-    );
-  }
-  ui_element_end(
+  UI(
     layout,
     {
-      .layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-      .padding          = ui_padding_all(4),
-      .child_gap        = 4,
-      .bg_color         = BLACK,
-    }
-  );
-  ui_element_end(
-    layout,
-    {
-      .sizing          = {ui_sizing_fill(), ui_sizing_fill()},
+      .sizing          = {ui::sizing_fill(), ui::sizing_fill()},
       .padding         = {.top = 8, .right = 8},
-      .child_alignment = {UI_CHILD_ALIGNMENT_END, UI_CHILD_ALIGNMENT_START},
+      .child_alignment = {ui::CHILD_ALIGNMENT_END, ui::CHILD_ALIGNMENT_START},
     }
-  );
+  ) {
+    UI(
+      layout,
+      {
+        .layout_direction = ui::LAYOUT_DIRECTION_VERTICAL,
+        .padding          = ui::padding_all(4),
+        .child_gap        = 4,
+        .bg_color         = BLACK,
+      }
+    ) {
+      UI(
+        layout,
+        {
+          .padding         = ui::padding_all(2),
+          .child_gap       = 2,
+          .child_alignment = {ui::CHILD_ALIGNMENT_START, ui::CHILD_ALIGNMENT_CENTER},
+        }
+      ) {
+        ui::text(layout, "time: ", 25, WHITE);
+
+        u32 decrement = value_button_gui(layout, input, "-");
+        if (i32(time) - i32(decrement) >= 0) {
+          time -= decrement;
+        }
+
+        ui::text(layout, get_time_string(time), 15, WHITE);
+
+        u32 increment = value_button_gui(layout, input, "+");
+        time += increment;
+      }
+
+      ui::text(layout, "placeables:", 25, WHITE);
+      UI(layout, {.padding = ui::padding_all(2), .child_gap = 2}) {
+        for (u32 i = 0; i < PLACEABLE.size(); ++i) {
+          const auto& placeable = PLACEABLE[i];
+          bool clicked{};
+          Color color = LIGHTGRAY;
+          if (i == editor.selected_placeable_idx) {
+            color = GRAY;
+          }
+          UI(layout, {.padding = ui::padding_all(2), .bg_color = color}, {.clicked = &clicked}) {
+            const auto& texture = assets.textures[get_texture_type(placeable)];
+            ui::texture(layout, texture);
+          }
+
+          if (clicked) {
+            editor.selected_placeable_idx = i;
+          }
+        }
+      }
+
+      bool current_world_clicked{};
+      UI(layout, {}) {
+        ui::text(layout, "current world: ", 20, WHITE);
+        UI(
+          layout,
+          {.padding = ui::padding_all(2), .bg_color = LIGHTGRAY},
+          {.clicked = &current_world_clicked}
+        ) {
+          ui::text(layout, world_to_string(editor.current_world), 20, BLACK);
+        }
+      }
+      if (current_world_clicked) {
+        editor.current_world = World((editor.current_world + 1) % WORLD_COUNT);
+      }
+
+      if (editor.selected_entity_id) {
+        auto* selected = get_entity(store, editor.selected_entity_id);
+        if (selected) {
+          ui::text(layout, "selected entity data:", 25, WHITE);
+          UI(layout, {.layout_direction = ui::LAYOUT_DIRECTION_VERTICAL}) {
+            entity_data_edit_gui(editor, layout, assets, input, *selected);
+          }
+        }
+      }
+
+      UI(
+        layout,
+        {
+          .sizing          = {ui::sizing_fill(), ui::sizing_fit()},
+          .child_alignment = {ui::CHILD_ALIGNMENT_CENTER, ui::CHILD_ALIGNMENT_CENTER},
+        }
+      ) {
+        UI(layout, {.bg_color = LIGHTGRAY}, {.clicked = &save_clicked}) {
+          ui::text(layout, "SAVE", 25, BLACK);
+        }
+      }
+    }
+  }
 
   result.save_requested = save_clicked;
   return result;

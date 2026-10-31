@@ -142,97 +142,94 @@ void update_frame(State& state) {
     vec2_from_raylib(GetScreenToWorld2D(vec2_to_raylib(state.frame_input.mouse_pos), state.camera));
   gather_input(state.frame_input);
   accumulate_input(state.tick_input, state.frame_input);
-  ui_system_update(state.ui_system);
+  ui::system_update(state.ui_system);
 
   auto root_layout =
-    ui_layout_begin("root", state.ui_system, state.frame_input, {}, state.frame.window_dims);
-  ui_element_begin(root_layout, UI_AUTO_ID);
-
-  switch (state.mode) {
-    case MODE_GAME: {
-      auto player_inv_hovered_slot =
-        gui_player_inventory(root_layout, state.assets, state.store, state.player_id);
-      if (player_inv_hovered_slot) {
-        state.frame.hovered_slot = player_inv_hovered_slot;
-      }
-
-      auto open_inventory_hovered_slot =
-        gui_open_inventory(root_layout, state.assets, state.store, state.player_id);
-      if (open_inventory_hovered_slot) {
-        state.frame.hovered_slot = open_inventory_hovered_slot;
-      }
-
-      gui_player_hand(
-        state.ui_system,
-        state.assets,
-        state.frame_input,
-        state.store,
-        state.player_id
-      );
-
-      gui_message_sender(
-        root_layout,
-        state.maintenance_minigame_texture,
-        state.assets,
-        state.store,
-        state.player_id,
-        state.resource_message_queue,
-        state.minutes
-      );
-
-      auto receiver_hovered_slot = gui_message_receiver(
-        root_layout,
-        state.maintenance_minigame_texture,
-        state.assets,
-        state.store,
-        state.player_id,
-        state.resource_message_queue
-      );
-      if (receiver_hovered_slot) {
-        state.frame.hovered_slot = receiver_hovered_slot;
-      }
-
-      auto assembler_hovered_slot = gui_assembler(
-        root_layout,
-        state.maintenance_minigame_texture,
-        state.assets,
-        state.store,
-        state.player_id
-      );
-      if (assembler_hovered_slot) {
-        state.frame.hovered_slot = assembler_hovered_slot;
-      }
-    } break;
-    case MODE_EDITOR: {
-      auto result = editor_gui(
-        state.editor,
-        root_layout,
-        state.frame_input,
-        state.store,
-        state.assets,
-        state.minutes
-      );
-      if (result.save_requested) {
-        save_state_to_file(state, DEFAULT_MAP_FILEPATH);
-        std::println("saved state to '{}'", DEFAULT_MAP_FILEPATH);
-      }
-    } break;
-  }
-
-  ui_element_begin(root_layout, UI_AUTO_ID);
-  {
-    ui_text(root_layout, get_time_string(state.minutes), 20, DARKGREEN);
-  }
-  ui_element_end(root_layout, {.padding = {.top = 25, .left = 5}});
-
-  ui_element_end(
+    ui::layout_begin("root", state.ui_system, state.frame_input, {}, state.frame.window_dims);
+  UI(
     root_layout,
     {
-      .layout_direction = UI_LAYOUT_DIRECTION_STACK,
-      .sizing           = {ui_sizing_fill(), ui_sizing_fill()},
+      .layout_direction = ui::LAYOUT_DIRECTION_STACK,
+      .sizing           = {ui::sizing_fill(), ui::sizing_fill()},
+    },
+  ) {
+
+    switch (state.mode) {
+      case MODE_GAME: {
+        auto player_inv_hovered_slot =
+          gui::player_inventory(root_layout, state.assets, state.store, state.player_id);
+        if (player_inv_hovered_slot) {
+          state.frame.hovered_slot = player_inv_hovered_slot;
+        }
+
+        auto open_inventory_hovered_slot =
+          gui::open_inventory(root_layout, state.assets, state.store, state.player_id);
+        if (open_inventory_hovered_slot) {
+          state.frame.hovered_slot = open_inventory_hovered_slot;
+        }
+
+        gui::player_hand(
+          state.ui_system,
+          state.assets,
+          state.frame_input,
+          state.store,
+          state.player_id
+        );
+
+        gui::message_sender(
+          root_layout,
+          state.maintenance_minigame_texture,
+          state.assets,
+          state.store,
+          state.player_id,
+          state.resource_message_queue,
+          state.minutes
+        );
+
+        auto receiver_hovered_slot = gui::message_receiver(
+          root_layout,
+          state.maintenance_minigame_texture,
+          state.assets,
+          state.store,
+          state.player_id,
+          state.resource_message_queue
+        );
+        if (receiver_hovered_slot) {
+          state.frame.hovered_slot = receiver_hovered_slot;
+        }
+
+        auto assembler_hovered_slot = gui::assembler(
+          root_layout,
+          state.maintenance_minigame_texture,
+          state.assets,
+          state.store,
+          state.player_id
+        );
+        if (assembler_hovered_slot) {
+          state.frame.hovered_slot = assembler_hovered_slot;
+        }
+      } break;
+      case MODE_EDITOR: {
+        auto result = editor_gui(
+          state.editor,
+          root_layout,
+          state.frame_input,
+          state.store,
+          state.assets,
+          state.minutes
+        );
+        if (result.save_requested) {
+          save_state_to_file(state, DEFAULT_MAP_FILEPATH);
+          std::println("saved state to '{}'", DEFAULT_MAP_FILEPATH);
+        }
+      } break;
     }
-  );
-  ui_layout_end(root_layout);
+
+    UI(root_layout, {.padding = {.top = 25, .left = 5}}) {
+      ui::text(root_layout, get_time_string(state.minutes), 20, DARKGREEN);
+    }
+  }
+  ui::layout_end(root_layout);
 }
 
 void render(State& state) {
@@ -359,7 +356,7 @@ void render(State& state) {
   EndMode2D();
 
   // NOTE: ui
-  ui_render(state.ui_system);
+  ui::render(state.ui_system);
   DrawFPS(5, 5);
 
   EndDrawing();
